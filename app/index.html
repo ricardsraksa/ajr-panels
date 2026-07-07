@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>AJR CRM · Sign in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e0e10; --panel:#17171b; --card:#141416;
+  --border:#202024; --border-2:#26262c; --hair:#1a1a1e;
+  --text:#e9e9ec; --muted:#a9a9b1; --dim:#6e6e78; --faint:#55555e;
+  --primary:#e9e9ec; --primary-ink:#101013;
+  --money:#8ee59a; --err:#f4a3a3;
+  --font:'Geist',system-ui,sans-serif; --mono:'Geist Mono',ui-monospace,monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.5;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:var(--money);text-decoration:none}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--muted);outline-offset:2px;border-radius:6px}
+[hidden]{display:none!important}
+input::placeholder{color:var(--faint)}
+.box{width:min(380px,calc(100vw - 40px))}
+.eyebrow{font:600 12px var(--mono);letter-spacing:.08em;color:var(--muted);text-transform:uppercase;
+  display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--dim)}
+h1{font-size:17px;font-weight:600;margin-bottom:20px}
+label{display:block;font-size:12.5px;color:var(--muted);font-weight:500;margin-bottom:14px}
+input{display:block;width:100%;margin-top:7px;min-height:46px;padding:0 13px;background:var(--panel);
+  border:1px solid var(--border-2);border-radius:10px;color:var(--text);font-size:15px}
+input:focus{border-color:#33333a}
+.btn{width:100%;min-height:50px;border-radius:12px;background:var(--primary);color:var(--primary-ink);
+  font:600 14.5px var(--font);margin-top:6px}
+.btn:hover:not(:disabled){filter:brightness(.94)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.err{color:var(--err);font-size:13px;margin-top:12px;min-height:20px}
+.links{margin-top:26px;padding-top:16px;border-top:1px solid var(--hair);display:flex;gap:16px;
+  font-size:12.5px;color:var(--faint)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="eyebrow"><span class="dot"></span>AJR CRM</div>
+  <h1>Sign in</h1>
+  <form id="form">
+    <label>Email
+      <input id="email" type="email" autocomplete="username" spellcheck="false" required>
+    </label>
+    <label>Password
+      <input id="password" type="password" autocomplete="current-password" required>
+    </label>
+    <button class="btn" id="go" type="submit">Sign in</button>
+    <div class="err" id="err" role="alert"></div>
+  </form>
+  <div class="links">
+    <a href="worklist.html">Worklist</a>
+    <a href="log-lead.html">Log a lead</a>
+    <a href="close-call.html">Log the call</a>
+  </div>
+</div>
+<script type="module">
+import { supa, signIn } from './crm-core.js';
+
+const qs = new URLSearchParams(location.search);
+const dest = qs.get('to') || 'worklist.html';
+
+// already signed in? straight through.
+const { data: { session } } = await supa.auth.getSession();
+if (session) location.replace(dest);
+
+const form = document.getElementById('form');
+const err = document.getElementById('err');
+const go = document.getElementById('go');
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  err.textContent = '';
+  go.disabled = true; go.textContent = 'Signing in…';
+  try {
+    await signIn(document.getElementById('email').value.trim(),
+                 document.getElementById('password').value);
+    location.replace(dest);
+  } catch (ex) {
+    err.textContent = /invalid/i.test(ex.message) ? 'Wrong email or password.' : ex.message;
+    go.disabled = false; go.textContent = 'Sign in';
+  }
+});
+</script>
+</body>
+</html>
