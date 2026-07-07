@@ -570,7 +570,8 @@
       if (!matches.length && sq) matches = leads.filter(function (l) { return squash(l.h).indexOf(sq) === 0; });
       var mode = matches.length ? (stage ? 'update' : 'statusOnly') : 'create';
       return { route: 'setter', ai: true,
-        setter: { handle: matches.length ? matches[0].h : handle, stage: stage, status: status, temp: temp, matches: matches, mode: mode } };
+        setter: { handle: matches.length ? matches[0].h : handle, stage: stage, status: status, temp: temp,
+          notes: String(intent.notes || '').trim(), matches: matches, mode: mode } };
     }
 
     return { route: 'ambiguous', ai: true,
