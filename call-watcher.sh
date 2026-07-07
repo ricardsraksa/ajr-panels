@@ -42,10 +42,13 @@ API_KEY="${API_KEY:-}"
 # future Zoom build renames them, run `call-watcher.sh probe` during a call and
 # add the real name here (or in the conf via ZOOM_MEETING_PROCS=).
 DETECT_ZOOM="${DETECT_ZOOM:-1}"
-ZOOM_MEETING_PROCS="${ZOOM_MEETING_PROCS:-CptHost aomhost caphost}"
-ZOOM_CHECK="${ZOOM_CHECK:-4}"          # seconds between meeting-state checks
-# Fireflies backup poll cadence + how long to mute it after a local pop.
-FF_INTERVAL="${FF_INTERVAL:-${INTERVAL:-45}}"
+ZOOM_MEETING_PROCS="${ZOOM_MEETING_PROCS:-CptHost|aomhost|caphost}"
+ZOOM_CHECK="${ZOOM_CHECK:-4}"          # check cadence while Zoom is open
+IDLE_CHECK="${IDLE_CHECK:-15}"         # check cadence while Zoom is closed (near-dormant)
+# Fireflies backup poll cadence + how long to mute it after a local pop. It's
+# only a backup now (local detection is instant), so it runs lazily. Leave
+# EXEC_URL/API_KEY out of the conf to switch the backup off entirely.
+FF_INTERVAL="${FF_INTERVAL:-${INTERVAL:-120}}"
 COOLDOWN="${COOLDOWN:-300}"
 # Override the browser; the URL is appended last (e.g. OPEN_CMD="open -a Firefox").
 OPEN_CMD="${OPEN_CMD:-}"
@@ -75,13 +78,10 @@ open_deal() { # $1=row $2=id — Fireflies backup, pre-pinned to the exact deal
   open_url "${PANEL_URL%/}/close-call.html?deal=$1&nudge=$2"
 }
 
-zoom_meeting_active() {
-  local p
-  for p in $ZOOM_MEETING_PROCS; do
-    pgrep -x "$p" >/dev/null 2>&1 && return 0
-  done
-  return 1
-}
+# Is the Zoom app open at all? (one cheap check; false ~all day)
+zoom_running() { pgrep -x 'zoom.us' >/dev/null 2>&1; }
+# Is a Zoom meeting live? One regex pgrep over the meeting-only helper procs.
+zoom_meeting_active() { pgrep "$ZOOM_MEETING_PROCS" >/dev/null 2>&1; }
 
 poll_fireflies() {
   [ -z "$EXEC_URL" ] || [ -z "$API_KEY" ] && return 0   # Fireflies backup not configured
@@ -120,11 +120,13 @@ case "${1:-run}" in
   run)
     need_panel
     log "watcher running — instant Zoom detection${DETECT_ZOOM:+ on}; Fireflies backup every ${FF_INTERVAL}s"
-    prev=0; zoom_meeting_active && prev=1
+    prev=0; { [ "$DETECT_ZOOM" = "1" ] && zoom_meeting_active; } && prev=1
     last_ff=0; cooldown_until=0
     while true; do
       now=$(date +%s)
-      if [ "$DETECT_ZOOM" = "1" ]; then
+      nap="$IDLE_CHECK"
+      if [ "$DETECT_ZOOM" = "1" ] && zoom_running; then
+        nap="$ZOOM_CHECK"            # only poll tightly while Zoom is actually open
         cur=0; zoom_meeting_active && cur=1
         if [ "$prev" = "1" ] && [ "$cur" = "0" ]; then
           log "Zoom meeting ended — opening popup"
@@ -132,12 +134,14 @@ case "${1:-run}" in
           cooldown_until=$((now + COOLDOWN))
         fi
         prev=$cur
+      else
+        prev=0                       # Zoom closed → no meeting; reset the edge
       fi
       if [ $((now - last_ff)) -ge "$FF_INTERVAL" ] && [ "$now" -ge "$cooldown_until" ]; then
         poll_fireflies
         last_ff=$now
       fi
-      sleep "$ZOOM_CHECK"
+      sleep "$nap"
     done
     ;;
   probe)
