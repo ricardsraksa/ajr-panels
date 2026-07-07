@@ -361,7 +361,7 @@ var state = {
   demo: false, url: '', key: '',
   unique: [], byHandle: new Map(), closing: [], statuses: [], serverDate: '',
   parsed: null, chooserRow: null, cashConfirmed: false, aiBusy: false, pinnedRow: null,
-  callBanner: null, deepLinkRow: null, pickerOpen: false,
+  callBanner: null, deepLinkRow: null, afterCall: false, pickerOpen: false,
   writeArgs: null, canWrite: false, needCash: false,
   busy: false, listening: false, connErr: false,
   screen: 'idle', // idle | picker | interpreting | ambiguous | preview | money | saved | error
@@ -582,9 +582,12 @@ function runBootstrap(quiet) {
       state.deepLinkRow = null;
     }
     reparse();
+    // Opened by the watcher the instant a call ended (?after=1) with no deal
+    // known yet — drop straight into the picker so it's one tap to the deal.
+    if (state.afterCall && !pinnedDeal()) { state.afterCall = false; openPicker(true); }
     startPendingWatch();
     initBell();
-    if (!quiet) $('bar').focus();
+    if (!quiet && !state.pickerOpen) $('bar').focus();
   }).catch(function (err) {
     if ($('app').hidden) {
       if (state.demo || (state.url && state.key)) { showError(err.message, function () { runBootstrap(quiet); }); }
@@ -1088,6 +1091,7 @@ function readFragment() {
   var qp = new URLSearchParams(location.search);
   var dl = parseInt(qp.get('deal'), 10);
   if (dl >= 2) state.deepLinkRow = dl;
+  if (qp.get('after') === '1') state.afterCall = true;
   var nid = qp.get('nudge');
   if (nid) markPendingSeen_(nid);
   if (!location.hash) return;
