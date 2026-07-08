@@ -33,7 +33,7 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 .hdr{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--dim)}
 .dot.err{background:var(--err)}
-.hdr .eyebrow{font:600 12px var(--mono);letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.hdr .eyebrow{font-size:1.18rem;font-weight:600;letter-spacing:-.02em;color:var(--text)}
 .hdr .count{color:var(--faint);font:500 12px var(--mono)}
 .hdr .sp{flex:1}
 .hdr a.nav{color:var(--money);font-size:12.5px}
@@ -102,6 +102,7 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 .field textarea{min-height:88px;resize:vertical;line-height:1.5}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:#33333a}
 .field .ff-link{font-size:12.5px}
+.aitag{color:var(--money);font:600 9.5px var(--mono);letter-spacing:.04em;margin-left:7px;text-transform:uppercase}
 .dfoot{padding:14px 20px;border-top:1px solid var(--hair);flex:none;display:flex;flex-direction:column;gap:9px}
 .cash-warn{font-size:12px;color:var(--amber);line-height:1.5}
 .btn{width:100%;min-height:48px;border-radius:12px;font:600 14px var(--font)}
@@ -150,6 +151,7 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
     <span class="eyebrow">Closing</span>
     <span class="count" id="count">—</span>
     <span class="sp"></span>
+    <a class="nav" href="worklist.html" style="margin-right:2px">Worklist →</a>
     <button class="navbtn" id="voiceLog">＋ Log a call</button>
     <button class="icon-btn" id="signout" aria-label="Sign out">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/></svg>
@@ -192,16 +194,16 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
         <button class="mic" id="ai-mic" hidden aria-label="Dictate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/></svg></button>
       </div>
     </div>
-    <div class="field"><label>Status</label>
+    <div class="field"><label>Status<span class="aitag" id="tag-f-status" hidden>✦ Claude</span></label>
       <select id="f-status">
         <option value="">— no change —</option>
         <option>Discovery Call</option><option>Closing call</option><option>Followup</option><option>Closed</option><option>No Close</option>
       </select>
     </div>
-    <div class="field"><label>Meeting date</label><input id="f-meeting" type="date"></div>
-    <div class="field"><label>Follow-up date</label><input id="f-followup" type="date"></div>
-    <div class="field"><label>Cash collected</label><input id="f-cash" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
-    <div class="field"><label>Notes</label><textarea id="f-notes" placeholder="—"></textarea></div>
+    <div class="field"><label>Meeting date<span class="aitag" id="tag-f-meeting" hidden>✦ Claude</span></label><input id="f-meeting" type="date"></div>
+    <div class="field"><label>Follow-up date<span class="aitag" id="tag-f-followup" hidden>✦ Claude</span></label><input id="f-followup" type="date"></div>
+    <div class="field"><label>Cash collected<span class="aitag" id="tag-f-cash" hidden>✦ Claude</span></label><input id="f-cash" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+    <div class="field"><label>Notes<span class="aitag" id="tag-f-notes" hidden>✦ Claude</span></label><textarea id="f-notes" placeholder="—"></textarea></div>
     <div class="field" id="f-ff-wrap" hidden><label>Fireflies</label><a class="ff-link" id="f-ff" target="_blank" rel="noopener">Open transcript ↗</a></div>
   </div>
   <div class="dfoot" id="dfoot">
@@ -313,10 +315,13 @@ function render() {
 /* ---------- drawer ---------- */
 function dealById(id) { return state.deals.find((d) => d.row === id); }
 
+const TAG = { 'f-status':'tag-f-status','f-meeting':'tag-f-meeting','f-followup':'tag-f-followup','f-cash':'tag-f-cash','f-notes':'tag-f-notes' };
+function setTag(fid, on) { const t = document.getElementById(TAG[fid]); if (t) t.hidden = !on; }
+function clearTags() { Object.values(TAG).forEach((id) => { const t = document.getElementById(id); if (t) t.hidden = true; }); }
 function showEditor() { $('pick').hidden = true; $('dbody').hidden = false; $('dfoot').hidden = false; }
 function openDrawer(id) {
   const d = dealById(id); if (!d) return;
-  showEditor();
+  showEditor(); clearTags();
   state.editing = id; state.cashConfirmed = false;
   $('d-name').textContent = displayName(d);
   $('f-status').value = ['Discovery Call','Closing call','Followup','Closed','No Close'].includes(d.status) ? d.status : '';
@@ -368,11 +373,11 @@ async function runAI() {
     const res = await core.interpret(text, 'closer', displayName(d));
     const cmd = CRMParse.intentToCommand(res.intent, { now: new Date(), leads: state.leads, closing: state.deals, statuses: core.STATUSES });
     const f = (cmd.closer && cmd.closer.fields) || {};
-    if (f.status) $('f-status').value = ['Discovery Call','Closing call','Followup','Closed','No Close'].includes(f.status) ? f.status : $('f-status').value;
-    if (f.meeting) $('f-meeting').value = core.dmyToIso(f.meeting) || $('f-meeting').value;
-    if (f.followup) $('f-followup').value = core.dmyToIso(f.followup) || $('f-followup').value;
-    if (f.cash != null && f.cash !== '') $('f-cash').value = f.cash;
-    if (f.notes) $('f-notes').value = $('f-notes').value ? $('f-notes').value + '\n' + f.notes : f.notes;
+    if (f.status) { $('f-status').value = ['Discovery Call','Closing call','Followup','Closed','No Close'].includes(f.status) ? f.status : $('f-status').value; setTag('f-status', true); }
+    if (f.meeting) { $('f-meeting').value = core.dmyToIso(f.meeting) || $('f-meeting').value; setTag('f-meeting', true); }
+    if (f.followup) { $('f-followup').value = core.dmyToIso(f.followup) || $('f-followup').value; setTag('f-followup', true); }
+    if (f.cash != null && f.cash !== '') { $('f-cash').value = f.cash; setTag('f-cash', true); }
+    if (f.notes) { $('f-notes').value = $('f-notes').value ? $('f-notes').value + '\n' + f.notes : f.notes; setTag('f-notes', true); }
     const warns = (cmd.closer && cmd.closer.warnings) || [];
     toast({ type: 'ok', html: 'Claude filled the fields' + (warns.length ? ' — ' + esc(warns.join(' ')) : '') + '. Review and Save.' });
     $('ai-in').value = '';
@@ -490,8 +495,8 @@ $('scrim').onclick = closeDrawer;
 $('d-close').onclick = closeDrawer;
 $('d-cancel').onclick = closeDrawer;
 $('d-save').onclick = saveDrawer;
-['f-status','f-meeting','f-followup','f-notes'].forEach((id) => $(id).addEventListener('input', () => { state.cashConfirmed = false; $('d-save').textContent = 'Save'; }));
-$('f-cash').addEventListener('input', () => { state.cashConfirmed = false; $('d-save').textContent = 'Save'; checkCashWarn(); });
+['f-status','f-meeting','f-followup','f-notes'].forEach((id) => $(id).addEventListener('input', () => { setTag(id, false); state.cashConfirmed = false; $('d-save').textContent = 'Save'; }));
+$('f-cash').addEventListener('input', () => { setTag('f-cash', false); state.cashConfirmed = false; $('d-save').textContent = 'Save'; checkCashWarn(); });
 $('ai-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); runAI(); } });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.editing) closeDrawer(); });
 
