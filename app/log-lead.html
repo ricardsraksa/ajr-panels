@@ -273,7 +273,7 @@ kbd.hint{margin-left:6px;opacity:.6}
       <div class="log-row">
         <button class="btn-log" id="logBtn" disabled>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-          <span id="logBtnLabel">Log “Follow up Sent” — keep stage</span>
+          <span id="logBtnLabel">Log “Follow up Sent” · keep stage</span>
           <kbd class="hint">F</kbd>
         </button>
       </div>
@@ -844,11 +844,11 @@ var recog = null;
 
 function initVoice() {
   if (!SRCls) {
-    $('voiceHint').textContent = 'Use your keyboard’s mic key to dictate into the search box — e.g. “oscarwxng engaged 2”.';
+    $('voiceHint').textContent = 'Use your keyboard’s dictation key to talk.';
     return;
   }
   $('micBtn').hidden = false;
-  $('voiceHint').textContent = 'say it naturally — “moved oscar to engaged 2, story reply, seems warm”';
+  $('voiceHint').textContent = '“moved oscar to engaged 2, story reply, seems warm”';
   $('micBtn').addEventListener('click', function () {
     if (state.listening) { recog.stop(); return; }
     recog = new SRCls();
@@ -935,7 +935,7 @@ function stageAction(stage) {
 function logAction() {
   var a = state.armed;
   if (!a || a.mode !== 'existing') {
-    toast({ html: 'Pick an existing lead first — “Log” never changes the stage.', ttl: 3500 });
+    toast({ html: 'Pick a lead first.', ttl: 3000 });
     return;
   }
   doWrite({
@@ -949,7 +949,7 @@ function logAction() {
 function updateLogBtn() {
   var a = state.armed;
   var st = state.selectedStatus || 'Follow up Sent';
-  $('logBtnLabel').textContent = 'Log “' + st + '” — keep stage';
+  $('logBtnLabel').textContent = 'Log “' + st + '” · keep stage';
   $('logBtn').disabled = !(a && a.mode === 'existing') || state.busy;
 }
 

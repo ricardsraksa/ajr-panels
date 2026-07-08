@@ -595,7 +595,7 @@ function renderPreview() {
       (Array.isArray(p.candidates) ? p.candidates : []).map(function (d, i) {
         return '<button data-amb="' + i + '"><span class="an">' + esc(displayName(d)) + '</span>' +
           '<span class="am">' + (d.status ? esc(d.status) : 'row ' + d.row) + '</span></button>';
-      }).join('') || pvHintHtml(p.hint || 'More than one deal matches — pick one from the list.');
+      }).join('') || pvHintHtml(p.hint || 'More than one deal matches.');
     Array.prototype.forEach.call($('ambig').querySelectorAll('[data-amb]'), function (b) {
       b.addEventListener('click', function () { pinDeal(p.candidates[+b.getAttribute('data-amb')].row); });
     });
@@ -680,7 +680,7 @@ function openMoney() {
     '<div class="ctx">' + esc(displayName(deal)) + ' · cash collected</div>' +
     '<div class="digits">$' + esc(fmtCash(amt)) + '</div>' +
     '<div class="words">' + esc(CRMParse.moneyToWords(amt)) + '</div>' +
-    '<div class="note">Digits and words must match what he paid. This writes once — you can undo right after if it’s wrong.</div>';
+    '';
   $('moneyActs').innerHTML =
     '<button class="btn btn-money" id="cashYes">Correct — save it</button>' +
     '<button class="btn btn-ghost" id="cashNo">Wrong amount — go back</button>';
@@ -929,7 +929,7 @@ function announceCall(deal) {
     state.callBanner = deal.row;
     pinDeal(deal.row);
   } else {
-    toast({ html: 'Call with <span class="mono">' + esc(name) + '</span> finished — log it when you’re done here.', ttl: 8000 });
+    toast({ html: 'Call with <span class="mono">' + esc(name) + '</span> finished.', ttl: 8000 });
   }
   if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && !document.hasFocus()) {
     try {
