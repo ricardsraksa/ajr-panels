@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>All leads · AJR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e0e10; --panel:#17171b; --card:#141416;
+  --border:#202024; --border-2:#26262c; --hair:#1a1a1e; --divider:#1e1e23;
+  --text:#e9e9ec; --text-2:#c9c9cf; --muted:#a9a9b1; --dim:#6e6e78; --faint:#55555e;
+  --primary:#e9e9ec; --primary-ink:#101013;
+  --money:#8ee59a; --amber:#d9b96a; --err:#f4a3a3;
+  --font:'Geist',system-ui,sans-serif; --mono:'Geist Mono',ui-monospace,monospace;
+  --shadow:0 24px 60px -18px rgba(0,0,0,.75);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:var(--money);text-decoration:none}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--muted);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+input::placeholder,textarea::placeholder{color:var(--faint)}
+
+.wrap{max-width:1240px;margin:0 auto;padding:22px 26px 60px}
+.hdr{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--dim)}
+.dot.err{background:var(--err)}
+.hdr .title{font-size:1.18rem;font-weight:600;letter-spacing:-.02em}
+.hdr .count{color:var(--faint);font:500 12px var(--mono)}
+.hdr .sp{flex:1}
+.hdr a.nav{color:var(--money);font-size:12.5px}
+.icon-btn{width:36px;height:36px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;color:var(--faint);transition:.16s}
+.icon-btn:hover{color:var(--text-2);background:var(--panel)}
+.icon-btn svg{width:16px;height:16px}
+.icon-btn.spin svg{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.sumbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.chip{min-height:36px;padding:0 13px;border-radius:9px;border:1px solid var(--border-2);color:var(--muted);font-weight:500;font-size:13px;background:transparent;transition:.15s}
+.chip:hover{color:var(--text)}
+.chip.on{color:var(--text);background:var(--panel);border-color:#33333a}
+.chip .n{color:var(--faint);font-family:var(--mono);margin-left:6px;font-size:11.5px}
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.search{flex:1;min-width:200px;max-width:360px}
+.search input{width:100%;min-height:38px;padding:0 13px;background:var(--panel);border:1px solid var(--border-2);border-radius:10px;color:var(--text);font-size:14px}
+.search input:focus{border-color:#33333a}
+.tempsel{min-height:38px;padding:0 10px;background:var(--panel);border:1px solid var(--border-2);border-radius:10px;color:var(--muted);font-size:13px}
+.hint{color:var(--faint);font-size:12px;margin-left:auto}
+.hint kbd{font-family:var(--mono);font-size:11px;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:var(--muted)}
+
+.table{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--card)}
+.thead,.trow{display:grid;grid-template-columns:1.5fr .9fr .6fr 1fr .8fr .75fr .75fr 1.7fr;gap:12px;align-items:center;padding:9px 16px}
+.thead{color:var(--dim);font:600 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);z-index:5}
+.thead button{color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;display:inline-flex;align-items:center;gap:4px;padding:4px 0}
+.thead button:hover{color:var(--text-2)}
+.thead .arr{font-size:10px}
+.trow{border-top:1px solid var(--hair);cursor:pointer;transition:background .12s}
+.trow:first-of-type{border-top:none}
+.trow:hover{background:var(--panel)}
+.lh{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.badge{display:inline-block;padding:1px 9px;border-radius:999px;border:1px solid;font-size:11px;font-weight:600;white-space:nowrap}
+.temp{font-size:11px;font-weight:600}
+.temp.hot{color:var(--amber)}
+.temp.warm{color:var(--text-2)}
+.temp.cold{color:var(--dim)}
+.cell{color:var(--text-2);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cell.dt{font-family:var(--mono);color:var(--muted)}
+.cell.dt.old{color:var(--err)}
+.cell.notes{color:var(--dim)}
+.qual{font-size:11.5px;color:var(--muted)}
+.empty{padding:26px 16px;color:var(--faint);text-align:center}
+.more{width:100%;min-height:44px;color:var(--muted);font-weight:500;border-top:1px solid var(--hair)}
+.more:hover{color:var(--text);background:var(--panel)}
+.skel{padding:40px;text-align:center;color:var(--dim)}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .18s;z-index:40}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;height:100vh;width:min(460px,100vw);background:var(--bg);border-left:1px solid var(--border);
+  box-shadow:var(--shadow);transform:translateX(100%);transition:transform .2s cubic-bezier(.2,.8,.2,1);z-index:50;display:flex;flex-direction:column}
+.drawer.on{transform:none}
+.dhead{display:flex;align-items:center;gap:10px;padding:18px 20px;border-bottom:1px solid var(--hair);flex:none}
+.dhead h2{font-size:17px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dhead a.ig{font-size:12.5px;white-space:nowrap}
+.dbody{flex:1;overflow-y:auto;padding:18px 20px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;color:var(--muted);font-weight:500;margin-bottom:6px}
+.field input,.field select,.field textarea{width:100%;min-height:40px;padding:8px 12px;background:var(--panel);border:1px solid var(--border-2);border-radius:10px;color:var(--text);font-size:14px}
+.field textarea{min-height:70px;resize:vertical;line-height:1.5}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#33333a}
+.meta{color:var(--faint);font-size:11.5px;font-family:var(--mono);margin-bottom:14px}
+.hist{margin-top:6px;border-top:1px solid var(--hair);padding-top:14px}
+.hist h3{font:600 10.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.hist ul{list-style:none}
+.hist li{display:flex;gap:8px;padding:6px 0;font-size:12.5px;color:var(--muted);border-top:1px solid var(--hair)}
+.hist li:first-child{border-top:none}
+.hist .who{color:var(--text-2);font-weight:500;flex:none}
+.hist .what{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist .when{color:var(--faint);font:400 11px var(--mono);flex:none}
+.dfoot{padding:14px 20px;border-top:1px solid var(--hair);flex:none;display:flex;flex-direction:column;gap:9px}
+.btn{width:100%;min-height:46px;border-radius:12px;font:600 14px var(--font)}
+.btn-primary{background:var(--primary);color:var(--primary-ink)}
+.btn-primary:hover:not(:disabled){filter:brightness(.94)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-ghost{min-height:38px;border:1px solid var(--border-2);color:var(--muted);font-weight:500;font-size:13px}
+.btn-ghost:hover{color:var(--text);border-color:#33333a}
+.quick{display:flex;gap:8px;margin-bottom:16px}
+.quick button,.quick a{flex:1;min-height:38px;border:1px solid var(--border-2);border-radius:10px;color:var(--muted);
+  font-weight:500;font-size:12.5px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.quick button:hover,.quick a:hover{color:var(--text);border-color:#33333a}
+
+/* toasts */
+.toasts{position:fixed;z-index:60;bottom:18px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:9px;width:min(440px,calc(100vw - 32px))}
+.toast{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--border-2);border-radius:12px;padding:13px 16px;font-size:13.5px;box-shadow:var(--shadow);animation:rise .24s cubic-bezier(.2,.8,.2,1)}
+.toast.ok{border-left:3px solid var(--money)}
+.toast.err{border-left:3px solid var(--err)}
+.toast .msg{flex:1}
+.toast .mono{font-weight:600}
+.toast-act{min-height:34px;padding:0 12px;border-radius:9px;border:1px solid var(--border-2);color:var(--text);font-weight:600;font-size:12.5px;flex:none}
+.toast-x{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;color:var(--faint);flex:none}
+.toast-x svg{width:14px;height:14px}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media(max-width:900px){
+  .thead{display:none}
+  .trow{grid-template-columns:1fr auto;gap:4px 12px;padding:12px 16px}
+  .trow>*:nth-child(n+3){display:none}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hdr">
+    <span class="dot" id="dot"></span>
+    <span class="title">All leads</span>
+    <span class="count" id="count">—</span>
+    <span class="sp"></span>
+    <a class="nav" href="worklist.html">Worklist →</a>
+    <a class="nav" href="log-lead.html">Log a lead →</a>
+    <a class="nav" href="deals.html">Closing →</a>
+    <button class="icon-btn" id="signout" aria-label="Sign out">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/></svg>
+    </button>
+    <button class="icon-btn" id="refresh" aria-label="Refresh">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+    </button>
+  </header>
+
+  <div class="sumbar" id="sumbar"></div>
+
+  <div class="toolbar">
+    <div class="search"><input id="search" type="text" placeholder="Search handle, notes, email…" autocomplete="off" spellcheck="false"></div>
+    <select class="tempsel" id="tempsel">
+      <option value="">Any temp</option><option>Hot Lead</option><option>Warm Lead</option><option>Cold Lead</option>
+    </select>
+    <span class="hint"><kbd>⌘K</kbd> search anywhere</span>
+  </div>
+
+  <div class="table" id="table"><div class="skel" id="skel">Loading leads…</div></div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Lead editor">
+  <div class="dhead">
+    <h2 id="d-name">Lead</h2>
+    <a class="ig" id="d-ig" target="_blank" rel="noopener" hidden>Instagram ↗</a>
+    <button class="icon-btn" id="d-close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18 18 6M6 6l12 12"/></svg></button>
+  </div>
+  <div class="dbody">
+    <div class="meta" id="d-meta"></div>
+    <div class="quick">
+      <button id="q-fu">Log follow-up</button>
+      <a id="q-log" href="#">Open in Log a lead</a>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Stage</label>
+        <select id="f-level"><option value="">no level</option><option>Engaged 1</option><option>Engaged 2</option><option>Engaged 3</option><option>Booked</option><option>Archive</option><option>No Reply</option><option>Closed</option></select>
+      </div>
+      <div class="field"><label>Temp</label>
+        <select id="f-temp"><option value="">—</option><option>Hot Lead</option><option>Warm Lead</option><option>Cold Lead</option></select>
+      </div>
+      <div class="field"><label>Last status</label>
+        <select id="f-status"><option value="">—</option></select>
+      </div>
+      <div class="field"><label>Qualification</label>
+        <select id="f-qual"><option value="">—</option><option>Qualified 1</option><option>Qualified 2</option><option>Qualified 3</option><option>Unqualified</option></select>
+      </div>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="f-notes"></textarea></div>
+    <div class="field"><label>Pain points</label><textarea id="f-pains"></textarea></div>
+    <div class="grid2">
+      <div class="field"><label>Email</label><input id="f-email" type="email"></div>
+      <div class="field"><label>Phone</label><input id="f-phone" type="text"></div>
+    </div>
+    <div class="field"><label>LinkedIn</label><input id="f-linkedin" type="text"></div>
+    <div class="hist" id="hist" hidden><h3>History</h3><ul id="hist-list"></ul></div>
+  </div>
+  <div class="dfoot">
+    <button class="btn btn-primary" id="d-save">Save</button>
+    <button class="btn btn-ghost" id="d-cancel">Cancel</button>
+  </div>
+</aside>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="./parser.js"></script>
+<script type="module">
+import * as core from './crm-core.js?v=20260709a';
+const session = await core.requireAuth();
+if (session) {
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+const STAGE_ORDER = ['Engaged 3', 'Engaged 2', 'Engaged 1', 'Booked', 'No Reply', '', 'Archive', 'Closed'];
+const LEVEL_COLORS = {
+  'Engaged 1': '#a9a9b1', 'Engaged 2': '#c9c9cf', 'Engaged 3': '#e9e9ec',
+  'Booked': '#8ee59a', 'Archive': '#6e6e78', 'No Reply': '#8a8a92', 'Closed': '#c9c9cf', '': '#6e6e78'
+};
+const state = { leads: [], filter: 'ALL', temp: '', q: '', sort: { key: 'lastContact', dir: -1 }, shown: 100, editing: null, busy: false };
+
+function toast(o) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + (o.type || '');
+  const m = document.createElement('span'); m.className = 'msg'; m.innerHTML = o.html; el.appendChild(m);
+  if (o.action) { const a = document.createElement('button'); a.className = 'toast-act'; a.textContent = o.action.label;
+    a.onclick = () => { el.remove(); o.action.fn(); }; el.appendChild(a); }
+  const x = document.createElement('button'); x.className = 'toast-x';
+  x.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18 18 6M6 6l12 12"/></svg>';
+  x.onclick = () => el.remove(); el.appendChild(x);
+  $('toasts').appendChild(el);
+  if (!o.sticky) setTimeout(() => el.remove(), o.ttl || 5000);
+}
+
+function daysSince(dmy) {
+  const d = CRMParse.parseDMY(dmy);
+  if (!d) return null;
+  return Math.round((new Date() - d) / 864e5);
+}
+
+/* ---------- summary bar ---------- */
+function renderSumbar() {
+  const counts = {};
+  state.leads.forEach((l) => { const k = l.level || ''; counts[k] = (counts[k] || 0) + 1; });
+  const chips = [['ALL', 'All', state.leads.length]]
+    .concat(STAGE_ORDER.filter((st) => counts[st]).map((st) => [st, st || 'No level', counts[st]]));
+  $('sumbar').innerHTML = chips.map(([key, label, n]) =>
+    `<button class="chip${state.filter === key ? ' on' : ''}" data-f="${esc(key)}">${esc(label)} <span class="n">${n}</span></button>`).join('');
+  Array.prototype.forEach.call($('sumbar').children, (b) => {
+    b.onclick = () => { state.filter = b.getAttribute('data-f'); state.shown = 100; renderSumbar(); renderTable(); };
+  });
+}
+
+/* ---------- table ---------- */
+const COLS = [
+  ['h', 'Handle'], ['level', 'Stage'], ['temp', 'Temp'], ['status', 'Last status'],
+  ['qual', 'Qual'], ['lastContact', 'Last contact'], ['dateAdded', 'Added'], ['notes', 'Notes'],
+];
+function cmp(a, b, key) {
+  if (key === 'lastContact' || key === 'dateAdded') {
+    const da = CRMParse.parseDMY(a[key]), db = CRMParse.parseDMY(b[key]);
+    return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
+  }
+  return String(a[key] || '').localeCompare(String(b[key] || ''));
+}
+function visible() {
+  const q = state.q.toLowerCase().trim();
+  let list = state.leads.filter((l) => {
+    if (state.filter !== 'ALL' && (l.level || '') !== state.filter) return false;
+    if (state.temp && l.temp !== state.temp) return false;
+    if (q && !((l.h + ' ' + l.notes + ' ' + l.email + ' ' + l.status + ' ' + l.pains).toLowerCase().includes(q))) return false;
+    return true;
+  });
+  list.sort((a, b) => cmp(a, b, state.sort.key) * state.sort.dir);
+  return list;
+}
+function renderTable() {
+  const rows = visible();
+  $('count').textContent = rows.length === state.leads.length
+    ? state.leads.length + ' leads' : rows.length + ' of ' + state.leads.length;
+  const head = '<div class="thead">' + COLS.map(([key, label]) =>
+    `<button data-s="${key}">${label}${state.sort.key === key ? `<span class="arr">${state.sort.dir > 0 ? '↑' : '↓'}</span>` : ''}</button>`).join('') + '</div>';
+  const t = $('table');
+  if (!rows.length) { t.innerHTML = head + '<div class="empty">No leads match.</div>'; bindHead(); return; }
+  const page = rows.slice(0, state.shown);
+  t.innerHTML = head + page.map((l) => {
+    const c = LEVEL_COLORS[l.level] || '#8a8a92';
+    const ds = daysSince(l.lastContact);
+    return `<div class="trow" data-id="${l.id}">
+      <span class="lh">@${esc(l.h)}</span>
+      <span><span class="badge" style="color:${c};border-color:${c}55;background:${c}1A">${esc(l.level || 'no level')}</span></span>
+      <span class="temp ${l.temp === 'Hot Lead' ? 'hot' : l.temp === 'Warm Lead' ? 'warm' : 'cold'}">${l.temp ? esc(l.temp.split(' ')[0].toUpperCase()) : ''}</span>
+      <span class="cell">${esc(l.status || '')}</span>
+      <span class="qual">${esc(l.qual || '')}</span>
+      <span class="cell dt${ds !== null && ds > 30 ? ' old' : ''}">${esc(l.lastContact || '—')}</span>
+      <span class="cell dt">${esc(l.dateAdded || '—')}</span>
+      <span class="cell notes" title="${esc(l.notes)}">${esc(l.notes || '')}</span>
+    </div>`;
+  }).join('') + (rows.length > state.shown ? `<button class="more" id="more">Show 100 more · ${rows.length - state.shown} left</button>` : '');
+  bindHead();
+  Array.prototype.forEach.call(t.querySelectorAll('.trow'), (r) => { r.onclick = () => openDrawer(+r.getAttribute('data-id')); });
+  const more = $('more'); if (more) more.onclick = () => { state.shown += 100; renderTable(); };
+}
+function bindHead() {
+  Array.prototype.forEach.call($('table').querySelectorAll('.thead button'), (b) => {
+    b.onclick = () => {
+      const k = b.getAttribute('data-s');
+      if (state.sort.key === k) state.sort.dir *= -1; else state.sort = { key: k, dir: k.includes('Contact') || k.includes('Added') ? -1 : 1 };
+      renderTable();
+    };
+  });
+}
+
+/* ---------- drawer ---------- */
+function leadById(id) { return state.leads.find((l) => l.id === id); }
+async function openDrawer(id) {
+  const l = leadById(id); if (!l) return;
+  state.editing = id;
+  $('d-name').textContent = '@' + l.h;
+  const ig = $('d-ig');
+  if (l.url) { ig.hidden = false; ig.href = l.url; } else ig.hidden = true;
+  $('d-meta').textContent = (l.dateAdded ? 'added ' + l.dateAdded + ' · ' : '') + (l.lastContact ? 'last contact ' + l.lastContact : 'never contacted');
+  $('q-log').href = 'log-lead.html?lead=' + encodeURIComponent(l.h);
+  $('f-level').value = l.level || '';
+  $('f-temp').value = l.temp || '';
+  $('f-status').value = core.STATUSES.includes(l.status) ? l.status : '';
+  $('f-qual').value = ['Qualified 1','Qualified 2','Qualified 3','Unqualified'].includes(l.qual) ? l.qual : '';
+  $('f-notes').value = l.notes || '';
+  $('f-pains').value = l.pains || '';
+  $('f-email').value = l.email || '';
+  $('f-phone').value = l.phone || '';
+  $('f-linkedin').value = l.linkedin || '';
+  $('scrim').classList.add('on'); $('drawer').classList.add('on');
+  // history (async fill)
+  $('hist').hidden = true;
+  try {
+    const acts = await core.loadActivity('leads', id, 8);
+    if (acts.length && state.editing === id) {
+      $('hist-list').innerHTML = acts.map((a) => {
+        const who = a.actor === 'ai:fireflies' ? 'AI (call)' : (a.actor || '').split('@')[0] || 'someone';
+        const what = a.action === 'restore' ? 'undid a change' :
+          a.action === 'create' ? 'created the lead' :
+          'set ' + Object.keys(a.next || {}).join(', ');
+        return `<li><span class="who">${esc(who)}</span><span class="what">${esc(what)}</span><span class="when">${esc(core.relTime(a.created_at))}</span></li>`;
+      }).join('');
+      $('hist').hidden = false;
+    }
+  } catch (e) { /* history is best-effort */ }
+}
+function closeDrawer() {
+  state.editing = null;
+  $('scrim').classList.remove('on'); $('drawer').classList.remove('on');
+}
+async function saveDrawer() {
+  const l = leadById(state.editing); if (!l || state.busy) return;
+  const fields = {
+    level: $('f-level').value, temp: $('f-temp').value,
+    status: $('f-status').value || l.status, qual: $('f-qual').value,
+    notes: $('f-notes').value, pains: $('f-pains').value,
+    email: $('f-email').value.trim(), phone: $('f-phone').value.trim(), linkedin: $('f-linkedin').value.trim(),
+  };
+  state.busy = true; $('d-save').disabled = true;
+  try {
+    const res = await core.setLead(l.id, fields);
+    l.level = fields.level; l.temp = fields.temp; l.status = fields.status; l.qual = fields.qual;
+    l.notes = fields.notes; l.pains = fields.pains; l.email = fields.email; l.phone = fields.phone; l.linkedin = fields.linkedin;
+    renderSumbar(); renderTable(); closeDrawer();
+    toast({ type: 'ok', html: '<span class="mono">@' + esc(l.h) + '</span> saved.', ttl: 7000,
+      action: res.undo ? { label: 'Undo', fn: () => undo(res, l) } : null });
+  } catch (e) {
+    toast({ type: 'err', html: 'Save failed: ' + esc(e.message), sticky: true });
+  } finally { state.busy = false; $('d-save').disabled = false; }
+}
+async function undo(res, l) {
+  try {
+    await core.undoWrite(res.undo);
+    const p = res.prev, M = { level: 'level', last_status: 'status', temp: 'temp', qualification: 'qual',
+      notes: 'notes', pain_points: 'pains', email: 'email', phone: 'phone', linkedin: 'linkedin',
+      status: 'status', qual: 'qual', pains: 'pains' };
+    Object.keys(p).forEach((k) => { if (M[k]) l[M[k]] = p[k] || ''; });
+    renderSumbar(); renderTable();
+    toast({ type: 'ok', html: 'Undone — <span class="mono">@' + esc(l.h) + '</span> restored.' });
+  } catch (e) { toast({ type: 'err', html: 'Undo failed: ' + esc(e.message), sticky: true }); }
+}
+async function quickFu() {
+  const l = leadById(state.editing); if (!l || state.busy) return;
+  state.busy = true;
+  try {
+    const res = await core.setterUpdate({ handle: l.h, status: 'Follow up Sent' });
+    l.status = 'Follow up Sent'; l.lastContact = core.todayDmy();
+    renderTable(); closeDrawer();
+    toast({ type: 'ok', html: '<span class="mono">@' + esc(l.h) + '</span> — follow-up logged.', ttl: 6000,
+      action: res.undo ? { label: 'Undo', fn: () => undo(res, l) } : null });
+  } catch (e) { toast({ type: 'err', html: esc(e.message), sticky: true }); }
+  finally { state.busy = false; }
+}
+
+/* ---------- boot ---------- */
+async function load() {
+  $('refresh').classList.add('spin');
+  try {
+    const leads = await core.loadLeads();
+    state.leads = leads;
+    $('dot').className = 'dot';
+    renderSumbar(); renderTable();
+    // ?lead=<handle> deep link (palette / cross-page)
+    const dl = new URLSearchParams(location.search).get('lead');
+    if (dl) { const hit = leads.find((l) => l.h === dl.toLowerCase()); if (hit) openDrawer(hit.id); }
+  } catch (e) {
+    $('dot').className = 'dot err';
+    $('table').innerHTML = '<div class="empty">Couldn’t load: ' + esc(e.message) + '</div>';
+  } finally { $('refresh').classList.remove('spin'); }
+}
+
+// status select options
+core.STATUSES.forEach((st) => { const o = document.createElement('option'); o.textContent = st; $('f-status').appendChild(o); });
+
+$('search').oninput = (e) => { state.q = e.target.value; state.shown = 100; renderTable(); };
+$('tempsel').onchange = (e) => { state.temp = e.target.value; state.shown = 100; renderTable(); };
+$('refresh').onclick = load;
+$('signout').onclick = () => core.signOut();
+$('scrim').onclick = closeDrawer;
+$('d-close').onclick = closeDrawer;
+$('d-cancel').onclick = closeDrawer;
+$('d-save').onclick = saveDrawer;
+$('q-fu').onclick = quickFu;
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.editing) closeDrawer(); });
+
+core.installPalette({ leads: () => state.leads, onLead: (l) => openDrawer(l.id) });
+load();
+}
+</script>
+</body>
+</html>

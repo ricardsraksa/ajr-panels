@@ -45,6 +45,9 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 .icon-btn.spin svg{animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+.today{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:-4px 0 14px;padding:10px 14px;border:1px solid var(--border);border-radius:11px;background:var(--card);color:var(--muted);font-size:13px}
+.today .n{font-family:var(--mono);font-weight:600;color:var(--text)}
+.today .warn .n{color:var(--amber)}
 .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .filters{display:flex;gap:6px}
 .fbtn{min-height:36px;padding:0 14px;border-radius:9px;border:1px solid var(--border-2);color:var(--muted);font-weight:500;font-size:13px;background:transparent;transition:.15s}
@@ -103,7 +106,18 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:#33333a}
 .field .ff-link{font-size:12.5px}
 .aitag{color:var(--money);font:600 9.5px var(--mono);letter-spacing:.04em;margin-left:7px;text-transform:uppercase}
+.hist{margin-top:6px;border-top:1px solid var(--hair);padding-top:14px}
+.hist h3{font:600 10.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.hist ul{list-style:none}
+.hist li{display:flex;gap:8px;padding:6px 0;font-size:12.5px;color:var(--muted);border-top:1px solid var(--hair)}
+.hist li:first-child{border-top:none}
+.hist .who{color:var(--text-2);font-weight:500;flex:none}
+.hist .what{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist .when{color:var(--faint);font:400 11px var(--mono);flex:none}
 .dfoot{padding:14px 20px;border-top:1px solid var(--hair);flex:none;display:flex;flex-direction:column;gap:9px}
+.fu-nudge{display:flex;align-items:center;gap:8px;margin:-6px 0 14px;font-size:12px;color:var(--amber)}
+.fu-nudge button{min-height:30px;padding:0 12px;border-radius:8px;border:1px solid #5a4d2a;color:var(--amber);font-weight:600;font-size:12px}
+.fu-nudge button:hover{background:#241f10}
 .cash-warn{font-size:12px;color:var(--amber);line-height:1.5}
 .btn{width:100%;min-height:48px;border-radius:12px;font:600 14px var(--font)}
 .btn-primary{background:var(--primary);color:var(--primary-ink)}
@@ -152,6 +166,7 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
     <span class="count" id="count">—</span>
     <span class="sp"></span>
     <a class="nav" href="worklist.html" style="margin-right:2px">Worklist →</a>
+    <a class="nav" href="leads.html" style="margin-right:2px">All leads →</a>
     <button class="navbtn" id="voiceLog">＋ Log a call</button>
     <button class="icon-btn" id="signout" aria-label="Sign out">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/></svg>
@@ -160,6 +175,8 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
     </button>
   </header>
+
+  <div class="today" id="today" hidden></div>
 
   <div class="toolbar">
     <div class="filters" id="filters">
@@ -202,9 +219,11 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
     </div>
     <div class="field"><label>Meeting date<span class="aitag" id="tag-f-meeting" hidden>✦ Claude</span></label><input id="f-meeting" type="date"></div>
     <div class="field"><label>Follow-up date<span class="aitag" id="tag-f-followup" hidden>✦ Claude</span></label><input id="f-followup" type="date"></div>
+    <div class="fu-nudge" id="fu-nudge" hidden>No follow-up set <button data-d="3">+3d</button><button data-d="7">+1w</button><button data-d="14">+2w</button></div>
     <div class="field"><label>Cash collected<span class="aitag" id="tag-f-cash" hidden>✦ Claude</span></label><input id="f-cash" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
     <div class="field"><label>Notes<span class="aitag" id="tag-f-notes" hidden>✦ Claude</span></label><textarea id="f-notes" placeholder="—"></textarea></div>
     <div class="field" id="f-ff-wrap" hidden><label>Fireflies</label><a class="ff-link" id="f-ff" target="_blank" rel="noopener">Open transcript ↗</a></div>
+    <div class="hist" id="hist" hidden><h3>History</h3><ul id="hist-list"></ul></div>
   </div>
   <div class="dfoot" id="dfoot">
     <div class="cash-warn" id="cash-warn" hidden></div>
@@ -217,7 +236,7 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260708c';
+import * as core from './crm-core.js?v=20260709a';
 const session = await core.requireAuth();
 if (session) {
 const $ = (id) => document.getElementById(id);
@@ -293,6 +312,15 @@ function render() {
   $('n-today').textContent = state.deals.filter((d) => daysUntil(d.meeting) === 0 || daysUntil(d.followup) === 0).length;
   $('n-all').textContent = state.deals.length;
   $('count').textContent = state.deals.length + ' deals';
+  const meetsToday = state.deals.filter((d) => daysUntil(d.meeting) === 0 && !isDone(d)).length;
+  const fuOver = state.deals.filter((d) => { const n = daysUntil(d.followup); return n !== null && n < 0 && !isDone(d); }).length;
+  const strip = $('today');
+  if (meetsToday || fuOver) {
+    strip.hidden = false;
+    strip.innerHTML = '<span>Today</span>' +
+      (meetsToday ? '<span><span class="n">' + meetsToday + '</span> call' + (meetsToday === 1 ? '' : 's') + '</span>' : '') +
+      (fuOver ? '<span class="warn"><span class="n">' + fuOver + '</span> follow-up' + (fuOver === 1 ? '' : 's') + ' overdue</span>' : '');
+  } else strip.hidden = true;
   const rows = visibleDeals();
   const t = $('table');
   const head = '<div class="thead"><span>Deal</span><span>Status</span><span>Meeting</span><span>Follow-up</span><span>Cash</span><span>Qual</span><span>Notes</span></div>';
@@ -335,7 +363,23 @@ function openDrawer(id) {
   if (d.hasFF && d.fireflies_link) { ffWrap.hidden = false; $('f-ff').href = d.fireflies_link; }
   else ffWrap.hidden = true;
   $('scrim').classList.add('on'); $('drawer').classList.add('on');
+  checkFuNudge();
+  loadHist(d.row);
   setTimeout(() => $('ai-in').focus(), 60);
+}
+async function loadHist(id) {
+  $('hist').hidden = true;
+  try {
+    const acts = await core.loadActivity('deals', id, 8);
+    if (acts.length && state.editing === id) {
+      $('hist-list').innerHTML = acts.map((a) => {
+        const who = a.actor === 'ai:fireflies' ? 'AI (call)' : (a.actor || '').split('@')[0] || 'someone';
+        const what = a.action === 'restore' ? 'undid a change' : 'set ' + Object.keys(a.next || {}).join(', ');
+        return '<li><span class="who">' + esc(who) + '</span><span class="what">' + esc(what) + '</span><span class="when">' + esc(core.relTime(a.created_at)) + '</span></li>';
+      }).join('');
+      $('hist').hidden = false;
+    }
+  } catch (e) { /* best-effort */ }
 }
 function closeDrawer() {
   state.editing = null;
@@ -382,11 +426,25 @@ async function runAI() {
     toast({ type: 'ok', html: 'Claude filled the fields' + (warns.length ? ' · ' + esc(warns.join(' ')) : '') });
     $('ai-in').value = '';
     checkCashWarn();
+    checkFuNudge();
   } catch (e) {
     toast({ type: 'err', html: 'Couldn’t read that: ' + esc(e.message) });
   } finally { aiBusy = false; $('ai-in').disabled = false; }
 }
 
+function checkFuNudge() {
+  const d = dealById(state.editing); if (!d) { $('fu-nudge').hidden = true; return; }
+  const status = $('f-status').value;
+  const open = status !== 'Closed' && status !== 'No Close';
+  $('fu-nudge').hidden = !(open && !$('f-followup').value);
+}
+Array.prototype.forEach.call(document.querySelectorAll('#fu-nudge button'), (b) => {
+  b.onclick = () => {
+    const d = new Date(); d.setDate(d.getDate() + Number(b.getAttribute('data-d')));
+    $('f-followup').value = d.toISOString().slice(0, 10);
+    $('fu-nudge').hidden = true;
+  };
+});
 function checkCashWarn() {
   const d = dealById(state.editing); if (!d) return false;
   const cash = $('f-cash').value.trim();
@@ -495,13 +553,17 @@ $('scrim').onclick = closeDrawer;
 $('d-close').onclick = closeDrawer;
 $('d-cancel').onclick = closeDrawer;
 $('d-save').onclick = saveDrawer;
-['f-status','f-meeting','f-followup','f-notes'].forEach((id) => $(id).addEventListener('input', () => { setTag(id, false); state.cashConfirmed = false; $('d-save').textContent = 'Save'; }));
+['f-status','f-meeting','f-followup','f-notes'].forEach((id) => $(id).addEventListener('input', () => { setTag(id, false); state.cashConfirmed = false; $('d-save').textContent = 'Save'; checkFuNudge(); }));
 $('f-cash').addEventListener('input', () => { setTag('f-cash', false); state.cashConfirmed = false; $('d-save').textContent = 'Save'; checkCashWarn(); });
 $('ai-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); runAI(); } });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.editing) closeDrawer(); });
 
+core.installPalette({ deals: () => state.deals, onDeal: (d) => openDrawer(d.row) });
 initVoice();
-load();
+load().then(() => {
+  const dl = parseInt(new URLSearchParams(location.search).get('deal'), 10);
+  if (dl) openDrawer(dl);
+});
 }
 </script>
 </body>

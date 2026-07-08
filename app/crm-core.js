@@ -39,7 +39,7 @@ function isoToDmyLocal(d) {
 }
 const _demo = {
   leads: [
-    { id: 1, h: 'jung.labs', url: 'https://instagram.com/jung.labs', level: 'Engaged 3', status: 'Follow up Sent', temp: 'Hot Lead', qual: 'Qualified 3', notes: 'potential referral for his students', lastContact: _ago(20) },
+    { id: 1, h: 'jung.labs', url: 'https://instagram.com/jung.labs', level: 'Engaged 3', status: 'Follow up Sent', temp: 'Hot Lead', qual: 'Qualified 3', notes: 'potential referral for his students', lastContact: _ago(20), dateAdded: _ago(90), email: 'jung@labs.io', phone: '', linkedin: '', pains: 'no time to run ads' },
     { id: 2, h: 'charlay', url: 'https://instagram.com/charlay', level: 'Engaged 3', status: 'Follow up Sent', temp: 'Hot Lead', qual: 'Qualified 3', notes: 'audit accepted, need to book meeting', lastContact: _ago(63) },
     { id: 3, h: 'akram_meza', url: 'https://instagram.com/akram_meza', level: 'Engaged 3', status: 'Follow up Sent', temp: 'Hot Lead', qual: 'Qualified 1', notes: 'showed interest from story', lastContact: _ago(63) },
     { id: 4, h: 'oscarwxng', url: 'https://instagram.com/oscarwxng', level: 'Engaged 2', status: 'Story reply', temp: 'Warm Lead', qual: 'Qualified 2', notes: '', lastContact: _ago(4) },
@@ -149,7 +149,7 @@ export async function loadLeads() {
   const out = [];
   for (let off = 0; ; off += 1000) {
     const { data, error } = await supa.from('leads')
-      .select('id,handle,ig_url,level,last_status,temp,qualification,notes,last_contact')
+      .select('id,handle,ig_url,level,last_status,temp,qualification,notes,last_contact,date_added,pain_points,email,phone,linkedin')
       .order('id').range(off, off + 999);
     if (error) throw new Error(error.message);
     out.push(...data);
@@ -159,7 +159,8 @@ export async function loadLeads() {
     id: l.id, h: l.handle, url: l.ig_url || '',
     level: l.level || '', status: l.last_status || '', temp: l.temp || '',
     qual: l.qualification || '', notes: l.notes || '',
-    lastContact: isoToDmy(l.last_contact),
+    lastContact: isoToDmy(l.last_contact), dateAdded: isoToDmy(l.date_added),
+    pains: l.pain_points || '', email: l.email || '', phone: l.phone || '', linkedin: l.linkedin || '',
   }));
 }
 
@@ -297,6 +298,45 @@ export async function closerUpdate(args) {
     undo: { table: 'deals', rowId: d.id, prev, actId } };
 }
 
+/** Direct-set a lead's fields (leads-browser editor). Only present keys write. */
+export async function setLead(id, fields) {
+  const MAP = { level: 'level', status: 'last_status', temp: 'temp', qual: 'qualification',
+    notes: 'notes', pains: 'pain_points', email: 'email', phone: 'phone', linkedin: 'linkedin' };
+  if (DEMO) {
+    const l = _demo.leads.find((x) => x.id === id);
+    if (!l) throw new Error('lead not found');
+    const prev = {};
+    Object.keys(fields).forEach((k) => { if (k in MAP || k === 'lastContact') { prev[k] = l[k]; l[k] = fields[k] || ''; } });
+    return { ok: true, row: id, handle: l.h, prev, undo: _demoUndoToken('leads', 'id', id, prev) };
+  }
+  const { data: l, error: qErr } = await supa.from('leads').select('*').eq('id', id).maybeSingle();
+  if (qErr) throw new Error(qErr.message);
+  if (!l) throw new Error('lead not found');
+  const patch = {}, prev = {};
+  Object.keys(MAP).forEach((k) => {
+    if (k in fields) { patch[MAP[k]] = fields[k] === '' ? null : fields[k]; prev[MAP[k]] = l[MAP[k]]; }
+  });
+  if (!Object.keys(patch).length) return { ok: true, row: id, noop: true };
+  const { error } = await supa.from('leads').update(patch).eq('id', id);
+  if (error) throw new Error(error.message);
+  const actId = await logActivity('leads', id, 'update', prev, patch);
+  return { ok: true, row: id, handle: l.handle, prev, undo: { table: 'leads', rowId: id, prev, actId } };
+}
+
+/** Recent history for one record, newest first. */
+export async function loadActivity(table, rowId, limit = 10) {
+  if (DEMO) return [
+    { actor: 'demo@ajr.crm', action: 'update', next: { last_status: 'Follow up Sent' }, created_at: new Date(Date.now() - 3600e3).toISOString() },
+    { actor: 'ai:fireflies', action: 'update', next: { status: 'Followup', notes: '[call] wants pricing' }, created_at: new Date(Date.now() - 26 * 3600e3).toISOString() },
+  ];
+  const { data, error } = await supa.from('activity')
+    .select('actor,action,prev,next,created_at')
+    .eq('table_name', table).eq('row_id', rowId)
+    .order('id', { ascending: false }).limit(limit);
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
 /** Direct-set a deal's fields (CRM editor path — replaces, doesn't append).
  *  fields: { status?, meeting?(iso|null), followup?(iso|null), cash?(number|null), notes?, qualification? }
  *  Only the keys present are written. Cash change requires opts.cashConfirmed. */
@@ -376,4 +416,94 @@ export async function bookedAlert(name, qual, link) {
   if (DEMO) return;
   try { await supa.functions.invoke('alerts', { body: { type: 'booked', name, qual, link } }); }
   catch (e) { /* fire-and-forget */ }
+}
+
+
+/* ---------- ⌘K command palette ----------
+   Pages call installPalette({ nav, leads?, deals?, onLead?, onDeal? }) after
+   boot. Cmd/Ctrl+K opens it; type to search leads/deals or jump between pages;
+   a sentence (with spaces) offers "Log it" -> log-lead with the text prefilled. */
+export function installPalette(opts = {}) {
+  if (document.getElementById('ck-pal')) return;
+  const nav = opts.nav || [
+    { label: 'Worklist', href: 'worklist.html' },
+    { label: 'All leads', href: 'leads.html' },
+    { label: 'Log a lead', href: 'log-lead.html' },
+    { label: 'Closing', href: 'deals.html' },
+  ];
+  const el = document.createElement('div');
+  el.id = 'ck-pal';
+  el.innerHTML = `
+    <style>
+      #ck-pal{position:fixed;inset:0;z-index:100;display:none;align-items:flex-start;justify-content:center;background:rgba(0,0,0,.55);padding-top:14vh}
+      #ck-pal.on{display:flex}
+      #ck-box{width:min(560px,calc(100vw - 40px));background:#141416;border:1px solid #26262c;border-radius:14px;box-shadow:0 24px 60px -18px rgba(0,0,0,.8);overflow:hidden}
+      #ck-in{width:100%;min-height:52px;padding:0 16px;background:transparent;border:none;color:#e9e9ec;font:500 15px 'Geist',system-ui,sans-serif;outline:none;box-sizing:border-box;border-bottom:1px solid #1e1e23}
+      #ck-in::placeholder{color:#55555e}
+      #ck-list{list-style:none;margin:0;padding:6px;max-height:44vh;overflow-y:auto}
+      #ck-list li{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;cursor:pointer;color:#e9e9ec;font:400 14px 'Geist',system-ui,sans-serif}
+      #ck-list li.sel{background:#1c1c22}
+      #ck-list .k{color:#6e6e78;font-size:11.5px;margin-left:auto;font-family:'Geist Mono',monospace}
+      #ck-list .t{color:#6e6e78;font-size:12px}
+    </style>
+    <div id="ck-box"><input id="ck-in" placeholder="Search leads, deals, pages… or type what happened" autocomplete="off" spellcheck="false"><ul id="ck-list"></ul></div>`;
+  document.body.appendChild(el);
+  const input = el.querySelector('#ck-in'), list = el.querySelector('#ck-list');
+  let items = [], sel = 0;
+  const escH = (x) => String(x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  function open() { el.classList.add('on'); input.value = ''; build(''); setTimeout(() => input.focus(), 30); }
+  function close() { el.classList.remove('on'); }
+  function build(q) {
+    const ql = q.toLowerCase().trim();
+    items = [];
+    if (ql && ql.indexOf(' ') !== -1) {
+      items.push({ label: 'Log it: “' + q.trim() + '”', tag: 'AI', run: () => { location.href = 'log-lead.html?say=' + encodeURIComponent(q.trim()); } });
+    }
+    const leads = (opts.leads ? opts.leads() : []) || [];
+    leads.filter((l) => ql && l.h.toLowerCase().includes(ql.replace('@', ''))).slice(0, 6).forEach((l) => {
+      items.push({ label: '@' + l.h, tag: l.level || 'lead', run: () => { if (opts.onLead) { opts.onLead(l); close(); } else location.href = 'leads.html?lead=' + encodeURIComponent(l.h); } });
+    });
+    const deals = (opts.deals ? opts.deals() : []) || [];
+    deals.filter((d) => ql && String(d.name || d.link).toLowerCase().includes(ql)).slice(0, 5).forEach((d) => {
+      items.push({ label: d.name || d.link, tag: d.status || 'deal', run: () => { if (opts.onDeal) { opts.onDeal(d); close(); } else location.href = 'deals.html?deal=' + d.row; } });
+    });
+    nav.filter((n) => !ql || n.label.toLowerCase().includes(ql)).forEach((n) => {
+      items.push({ label: n.label, tag: 'page', run: () => { location.href = n.href; } });
+    });
+    sel = 0;
+    list.innerHTML = items.map((it, i) =>
+      `<li class="${i === sel ? 'sel' : ''}" data-i="${i}">${escH(it.label)}<span class="t">${escH(it.tag)}</span>${i === sel ? '<span class="k">↵</span>' : ''}</li>`).join('') ||
+      '<li style="color:#55555e;cursor:default">Nothing matches.</li>';
+    Array.prototype.forEach.call(list.querySelectorAll('li[data-i]'), (li) => {
+      li.onclick = () => items[+li.getAttribute('data-i')].run();
+    });
+  }
+  input.addEventListener('input', () => build(input.value));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { close(); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(sel + 1, items.length - 1); build2(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(sel - 1, 0); build2(); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (items[sel]) items[sel].run(); }
+    function build2() {
+      Array.prototype.forEach.call(list.children, (li, i) => {
+        li.classList.toggle('sel', i === sel);
+        const k = li.querySelector('.k'); if (k) k.remove();
+        if (i === sel && li.hasAttribute('data-i')) li.insertAdjacentHTML('beforeend', '<span class="k">↵</span>');
+      });
+      const s2 = list.querySelector('.sel'); if (s2) s2.scrollIntoView({ block: 'nearest' });
+    }
+  });
+  el.addEventListener('mousedown', (e) => { if (e.target === el) close(); });
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); el.classList.contains('on') ? close() : open(); }
+  });
+}
+
+/** "2h ago"-style relative time for history rows. */
+export function relTime(iso) {
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 90) return 'just now';
+  if (s < 3600) return Math.round(s / 60) + 'm ago';
+  if (s < 86400) return Math.round(s / 3600) + 'h ago';
+  return Math.round(s / 86400) + 'd ago';
 }

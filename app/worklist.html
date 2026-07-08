@@ -96,6 +96,9 @@ a{color:var(--accent);cursor:pointer;text-decoration:none}
 .q-log{min-height:40px;padding:0 14px;border-radius:9px;border:1px solid #3d5a3a;color:var(--go);font-weight:600;font-size:.82rem;white-space:nowrap;transition:.15s}
 .q-log:hover:not(:disabled){background:#1b2019}
 .q-log:disabled{opacity:.4;cursor:not-allowed}
+.q-snz{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;color:var(--faint);border-radius:9px;border:1px solid var(--border);transition:.15s}
+.q-snz:hover{color:var(--text);border-color:var(--border-2)}
+.q-snz svg{width:16px;height:16px}
 .q-ig{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);border-radius:9px;border:1px solid var(--border);transition:.15s}
 .q-ig:hover{color:var(--text);border-color:var(--border-2)}
 .q-ig svg{width:16px;height:16px}
@@ -137,6 +140,7 @@ a{color:var(--accent);cursor:pointer;text-decoration:none}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4.5 12.75 6 6 9-13.5"/></svg>
       <span id="doneCount">0</span> logged today
     </span>
+    <a class="opt" href="leads.html" style="color:var(--accent)">All leads →</a>
     <a class="opt" href="log-lead.html" style="color:var(--accent)">Log a lead →</a>
     <a class="opt" href="deals.html" style="color:var(--accent)">Closing →</a>
     <button class="icon-btn" id="gearBtn" aria-label="Sign out">
@@ -166,6 +170,7 @@ a{color:var(--accent);cursor:pointer;text-decoration:none}
         <span><kbd>↑</kbd><kbd>↓</kbd> move</span>
         <span><kbd>L</kbd> log follow-up</span>
         <span><kbd>O</kbd> open profile</span>
+        <span><kbd>S</kbd> snooze 7d</span>
         <span><kbd>Enter</kbd> open in Log a lead</span>
       </div>
       <div class="q-filters" id="queueFilters">
@@ -193,11 +198,11 @@ a{color:var(--accent);cursor:pointer;text-decoration:none}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260708c';
+import * as core from './crm-core.js?v=20260709a';
 const session = await core.requireAuth();
 if (session) {
 var $ = function (id) { return document.getElementById(id); };
-var LS_DONE = 'ajr_worklist_done', LS_FILTERS = 'ajr_worklist_filters';
+var LS_DONE = 'ajr_worklist_done', LS_FILTERS = 'ajr_worklist_filters', LS_SNOOZE = 'ajr_worklist_snooze';
 var LEVEL_COLORS = {
   'Engaged 1': '#a9a9b1', 'Engaged 2': '#c9c9cf', 'Engaged 3': '#e9e9ec',
   'Booked': '#8ee59a', 'Archive': '#6e6e78', 'No Reply': '#8a8a92', 'Closed': '#c9c9cf', '': '#6e6e78'
@@ -246,6 +251,24 @@ function toast(o) {
   x.addEventListener('click', function () { el.remove(); }); el.appendChild(x);
   $('toasts').appendChild(el);
   if (!o.sticky) setTimeout(function () { el.remove(); }, o.ttl || 4500);
+}
+
+/* ---------- snooze (hide a lead from the queue until a date) ---------- */
+function snoozes() {
+  try { return JSON.parse(localStorage.getItem(LS_SNOOZE) || '{}'); } catch (e) { return {}; }
+}
+function isSnoozed(h) {
+  var until = snoozes()[h];
+  return !!until && new Date(until) > new Date();
+}
+function snoozeLead(h, days) {
+  var m = snoozes();
+  var d = new Date(); d.setDate(d.getDate() + days);
+  m[h] = d.toISOString();
+  localStorage.setItem(LS_SNOOZE, JSON.stringify(m));
+  renderQueue();
+  toast({ html: '<span class="mono">@' + esc(h) + '</span> snoozed ' + days + 'd.', ttl: 5000,
+    action: { label: 'Undo', fn: function () { delete m[h]; localStorage.setItem(LS_SNOOZE, JSON.stringify(m)); renderQueue(); } } });
 }
 
 /* ---------- done-today (survives reloads, resets each sheet day) ---------- */
@@ -363,7 +386,7 @@ function queueLeads() {
   var f = activeFilters();
   var rows = state.unique.filter(function (l) {
     return f[l.level] !== undefined ? f[l.level] : false;
-  }).filter(function (l) { return !isSweepable(l); });
+  }).filter(function (l) { return !isSweepable(l) && !isSnoozed(l.h); });
   rows.sort(function (a, b) {
     var s = leadScore(b) - leadScore(a);
     if (s) return s;
@@ -400,7 +423,9 @@ function rowHtml(l, i, sweep) {
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg></a>' : '') +
           (sweep
             ? '<button class="q-archive" data-arch="' + esc(l.h) + '">Archive</button>'
-            : '<button class="q-log" data-log="' + esc(l.h) + '">Log FU</button>')) +
+            : '<button class="q-snz" data-snz="' + esc(l.h) + '" title="Snooze 7 days" aria-label="Snooze 7 days">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg></button>' +
+              '<button class="q-log" data-log="' + esc(l.h) + '">Log FU</button>')) +
     '</span>' +
   '</li>';
 }
@@ -507,7 +532,8 @@ function cursorLead() {
 function bindEvents() {
   $('queueList').addEventListener('click', function (e) {
     var t;
-    if ((t = e.target.closest('[data-log]'))) logFu(t.getAttribute('data-log'));
+    if ((t = e.target.closest('[data-snz]'))) snoozeLead(t.getAttribute('data-snz'), 7);
+    else if ((t = e.target.closest('[data-log]'))) logFu(t.getAttribute('data-log'));
     else if ((t = e.target.closest('[data-undone]'))) {
       // local un-mark only (sheet write already happened; use toast Undo to revert the sheet)
       unmarkDone(t.getAttribute('data-undone'));
@@ -542,6 +568,10 @@ function bindEvents() {
       var l = cursorLead();
       if (l && !state.done[l.h]) { e.preventDefault(); logFu(l.h); }
     }
+    else if (k.toLowerCase() === 's') {
+      var ls = cursorLead();
+      if (ls && !state.done[ls.h]) { e.preventDefault(); snoozeLead(ls.h, 7); }
+    }
     else if (k.toLowerCase() === 'o') {
       var l2 = cursorLead();
       if (l2 && l2.url) { e.preventDefault(); window.open(l2.url, '_blank', 'noopener'); }
@@ -570,6 +600,7 @@ function boot() {
   }
   restoreFilters();
   bindEvents();
+  core.installPalette({ leads: function () { return state.unique; } });
   start();
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
