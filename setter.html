@@ -1,50 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark">
-<title>AJR Setter → moved</title>
-<style>
-body{background:#0A0A0C;color:#F5F5F7;font-family:'Inter',system-ui,-apple-system,sans-serif;
-  min-height:100vh;margin:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px}
-.card{max-width:420px}
-h1{font-size:1.1rem;font-weight:600;margin:0 0 8px}
-p{color:#8B8B95;font-size:.9rem;margin:0 0 22px;line-height:1.6}
-.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-a.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 22px;border-radius:12px;
-  font-weight:600;text-decoration:none;font-size:.95rem}
-a.primary{background:#34D399;color:#052E22}
-a.ghost{border:1px solid rgba(255,255,255,.14);color:#F5F5F7}
-</style>
-</head>
-<body>
-<div class="card">
-  <h1>The setter is now two tools</h1>
-  <p><strong>Worklist</strong> — who to follow up next.<br><strong>Log a lead</strong> — update a lead by talking or typing.</p>
-  <div class="row">
-    <a class="btn primary" href="worklist.html">Open Worklist</a>
-    <a class="btn ghost" href="log-lead.html">Log a lead</a>
-  </div>
-</div>
-<script>
-(function () {
-  // Carry a one-time credential fragment (#u=…&k=…) so old bookmarks still connect,
-  // then hand the user straight to the new tools.
-  try {
-    if (location.hash) {
-      var p = new URLSearchParams(location.hash.slice(1));
-      var u = p.get('u'), k = p.get('k');
-      if (u && k) { localStorage.setItem('ajr_api_url', u); localStorage.setItem('ajr_api_key', k); }
-    }
-  } catch (e) {}
-  // If already connected on this device, skip the chooser and open the worklist.
-  try {
-    if (localStorage.getItem('ajr_api_url') && localStorage.getItem('ajr_api_key')) {
-      location.replace('worklist.html');
-    }
-  } catch (e) {}
-})();
-</script>
-</body>
-</html>
+<meta name="color-scheme" content="dark"><title>AJR CRM — moved</title>
+<style>body{background:#0e0e10;color:#a9a9b1;font-family:'Geist',system-ui,sans-serif;min-height:100vh;margin:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px}a{color:#8ee59a;text-decoration:none;font-weight:600}</style>
+</head><body><div><p>The CRM has moved.</p><p><a href="app/worklist.html" id="go">Open the new app →</a></p></div>
+<script>location.replace('app/worklist.html');</script></body></html>
