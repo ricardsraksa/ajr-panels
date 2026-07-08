@@ -70,11 +70,16 @@ input:focus{border-color:#33333a}
 import { supa, signIn } from './crm-core.js';
 
 const qs = new URLSearchParams(location.search);
-const dest = qs.get('to') || 'worklist.html';
+// Role-based landing: the closer opens the call log, the setter opens the worklist.
+const CLOSER_EMAILS = ['reinis@agencyjr.com'];
+function homeFor(email) {
+  return CLOSER_EMAILS.includes((email || '').toLowerCase()) ? 'close-call.html' : 'worklist.html';
+}
+function destFor(email) { return qs.get('to') || homeFor(email); }
 
 // already signed in? straight through.
 const { data: { session } } = await supa.auth.getSession();
-if (session) location.replace(dest);
+if (session) location.replace(destFor(session.user.email));
 
 const form = document.getElementById('form');
 const err = document.getElementById('err');
@@ -84,9 +89,9 @@ form.addEventListener('submit', async (e) => {
   err.textContent = '';
   go.disabled = true; go.textContent = 'Signing in…';
   try {
-    await signIn(document.getElementById('email').value.trim(),
+    const sess = await signIn(document.getElementById('email').value.trim(),
                  document.getElementById('password').value);
-    location.replace(dest);
+    location.replace(destFor(sess.user.email));
   } catch (ex) {
     err.textContent = /invalid/i.test(ex.message) ? 'Wrong email or password.' : ex.message;
     go.disabled = false; go.textContent = 'Sign in';
