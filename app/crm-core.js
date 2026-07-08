@@ -16,10 +16,86 @@ export const STATUSES = ['Follow up Sent', "Haven't read", 'End of convo', 'Mid 
   'Lifestyle sent', 'Left on read', 'Story reply', 'Call Pitched', 'Meme sent', 'LM Sent'];
 export const TEMPS = ['Warm Lead', 'Cold Lead', 'Hot Lead'];
 
+/* ---------- demo mode (self-contained; no backend, for design/preview) ----------
+   Add ?demo=1 to any page. It sticks for the session (so cross-page links stay
+   in demo) and every read/write runs against in-memory fake data. Nothing
+   touches Supabase. Sign in with any email — use reinis@agencyjr.com to land on
+   the closer, anything else for the setter. */
+const DEMO = (() => {
+  try {
+    const on = new URLSearchParams(location.search).get('demo') === '1';
+    if (on) sessionStorage.setItem('ajr_demo', '1');
+    return on || sessionStorage.getItem('ajr_demo') === '1';
+  } catch (e) { return false; }
+})();
+export const isDemo = DEMO;
+
+const _clone = (x) => JSON.parse(JSON.stringify(x));
+function _ago(n) { const d = new Date(); d.setDate(d.getDate() - n); return isoToDmyLocal(d); }
+function isoToDmyLocal(d) {
+  const p = new Intl.DateTimeFormat('en-GB').formatToParts(d);
+  const g = (t) => p.find((x) => x.type === t).value;
+  return `${g('day')}/${g('month')}/${g('year')}`;
+}
+const _demo = {
+  leads: [
+    { id: 1, h: 'jung.labs', url: 'https://instagram.com/jung.labs', level: 'Engaged 3', status: 'Follow up Sent', temp: 'Hot Lead', qual: 'Qualified 3', notes: 'potential referral for his students', lastContact: _ago(20) },
+    { id: 2, h: 'charlay', url: 'https://instagram.com/charlay', level: 'Engaged 3', status: 'Follow up Sent', temp: 'Hot Lead', qual: 'Qualified 3', notes: 'audit accepted, need to book meeting', lastContact: _ago(63) },
+    { id: 3, h: 'akram_meza', url: 'https://instagram.com/akram_meza', level: 'Engaged 3', status: 'Follow up Sent', temp: 'Hot Lead', qual: 'Qualified 1', notes: 'showed interest from story', lastContact: _ago(63) },
+    { id: 4, h: 'oscarwxng', url: 'https://instagram.com/oscarwxng', level: 'Engaged 2', status: 'Story reply', temp: 'Warm Lead', qual: 'Qualified 2', notes: '', lastContact: _ago(4) },
+    { id: 5, h: 'kayla.growth', url: 'https://instagram.com/kayla.growth', level: 'Engaged 2', status: 'Meme sent', temp: 'Warm Lead', qual: '', notes: '', lastContact: _ago(6) },
+    { id: 6, h: 'sofia_scales', url: 'https://instagram.com/sofia_scales', level: 'Engaged 1', status: "Haven't read", temp: 'Warm Lead', qual: '', notes: '', lastContact: _ago(10) },
+    { id: 7, h: 'nina.creates', url: 'https://instagram.com/nina.creates', level: 'Engaged 1', status: 'Lifestyle sent', temp: 'Warm Lead', qual: '', notes: '', lastContact: _ago(8) },
+    { id: 8, h: 'mariusvmil', url: 'https://instagram.com/mariusvmil', level: 'Engaged 1', status: 'Left on read', temp: 'Cold Lead', qual: '', notes: '', lastContact: _ago(120) },
+    { id: 9, h: 'therealashwinn', url: 'https://instagram.com/therealashwinn', level: 'Engaged 1', status: 'End of convo', temp: 'Cold Lead', qual: '', notes: '', lastContact: _ago(140) },
+    { id: 10, h: 'thedtcguy', url: 'https://instagram.com/thedtcguy', level: 'No Reply', status: 'Follow up Sent', temp: 'Cold Lead', qual: '', notes: '', lastContact: _ago(43) },
+    { id: 11, h: 'ecom.aiden', url: 'https://instagram.com/ecom.aiden', level: 'Engaged 3', status: 'Mid convo', temp: 'Hot Lead', qual: 'Qualified 2', notes: 'wants pricing', lastContact: _ago(2) },
+    { id: 12, h: 'bram.vandijk', url: 'https://instagram.com/bram.vandijk', level: 'Archive', status: 'Left on read', temp: 'Cold Lead', qual: 'Unqualified', notes: '', lastContact: _ago(90) },
+    { id: 13, h: 'lena.builds', url: 'https://instagram.com/lena.builds', level: 'Booked', status: 'Call Pitched', temp: 'Hot Lead', qual: 'Qualified 3', notes: 'call booked friday', lastContact: _ago(1) }
+  ],
+  deals: [
+    { row: 101, id: 101, leadId: null, name: 'Oscar Wong', link: 'https://instagram.com/oscarwxng', status: 'Discovery Call', meeting: _ago(0), followup: '', qual: 'Qualified 2', cash: '', notes: 'supplement brand ~40k/mo', hasFF: true, fireflies_link: 'https://app.fireflies.ai/view/demo' },
+    { row: 102, id: 102, leadId: null, name: 'Awais', link: 'https://instagram.com/awais.designs', status: 'Closing call', meeting: _ago(0), followup: '', qual: '', cash: '', notes: '', hasFF: false, fireflies_link: '' },
+    { row: 103, id: 103, leadId: null, name: 'Lena Ruiz', link: 'https://instagram.com/lena.builds', status: 'Followup', meeting: '', followup: _ago(6), qual: 'Qualified 3', cash: '', notes: 'sent proposal', hasFF: false, fireflies_link: '' },
+    { row: 104, id: 104, leadId: null, name: 'Marcus Media', link: 'https://instagram.com/marcus_media', status: 'Closed', meeting: _ago(20), followup: '', qual: 'Qualified 3', cash: 4000, notes: 'paid in full', hasFF: true, fireflies_link: 'https://app.fireflies.ai/view/demo2' },
+    { row: 105, id: 105, leadId: null, name: 'Viktor A.', link: 'https://instagram.com/viktorandersson1u', status: 'Discovery Call', meeting: _ago(-2), followup: '', qual: '', cash: '', notes: 'need to book', hasFF: false, fireflies_link: '' },
+    { row: 106, id: 106, leadId: null, name: 'Greg Leet', link: 'https://instagram.com/gregleet', status: 'No Close', meeting: _ago(30), followup: '', qual: 'Qualified 1', cash: '', notes: 'went cold', hasFF: false, fireflies_link: '' }
+  ]
+};
+function _demoUndoToken(coll, key, id, prev) { return { _demo: true, coll, key, id, prev }; }
+function _demoApplyUndo(u) {
+  const rec = _demo[u.coll].find((r) => r[u.key] === u.id);
+  if (rec) Object.keys(u.prev).forEach((k) => { rec[k] = u.prev[k]; });
+}
+function _demoInterpret(text, mode) {
+  const t = (text || '').toLowerCase();
+  const intent = { route: 'unknown', handle: '', stage: '', status: '', temp: '', target: '',
+    deal_status: '', meeting: '', followup: '', cash: '', notes: '', confidence: 'high' };
+  const name = (t.match(/\b(oscar\w*|awais|lena\w*|marcus|viktor\w*|greg\w*|marco|kayla\w*|nina\w*|sofia\w*|akram\w*|jung\w*|charlay|aiden)\b/) || [])[0] || '';
+  const money = t.match(/(\d+(?:\.\d+)?)\s*(k|grand|thousand)/);
+  const cash = money ? String(Math.round(parseFloat(money[1]) * 1000)) : (t.match(/\$?\s*(\d{3,6})/) && /paid|collect|clos|for/.test(t) ? t.match(/\$?\s*(\d{3,6})/)[1] : '');
+  const fu = (t.match(/follow.?up (?:call )?((?:next |on )?\w+day|tomorrow|in \w+ (?:days?|weeks?))/) || [])[1];
+  const notes = (t.match(/(?:wants?|needs?|note[sd]?:?)\s+(.+)$/) || [])[1];
+  if (mode === 'closer' || /clos|paid|no.?show|discovery|call/.test(t)) {
+    intent.route = 'closer'; intent.target = name;
+    intent.deal_status = /no.?show|no.?close|didn.?t clos/.test(t) ? 'No Close' : /clos/.test(t) ? 'Closed' : /discovery/.test(t) ? 'Discovery Call' : /follow.?up/.test(t) ? 'Followup' : '';
+    intent.cash = cash; if (fu) intent.followup = fu.replace(/^on /, ''); if (notes) intent.notes = notes.replace(/[.,]+$/, '');
+  } else {
+    intent.route = 'setter'; intent.handle = name;
+    intent.stage = /engaged? (?:one|1)/.test(t) ? 'Engaged 1' : /engaged? (?:two|2)/.test(t) ? 'Engaged 2' : /engaged? (?:three|3)/.test(t) ? 'Engaged 3' : /book/.test(t) ? 'Booked' : /archiv/.test(t) ? 'Archive' : '';
+    intent.status = /story repl/.test(t) ? 'Story reply' : /follow.?up/.test(t) ? 'Follow up Sent' : /left on read/.test(t) ? 'Left on read' : '';
+    intent.temp = /hot/.test(t) ? 'Hot Lead' : /warm/.test(t) ? 'Warm Lead' : /cold/.test(t) ? 'Cold Lead' : '';
+    if (notes) intent.notes = notes.replace(/[.,]+$/, '');
+    if (!intent.handle) intent.route = 'unknown';
+  }
+  return { ok: true, intent, model: 'demo' };
+}
+
 /* ---------- auth ---------- */
 
 // Gate a page: returns the session, or bounces to the login page.
 export async function requireAuth() {
+  if (DEMO) return { user: { email: 'demo@ajr.crm' } };
   const { data: { session } } = await supa.auth.getSession();
   if (!session) {
     const back = location.pathname.split('/').pop() + location.search;
@@ -30,17 +106,20 @@ export async function requireAuth() {
 }
 
 export async function signIn(email, password) {
+  if (DEMO) return { user: { email: email || 'demo@ajr.crm' } };
   const { data, error } = await supa.auth.signInWithPassword({ email, password });
   if (error) throw new Error(error.message);
   return data.session;
 }
 
 export async function signOut() {
+  if (DEMO) { location.replace('index.html'); return; }
   await supa.auth.signOut();
   location.replace('index.html');
 }
 
 export async function userEmail() {
+  if (DEMO) return 'demo@ajr.crm';
   const { data: { session } } = await supa.auth.getSession();
   return session?.user?.email || '';
 }
@@ -66,6 +145,7 @@ export function todayDmy() {
 /* ---------- data: reads (shapes match what the panels already expect) ---------- */
 
 export async function loadLeads() {
+  if (DEMO) return _demo.leads.map(_clone);
   const out = [];
   for (let off = 0; ; off += 1000) {
     const { data, error } = await supa.from('leads')
@@ -84,6 +164,7 @@ export async function loadLeads() {
 }
 
 export async function loadDeals() {
+  if (DEMO) return _demo.deals.map(_clone);
   const { data, error } = await supa.from('deals')
     .select('id,lead_id,name,ig_link,status,meeting,followup,qualification,cash,notes,fireflies_link')
     .order('id');
@@ -122,6 +203,22 @@ async function logActivity(table, rowId, action, prev, next) {
 export async function setterUpdate(args) {
   const handle = String(args.handle || '').trim().toLowerCase();
   if (!handle) throw new Error('bad handle');
+  if (DEMO) {
+    const hit = _demo.leads.find((l) => l.h === handle);
+    if (hit) {
+      const prev = { level: hit.level, last_status: hit.status, temp: hit.temp, notes: hit.notes, last_contact: dmyToIso(hit.lastContact) };
+      if (args.stage) hit.level = args.stage;
+      if (args.status) hit.status = args.status;
+      if (args.temp) hit.temp = args.temp;
+      if (args.note) hit.notes = hit.notes ? hit.notes + '\n' + args.note : args.note;
+      hit.lastContact = todayDmy();
+      return { ok: true, mode: 'updated', row: hit.id, handle, prev, undo: _demoUndoToken('leads', 'id', hit.id, { level: prev.level, status: prev.last_status, temp: prev.temp, notes: prev.notes, lastContact: isoToDmy(prev.last_contact) }) };
+    }
+    if (!args.stage) throw new Error('stage required to create');
+    const nl = { id: Date.now(), h: handle, url: 'https://instagram.com/' + handle, level: args.stage, status: args.status || '', temp: args.temp || 'Warm Lead', qual: '', notes: args.note || '', lastContact: todayDmy() };
+    _demo.leads.push(nl);
+    return { ok: true, mode: 'created', row: nl.id, handle };
+  }
   const { data: hit, error: qErr } = await supa.from('leads')
     .select('*').eq('handle', handle).maybeSingle();
   if (qErr) throw new Error(qErr.message);
@@ -160,6 +257,18 @@ export async function setterUpdate(args) {
  *  (draft notes get replaced); dates arrive dd/MM/yyyy. */
 export async function closerUpdate(args) {
   const f = args.fields || {};
+  if (DEMO) {
+    if (f.cash != null && f.cash !== '' && args.cashConfirmed !== true) throw new Error('cash requires confirmation');
+    const d = _demo.deals.find((x) => x.row === args.row);
+    if (!d) throw new Error('deal not found');
+    const prev = { status: d.status, meeting: d.meeting, followup: d.followup, cash: d.cash, notes: d.notes };
+    if (f.status) d.status = f.status;
+    if (f.meeting) d.meeting = f.meeting;
+    if (f.followup) d.followup = f.followup;
+    if (f.cash != null && f.cash !== '') d.cash = Number(f.cash);
+    if (f.notes) d.notes = (!d.notes || String(d.notes).indexOf('[draft]') === 0) ? f.notes : d.notes + '\n' + f.notes;
+    return { ok: true, row: d.row, name: d.name || d.link, applied: f, prev, undo: _demoUndoToken('deals', 'row', d.row, prev) };
+  }
   if (f.cash != null && f.cash !== '' && args.cashConfirmed !== true) {
     throw new Error('cash requires confirmation');
   }
@@ -192,6 +301,19 @@ export async function closerUpdate(args) {
  *  fields: { status?, meeting?(iso|null), followup?(iso|null), cash?(number|null), notes?, qualification? }
  *  Only the keys present are written. Cash change requires opts.cashConfirmed. */
 export async function setDeal(id, fields, opts = {}) {
+  if (DEMO) {
+    const d = _demo.deals.find((x) => x.row === id);
+    if (!d) throw new Error('deal not found');
+    const prev = {};
+    if ('cash' in fields) {
+      const nc = (fields.cash === '' || fields.cash == null) ? '' : Number(fields.cash);
+      if (nc !== '' && nc !== (d.cash === '' || d.cash == null ? '' : Number(d.cash)) && opts.cashConfirmed !== true) throw new Error('cash requires confirmation');
+      prev.cash = d.cash; d.cash = nc;
+    }
+    ['status', 'notes', 'qualification'].forEach((k) => { const kk = k === 'qualification' ? 'qual' : k; if (k in fields) { prev[kk] = d[kk]; d[kk] = fields[k] || ''; } });
+    ['meeting', 'followup'].forEach((k) => { if (k in fields) { prev[k] = d[k]; d[k] = fields[k] ? isoToDmy(fields[k]) : ''; } });
+    return { ok: true, row: id, name: d.name || d.link, prev, undo: _demoUndoToken('deals', 'row', id, prev) };
+  }
   const { data: d, error: qErr } = await supa.from('deals').select('*').eq('id', id).maybeSingle();
   if (qErr) throw new Error(qErr.message);
   if (!d) throw new Error('deal not found');
@@ -217,6 +339,7 @@ export async function setDeal(id, fields, opts = {}) {
 
 /** Undo a write: restore prev values (activity row keeps the audit trail). */
 export async function undoWrite(undo) {
+  if (DEMO || (undo && undo._demo)) { _demoApplyUndo(undo); return { ok: true }; }
   const { error } = await supa.from(undo.table).update(undo.prev).eq('id', undo.rowId);
   if (error) throw new Error(error.message);
   await logActivity(undo.table, undo.rowId, 'restore', null, undo.prev);
@@ -226,6 +349,7 @@ export async function undoWrite(undo) {
 /* ---------- pending calls + AI ---------- */
 
 export async function pendingCalls() {
+  if (DEMO) return [];
   const dayAgo = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
   const { data, error } = await supa.from('pending_calls')
     .select('id,deal_id,name,created_at')
@@ -235,10 +359,12 @@ export async function pendingCalls() {
 }
 
 export async function markPendingConsumed(id) {
+  if (DEMO) return;
   await supa.from('pending_calls').update({ consumed: true }).eq('id', id);
 }
 
 export async function interpret(text, mode, deal) {
+  if (DEMO) { await new Promise((r) => setTimeout(r, 350)); return _demoInterpret(text, mode); }
   const { data, error } = await supa.functions.invoke('interpret',
     { body: { text, mode, deal } });
   if (error) throw new Error(error.message || 'AI unreachable');
@@ -247,6 +373,7 @@ export async function interpret(text, mode, deal) {
 }
 
 export async function bookedAlert(name, qual, link) {
+  if (DEMO) return;
   try { await supa.functions.invoke('alerts', { body: { type: 'booked', name, qual, link } }); }
   catch (e) { /* fire-and-forget */ }
 }

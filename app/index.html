@@ -68,7 +68,7 @@ input:focus{border-color:#33333a}
   </div>
 </div>
 <script type="module">
-import { supa, signIn } from './crm-core.js?v=20260708b';
+import { supa, signIn, isDemo } from './crm-core.js?v=20260708c';
 
 const qs = new URLSearchParams(location.search);
 // Role-based landing: the closer opens the call log, the setter opens the worklist.
@@ -78,9 +78,11 @@ function homeFor(email) {
 }
 function destFor(email) { return qs.get('to') || homeFor(email); }
 
-// already signed in? straight through.
-const { data: { session } } = await supa.auth.getSession();
-if (session) location.replace(destFor(session.user.email));
+// already signed in? straight through. (skip the network check in demo)
+if (!isDemo) {
+  const { data: { session } } = await supa.auth.getSession();
+  if (session) location.replace(destFor(session.user.email));
+}
 
 const form = document.getElementById('form');
 const err = document.getElementById('err');
