@@ -37,6 +37,8 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 .hdr .count{color:var(--faint);font:500 12px var(--mono)}
 .hdr .sp{flex:1}
 .hdr a.nav{color:var(--money);font-size:12.5px}
+.navbtn{min-height:34px;padding:0 14px;border-radius:9px;border:1px solid #3d5a3a;color:var(--money);font-weight:600;font-size:12.5px;background:#141a15}
+.navbtn:hover{background:#1b2019}
 .icon-btn{width:36px;height:36px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;color:var(--faint);transition:.16s}
 .icon-btn:hover{color:var(--text-2);background:var(--panel)}
 .icon-btn svg{width:16px;height:16px}
@@ -111,6 +113,14 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 .btn-ghost{min-height:40px;border:1px solid var(--border-2);color:var(--muted);font-weight:500;font-size:13px}
 .btn-ghost:hover{color:var(--text);border-color:#33333a}
 
+.pick{flex:1;display:flex;flex-direction:column;min-height:0;padding:16px 20px}
+.pick input{width:100%;min-height:44px;padding:0 13px;background:var(--panel);border:1px solid var(--border-2);border-radius:10px;color:var(--text);font-size:15px;flex:none}
+.pick input:focus{border-color:#33333a}
+.pick ul{list-style:none;overflow-y:auto;margin-top:8px;flex:1}
+.pick li{display:flex;align-items:center;gap:10px;padding:11px 12px;min-height:48px;border-radius:10px;cursor:pointer;transition:background .12s}
+.pick li:hover{background:var(--panel)}
+.pick .pn{font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pick .ps{color:var(--dim);font-size:12px;white-space:nowrap}
 /* toasts */
 .toasts{position:fixed;z-index:60;bottom:18px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:9px;width:min(440px,calc(100vw - 32px))}
 .toast{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--border-2);border-radius:12px;padding:13px 16px;font-size:13.5px;box-shadow:var(--shadow);animation:rise .24s cubic-bezier(.2,.8,.2,1)}
@@ -140,7 +150,7 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
     <span class="eyebrow">Closing</span>
     <span class="count" id="count">—</span>
     <span class="sp"></span>
-    <a class="nav" href="close-call.html">Voice log →</a>
+    <button class="navbtn" id="voiceLog">＋ Log a call</button>
     <button class="icon-btn" id="signout" aria-label="Sign out">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/></svg>
     </button>
@@ -170,7 +180,11 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
     <h2 id="d-name">Deal</h2>
     <button class="icon-btn" id="d-close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18 18 6M6 6l12 12"/></svg></button>
   </div>
-  <div class="dbody">
+  <div class="pick" id="pick" hidden>
+    <input id="pick-search" type="text" placeholder="Which deal did you talk to?" autocomplete="off" spellcheck="false">
+    <ul id="pick-list"></ul>
+  </div>
+  <div class="dbody" id="dbody">
     <div class="ai">
       <div class="lbl"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.8 15.9 9 18.75l-.8-2.85a4.5 4.5 0 0 0-3.1-3.1L2.25 12l2.85-.8a4.5 4.5 0 0 0 3.1-3.1L9 5.25l.8 2.85a4.5 4.5 0 0 0 3.1 3.1L15.75 12l-2.85.8a4.5 4.5 0 0 0-3.1 3.1Z"/></svg> Log the call — say what happened</div>
       <div class="ai-row">
@@ -190,7 +204,7 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
     <div class="field"><label>Notes</label><textarea id="f-notes" placeholder="—"></textarea></div>
     <div class="field" id="f-ff-wrap" hidden><label>Fireflies</label><a class="ff-link" id="f-ff" target="_blank" rel="noopener">Open transcript ↗</a></div>
   </div>
-  <div class="dfoot">
+  <div class="dfoot" id="dfoot">
     <div class="cash-warn" id="cash-warn" hidden></div>
     <button class="btn btn-primary" id="d-save">Save</button>
     <button class="btn btn-ghost" id="d-cancel">Cancel</button>
@@ -299,8 +313,10 @@ function render() {
 /* ---------- drawer ---------- */
 function dealById(id) { return state.deals.find((d) => d.row === id); }
 
+function showEditor() { $('pick').hidden = true; $('dbody').hidden = false; $('dfoot').hidden = false; }
 function openDrawer(id) {
   const d = dealById(id); if (!d) return;
+  showEditor();
   state.editing = id; state.cashConfirmed = false;
   $('d-name').textContent = displayName(d);
   $('f-status').value = ['Discovery Call','Closing call','Followup','Closed','No Close'].includes(d.status) ? d.status : '';
@@ -319,6 +335,27 @@ function openDrawer(id) {
 function closeDrawer() {
   state.editing = null;
   $('scrim').classList.remove('on'); $('drawer').classList.remove('on');
+}
+function openVoiceLog() {
+  state.editing = null;
+  $('d-name').textContent = 'Log a call';
+  $('pick').hidden = false; $('dbody').hidden = true; $('dfoot').hidden = true;
+  $('pick-search').value = '';
+  renderPickList('');
+  $('scrim').classList.add('on'); $('drawer').classList.add('on');
+  setTimeout(() => $('pick-search').focus(), 60);
+}
+function renderPickList(q) {
+  q = (q || '').toLowerCase().trim();
+  const rows = sortDeals(state.deals.filter((d) => !isDone(d)))
+    .filter((d) => !q || (displayName(d) + ' ' + d.link).toLowerCase().includes(q));
+  const ul = $('pick-list');
+  if (!rows.length) { ul.innerHTML = '<li style="color:var(--faint);cursor:default">No open deals match.</li>'; return; }
+  ul.innerHTML = rows.slice(0, 40).map((d) =>
+    `<li data-id="${d.row}"><span class="pn">${esc(displayName(d))}</span><span class="ps">${esc(d.status || '')}</span></li>`).join('');
+  Array.prototype.forEach.call(ul.querySelectorAll('li[data-id]'), (li) => {
+    li.onclick = () => openDrawer(+li.getAttribute('data-id'));
+  });
 }
 
 // AI box: sentence -> interpret -> fill the drawer fields (notes appended in-view)
@@ -447,6 +484,8 @@ $('filters').onclick = (e) => {
 $('search').oninput = (e) => { state.q = e.target.value; render(); };
 $('refresh').onclick = load;
 $('signout').onclick = () => core.signOut();
+$('voiceLog').onclick = openVoiceLog;
+$('pick-search').oninput = (e) => renderPickList(e.target.value);
 $('scrim').onclick = closeDrawer;
 $('d-close').onclick = closeDrawer;
 $('d-cancel').onclick = closeDrawer;
