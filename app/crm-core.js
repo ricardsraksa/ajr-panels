@@ -93,7 +93,7 @@ export async function loadDeals() {
     name: d.name || '', link: d.ig_link || '', status: d.status || '',
     meeting: isoToDmy(d.meeting), followup: isoToDmy(d.followup),
     qual: d.qualification || '', cash: d.cash == null ? '' : d.cash,
-    notes: d.notes || '', hasFF: !!d.fireflies_link,
+    notes: d.notes || '', hasFF: !!d.fireflies_link, fireflies_link: d.fireflies_link || '',
   }));
 }
 
@@ -186,6 +186,33 @@ export async function closerUpdate(args) {
   await supa.from('pending_calls').update({ consumed: true }).eq('deal_id', d.id);
   return { ok: true, row: d.id, name: d.name || d.ig_link, applied: f, prev,
     undo: { table: 'deals', rowId: d.id, prev, actId } };
+}
+
+/** Direct-set a deal's fields (CRM editor path — replaces, doesn't append).
+ *  fields: { status?, meeting?(iso|null), followup?(iso|null), cash?(number|null), notes?, qualification? }
+ *  Only the keys present are written. Cash change requires opts.cashConfirmed. */
+export async function setDeal(id, fields, opts = {}) {
+  const { data: d, error: qErr } = await supa.from('deals').select('*').eq('id', id).maybeSingle();
+  if (qErr) throw new Error(qErr.message);
+  if (!d) throw new Error('deal not found');
+  const patch = {};
+  ['status', 'notes', 'qualification', 'meeting', 'followup'].forEach((k) => {
+    if (k in fields) patch[k] = fields[k] === '' ? null : fields[k];
+  });
+  if ('cash' in fields) {
+    const newCash = (fields.cash === '' || fields.cash == null) ? null : Number(fields.cash);
+    if (newCash != null && newCash !== (d.cash == null ? null : Number(d.cash)) && opts.cashConfirmed !== true) {
+      throw new Error('cash requires confirmation');
+    }
+    patch.cash = newCash;
+  }
+  if (!Object.keys(patch).length) return { ok: true, row: id, noop: true };
+  const prev = {};
+  Object.keys(patch).forEach((k) => { prev[k] = d[k]; });
+  const { error } = await supa.from('deals').update(patch).eq('id', id);
+  if (error) throw new Error(error.message);
+  const actId = await logActivity('deals', id, 'update', prev, patch);
+  return { ok: true, row: id, name: d.name || d.ig_link, prev, undo: { table: 'deals', rowId: id, prev, actId } };
 }
 
 /** Undo a write: restore prev values (activity row keeps the audit trail). */

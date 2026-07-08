@@ -63,17 +63,18 @@ input:focus{border-color:#33333a}
   <div class="links">
     <a href="worklist.html">Worklist</a>
     <a href="log-lead.html">Log a lead</a>
-    <a href="close-call.html">Log the call</a>
+    <a href="deals.html">Closing</a>
+    <a href="close-call.html">Voice log</a>
   </div>
 </div>
 <script type="module">
-import { supa, signIn } from './crm-core.js';
+import { supa, signIn } from './crm-core.js?v=20260708b';
 
 const qs = new URLSearchParams(location.search);
 // Role-based landing: the closer opens the call log, the setter opens the worklist.
 const CLOSER_EMAILS = ['reinis@agencyjr.com'];
 function homeFor(email) {
-  return CLOSER_EMAILS.includes((email || '').toLowerCase()) ? 'close-call.html' : 'worklist.html';
+  return CLOSER_EMAILS.includes((email || '').toLowerCase()) ? 'deals.html' : 'worklist.html';
 }
 function destFor(email) { return qs.get('to') || homeFor(email); }
 
