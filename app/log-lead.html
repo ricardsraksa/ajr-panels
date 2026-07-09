@@ -142,6 +142,38 @@ a{color:var(--accent);cursor:pointer;text-decoration:none}
 .btn-log kbd{font-family:inherit;font-size:.68rem;opacity:.6}
 
 /* voice */
+.scan-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
+.scan-btn{display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:0 16px;border-radius:11px;border:1px solid var(--border-2);color:var(--text);font-weight:600;font-size:.9rem;background:var(--surface2)}
+.scan-btn:hover{border-color:var(--accent);color:var(--accent)}
+.scan-btn svg{width:17px;height:17px}
+.scan-hint{color:var(--faint);font-size:.8rem}
+.scan-hint kbd{font-family:inherit;font-size:.72rem;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:var(--muted)}
+.drop-over{position:fixed;inset:0;z-index:70;background:rgba(14,14,16,.86);display:none;align-items:center;justify-content:center;text-align:center}
+.drop-over.on{display:flex}
+.drop-over .box{border:2px dashed var(--accent);border-radius:18px;padding:44px 60px;color:var(--text);font-weight:600}
+.modal{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;padding:8vh 16px 16px;overflow-y:auto}
+.modal.on{display:flex}
+.modal .card2{width:min(560px,100%);background:var(--surface);border:1px solid var(--border-2);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+.modal .mhead{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border)}
+.modal .mhead h2{font-size:1rem;font-weight:600;flex:1}
+.modal .mbody{padding:10px 14px;max-height:52vh;overflow-y:auto}
+.modal .thinking{padding:34px;text-align:center;color:var(--muted);font-size:.9rem}
+.lead-card{border:1px solid var(--border);border-radius:12px;padding:12px;margin:8px 4px;background:var(--surface2)}
+.lead-card .lc-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.lead-card .lc-h{flex:1;min-height:38px;padding:0 11px;background:var(--bg);border:1px solid var(--border);border-radius:9px;color:var(--text);font-weight:600;font-size:.92rem}
+.lead-card .lc-x{width:34px;height:34px;border-radius:8px;color:var(--faint);display:inline-flex;align-items:center;justify-content:center}
+.lead-card .lc-x:hover{color:var(--red)}
+.lead-card .lc-x svg{width:14px;height:14px}
+.lead-card .lc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.lead-card select,.lead-card .lc-note{width:100%;min-height:36px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:.85rem}
+.lead-card .exists{font-size:.72rem;color:var(--amber);margin-top:4px}
+.modal .mfoot{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:10px}
+.modal .mfoot button{flex:1;min-height:46px;border-radius:11px;font-weight:600;font-size:.92rem}
+.modal .m-add{background:var(--go);color:var(--go-ink)}
+.modal .m-add:hover:not(:disabled){filter:brightness(1.05)}
+.modal .m-add:disabled{opacity:.5;cursor:not-allowed}
+.modal .m-cancel{border:1px solid var(--border-2);color:var(--muted)}
+.modal .m-cancel:hover{color:var(--text)}
 .voice-row{display:flex;align-items:center;gap:14px;margin-bottom:18px}
 .mic-btn{display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;flex:none;border-radius:50%;background:#e9e9ec;color:#101013;border:none;transition:.18s}
 .mic-btn svg{width:24px;height:24px}
@@ -258,6 +290,14 @@ kbd.hint{margin-left:6px;opacity:.6}
           autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
         <ul class="ac-list" id="acList" role="listbox" aria-label="Matching leads" hidden></ul>
       </div>
+      <div class="scan-row">
+        <button class="scan-btn" id="scanBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/><path d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/></svg>
+          Scan a screenshot
+        </button>
+        <span class="scan-hint">or paste (<kbd>⌘V</kbd>) / drop an image anywhere</span>
+        <input type="file" id="scanFile" accept="image/*" hidden>
+      </div>
       <div class="arm-chip" id="armChip" hidden></div>
 
       <fieldset class="chips-set" style="margin-top:16px">
@@ -321,11 +361,21 @@ kbd.hint{margin-left:6px;opacity:.6}
   </main>
 </div>
 
+<div class="drop-over" id="dropOver"><div class="box">Drop the screenshot to read it</div></div>
+<div class="modal" id="scanModal">
+  <div class="card2">
+    <div class="mhead"><h2 id="scanTitle">Leads from screenshot</h2>
+      <button class="lc-x" id="scanClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18 18 6M6 6l12 12"/></svg></button>
+    </div>
+    <div class="mbody" id="scanBody"></div>
+    <div class="mfoot"><button class="m-cancel" id="scanCancel">Cancel</button><button class="m-add" id="scanAdd">Add leads</button></div>
+  </div>
+</div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260709a';
+import * as core from './crm-core.js?v=20260710a';
 const session = await core.requireAuth();
 if (session) {
 
@@ -1060,6 +1110,124 @@ function start() {
   state.deepSay = qp.get('say') || '';
   runBootstrap(true);
 }
+/* ---------- screenshot -> leads (vision) ---------- */
+var scanLeads = [];
+function fileToB64(file) {
+  return new Promise(function (resolve, reject) {
+    var r = new FileReader();
+    r.onload = function () { var s = String(r.result); resolve({ b64: s.slice(s.indexOf(',') + 1), type: file.type || 'image/jpeg' }); };
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+function openScanModal() { $('scanModal').classList.add('on'); }
+function closeScanModal() { $('scanModal').classList.remove('on'); scanLeads = []; }
+function scanThinking() {
+  openScanModal();
+  $('scanTitle').textContent = 'Reading screenshot…';
+  $('scanAdd').disabled = true;
+  $('scanBody').innerHTML = '<div class="thinking">Claude is reading the image…</div>';
+}
+async function handleImage(file) {
+  if (!file || file.type.indexOf('image/') !== 0) return;
+  if (file.size > 7 * 1024 * 1024) { toast({ type: 'err', html: 'Image too big (max 7 MB).' }); return; }
+  scanThinking();
+  try {
+    var img = await fileToB64(file);
+    var res = await core.visionScan(img.b64, img.type);
+    var leads = (res.leads || []).filter(function (l) { return (l.handle || l.name || '').trim(); });
+    if (!leads.length) { $('scanBody').innerHTML = '<div class="thinking">No leads found in that image.</div>'; $('scanTitle').textContent = 'Leads from screenshot'; return; }
+    renderScan(leads);
+  } catch (e) {
+    $('scanBody').innerHTML = '<div class="thinking">Couldn\'t read that: ' + esc(e.message) + '</div>';
+    $('scanTitle').textContent = 'Leads from screenshot';
+  }
+}
+function opts(list, sel, blank) {
+  return (blank ? '<option value="">' + blank + '</option>' : '') +
+    list.map(function (o) { return '<option' + (o === sel ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('');
+}
+function renderScan(leads) {
+  scanLeads = leads;
+  $('scanTitle').textContent = leads.length + ' lead' + (leads.length === 1 ? '' : 's') + ' found';
+  $('scanAdd').disabled = false;
+  $('scanBody').innerHTML = leads.map(function (l, i) {
+    var handle = CRMParse.normalizeHandle(l.handle) || (l.name || '').trim();
+    var exists = state.byHandle.get(CRMParse.normalizeHandle(handle));
+    return '<div class="lead-card" data-i="' + i + '">' +
+      '<div class="lc-top"><input class="lc-h" data-f="handle" value="' + esc(handle) + '" placeholder="handle">' +
+        '<button class="lc-x" data-rm="' + i + '" aria-label="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18 18 6M6 6l12 12"/></svg></button></div>' +
+      '<div class="lc-grid">' +
+        '<select data-f="stage">' + opts(['Engaged 1','Engaged 2','Engaged 3','Booked','No Reply'], l.stage || 'Engaged 1') + '</select>' +
+        '<select data-f="temp">' + opts(['Hot Lead','Warm Lead','Cold Lead'], l.temp, 'Temp —') + '</select>' +
+        '<select data-f="status">' + opts(state.statuses, canonIn(state.statuses, l.status) || l.status, 'Status —') + '</select>' +
+        '</div>' +
+      '<input class="lc-note" data-f="notes" value="' + esc(l.notes || '') + '" placeholder="note">' +
+      (exists ? '<div class="exists">already a lead — this updates @' + esc(exists.h) + '</div>' : '') +
+      '</div>';
+  }).join('');
+  Array.prototype.forEach.call($('scanBody').querySelectorAll('[data-rm]'), function (b) {
+    b.onclick = function () {
+      var card = b.closest('.lead-card'); card.remove();
+      if (!$('scanBody').querySelector('.lead-card')) closeScanModal();
+    };
+  });
+}
+async function addScanned() {
+  var cards = [].slice.call($('scanBody').querySelectorAll('.lead-card'));
+  if (!cards.length) return;
+  $('scanAdd').disabled = true; $('scanAdd').textContent = 'Adding…';
+  var added = 0, updated = 0, failed = 0;
+  for (var i = 0; i < cards.length; i++) {
+    var card = cards[i];
+    var g = function (f) { var el = card.querySelector('[data-f="' + f + '"]'); return el ? el.value.trim() : ''; };
+    var handle = CRMParse.normalizeHandle(g('handle'));
+    if (!handle) { failed++; continue; }
+    try {
+      var res = await api('setterUpdate', { handle: handle, stage: g('stage'), status: g('status'), temp: g('temp'), note: g('notes') });
+      if (res.mode === 'created') added++; else updated++;
+      applyWriteLocally(res, { handle: handle, stage: g('stage'), status: g('status'), temp: g('temp'), note: g('notes') });
+      pushRecentFromScan(res, handle, g('stage'));
+    } catch (e) { failed++; }
+  }
+  $('scanAdd').disabled = false; $('scanAdd').textContent = 'Add leads';
+  closeScanModal();
+  var parts = [];
+  if (added) parts.push(added + ' added');
+  if (updated) parts.push(updated + ' updated');
+  if (failed) parts.push(failed + ' failed');
+  toast({ type: failed && !added && !updated ? 'err' : 'ok', html: 'Screenshot: ' + parts.join(', ') + '.', ttl: 7000 });
+}
+function pushRecentFromScan(res, handle, stage) {
+  if (typeof addRecent === 'function') addRecent(res, { handle: handle, stage: stage });
+}
+function bindScan() {
+  $('scanBtn').addEventListener('click', function () { $('scanFile').click(); });
+  $('scanFile').addEventListener('change', function (e) { if (e.target.files[0]) handleImage(e.target.files[0]); e.target.value = ''; });
+  $('scanClose').addEventListener('click', closeScanModal);
+  $('scanCancel').addEventListener('click', closeScanModal);
+  $('scanAdd').addEventListener('click', addScanned);
+  $('scanModal').addEventListener('mousedown', function (e) { if (e.target === $('scanModal')) closeScanModal(); });
+  // paste an image
+  window.addEventListener('paste', function (e) {
+    var items = (e.clipboardData && e.clipboardData.items) || [];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].type && items[i].type.indexOf('image/') === 0) { e.preventDefault(); handleImage(items[i].getAsFile()); return; }
+    }
+  });
+  // drag & drop
+  var over = $('dropOver'), depth = 0;
+  window.addEventListener('dragenter', function (e) { if (e.dataTransfer && [].indexOf.call(e.dataTransfer.types, 'Files') !== -1) { depth++; over.classList.add('on'); } });
+  window.addEventListener('dragover', function (e) { if (over.classList.contains('on')) e.preventDefault(); });
+  window.addEventListener('dragleave', function () { depth = Math.max(0, depth - 1); if (!depth) over.classList.remove('on'); });
+  window.addEventListener('drop', function (e) {
+    if (!over.classList.contains('on')) return;
+    e.preventDefault(); depth = 0; over.classList.remove('on');
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) handleImage(f);
+  });
+}
+
 function boot() {
   if (typeof window.CRMParse === 'undefined') {
     document.querySelector('.wrap').insertAdjacentHTML('beforeend',
@@ -1069,6 +1237,7 @@ function boot() {
   }
   initVoice();
   bindEvents();
+  bindScan();
   core.installPalette({ leads: function () { return state.unique; }, onLead: function (l) { pickLead(l); } });
   start();
 }

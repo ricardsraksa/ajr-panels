@@ -412,6 +412,20 @@ export async function interpret(text, mode, deal) {
   return data;
 }
 
+export async function visionScan(imageB64, mediaType) {
+  if (DEMO) {
+    await new Promise((r) => setTimeout(r, 700));
+    return { ok: true, leads: [
+      { handle: 'growthwithdan', name: 'Dan', status: 'Mid convo', temp: 'Hot Lead', notes: 'runs a supplement brand, asked about pricing', confidence: 'high' },
+      { handle: 'sara.ecom', name: 'Sara', status: 'Left on read', temp: 'Warm Lead', notes: 'sent audit offer, no reply yet', confidence: 'medium' },
+    ] };
+  }
+  const { data, error } = await supa.functions.invoke('vision', { body: { image: imageB64, media_type: mediaType } });
+  if (error) throw new Error(error.message || 'Vision unreachable');
+  if (!data || !data.ok) throw new Error((data && data.error) || 'Vision error');
+  return data;
+}
+
 export async function bookedAlert(name, qual, link) {
   if (DEMO) return;
   try { await supa.functions.invoke('alerts', { body: { type: 'booked', name, qual, link } }); }
