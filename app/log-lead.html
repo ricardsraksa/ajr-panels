@@ -375,7 +375,7 @@ kbd.hint{margin-left:6px;opacity:.6}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260710c';
+import * as core from './crm-core.js?v=20260711a';
 const session = await core.requireAuth();
 if (session) {
 
@@ -1164,6 +1164,7 @@ function renderScan(leads) {
         '<select data-f="status">' + opts(state.statuses, canonIn(state.statuses, l.status) || l.status, 'Status —') + '</select>' +
         '</div>' +
       '<input class="lc-note" data-f="notes" value="' + esc(l.notes || '') + '" placeholder="note">' +
+      (l.confidence && l.confidence !== 'high' ? '<div class="exists">low confidence — double-check this one</div>' : '') +
       (exists ? '<div class="exists">already a lead — this updates @' + esc(exists.h) + '</div>' : '') +
       '</div>';
   }).join('');

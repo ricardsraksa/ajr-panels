@@ -213,7 +213,9 @@ export async function setterUpdate(args) {
       if (args.temp) hit.temp = args.temp;
       if (args.note) hit.notes = hit.notes ? hit.notes + '\n' + args.note : args.note;
       hit.lastContact = todayDmy();
-      return { ok: true, mode: 'updated', row: hit.id, handle, prev, undo: _demoUndoToken('leads', 'id', hit.id, { level: prev.level, status: prev.last_status, temp: prev.temp, notes: prev.notes, lastContact: isoToDmy(prev.last_contact) }) };
+      let deal = null;
+      if (args.stage === 'Booked') deal = await ensureDealForLead(hit);
+      return { ok: true, mode: 'updated', row: hit.id, handle, prev, deal, undo: _demoUndoToken('leads', 'id', hit.id, { level: prev.level, status: prev.last_status, temp: prev.temp, notes: prev.notes, lastContact: isoToDmy(prev.last_contact) }) };
     }
     if (!args.stage) throw new Error('stage required to create');
     const nl = { id: Date.now(), h: handle, url: 'https://instagram.com/' + handle, level: args.stage, status: args.status || '', temp: args.temp || 'Warm Lead', qual: '', notes: args.note || '', lastContact: todayDmy() };
@@ -236,7 +238,11 @@ export async function setterUpdate(args) {
     const { error } = await supa.from('leads').update(patch).eq('id', hit.id);
     if (error) throw new Error(error.message);
     const actId = await logActivity('leads', hit.id, 'update', prev, patch);
-    return { ok: true, mode: 'updated', row: hit.id, handle, prev,
+    let deal = null;
+    if (args.stage === 'Booked') {
+      try { deal = await ensureDealForLead(hit); } catch (e) { /* surfaced via missing deal, not a blocked write */ }
+    }
+    return { ok: true, mode: 'updated', row: hit.id, handle, prev, deal,
       undo: { table: 'leads', rowId: hit.id, prev, actId } };
   }
 
@@ -250,7 +256,11 @@ export async function setterUpdate(args) {
     .insert(rowNew).select('id').single();
   if (cErr) throw new Error(cErr.message);
   await logActivity('leads', created.id, 'create', null, rowNew);
-  return { ok: true, mode: 'created', row: created.id, handle };
+  let deal = null;
+  if (args.stage === 'Booked') {
+    try { deal = await ensureDealForLead({ id: created.id, h: handle, ig_url: rowNew.ig_url, qualification: null, notes: rowNew.notes }); } catch (e) { /* non-blocking */ }
+  }
+  return { ok: true, mode: 'created', row: created.id, handle, deal };
 }
 
 /** Update a deal. args: {row(id), fields:{status,meeting,followup,cash,notes}, cashConfirmed}
@@ -298,6 +308,35 @@ export async function closerUpdate(args) {
     undo: { table: 'deals', rowId: d.id, prev, actId } };
 }
 
+/** When a lead is Booked, the closer gets a deal — automatically.
+ *  Skips if an open deal already exists for this lead/handle. */
+export async function ensureDealForLead(lead) {
+  const h = lead.h || lead.handle || '';
+  if (DEMO) {
+    const open = _demo.deals.find((d) => (d.link || '').toLowerCase().includes(h) && d.status !== 'Closed' && d.status !== 'No Close');
+    if (open) return { created: false, row: open.row };
+    const nd = { row: Date.now(), id: Date.now(), leadId: lead.id, name: '@' + h,
+      link: lead.url || 'https://instagram.com/' + h, status: 'Discovery Call',
+      meeting: '', followup: '', qual: lead.qual || '', cash: '', notes: lead.notes || '', hasFF: false, fireflies_link: '' };
+    _demo.deals.push(nd);
+    return { created: true, row: nd.row };
+  }
+  const { data: existing } = await supa.from('deals')
+    .select('id,status').eq('lead_id', lead.id)
+    .not('status', 'in', '("Closed","No Close")').limit(1);
+  if (existing && existing.length) return { created: false, row: existing[0].id };
+  const row = {
+    lead_id: lead.id, name: '@' + h,
+    ig_link: lead.ig_url || lead.url || 'https://www.instagram.com/' + h + '/',
+    status: 'Discovery Call', qualification: lead.qualification || null,
+    notes: lead.notes || null, email: lead.email || null, phone: lead.phone || null,
+  };
+  const { data: created, error } = await supa.from('deals').insert(row).select('id').single();
+  if (error) throw new Error(error.message);
+  await logActivity('deals', created.id, 'create', null, row);
+  return { created: true, row: created.id };
+}
+
 /** Direct-set a lead's fields (leads-browser editor). Only present keys write. */
 export async function setLead(id, fields) {
   const MAP = { level: 'level', status: 'last_status', temp: 'temp', qual: 'qualification',
@@ -320,7 +359,11 @@ export async function setLead(id, fields) {
   const { error } = await supa.from('leads').update(patch).eq('id', id);
   if (error) throw new Error(error.message);
   const actId = await logActivity('leads', id, 'update', prev, patch);
-  return { ok: true, row: id, handle: l.handle, prev, undo: { table: 'leads', rowId: id, prev, actId } };
+  let deal = null;
+  if (patch.level === 'Booked' && l.level !== 'Booked') {
+    try { deal = await ensureDealForLead({ ...l, handle: l.handle, h: l.handle }); } catch (e) { /* non-blocking */ }
+  }
+  return { ok: true, row: id, handle: l.handle, prev, deal, undo: { table: 'leads', rowId: id, prev, actId } };
 }
 
 /** Recent history for one record, newest first. */
@@ -454,6 +497,7 @@ export function installPalette(opts = {}) {
     { label: 'All leads', href: 'leads.html' },
     { label: 'Log a lead', href: 'log-lead.html' },
     { label: 'Closing', href: 'deals.html' },
+    { label: 'Settings', href: 'settings.html' },
   ];
   const el = document.createElement('div');
   el.id = 'ck-pal';
@@ -530,4 +574,146 @@ export function relTime(iso) {
   if (s < 3600) return Math.round(s / 60) + 'm ago';
   if (s < 86400) return Math.round(s / 3600) + 'h ago';
   return Math.round(s / 86400) + 'd ago';
+}
+
+
+/* ---------- shared screenshot scanner (paste / drop / button) ----------
+   Pages call installScanner({ statuses, exists(handle), onDone() }). Renders
+   its own modal; writes via setterUpdate; logs ai_feedback per added lead. */
+export function installScanner(opts = {}) {
+  if (document.getElementById('sc2-modal')) return;
+  const statuses = opts.statuses || STATUSES;
+  const el = document.createElement('div');
+  el.innerHTML = `
+    <style>
+      #sc2-drop{position:fixed;inset:0;z-index:90;background:rgba(14,14,16,.86);display:none;align-items:center;justify-content:center}
+      #sc2-drop.on{display:flex}
+      #sc2-drop .b{border:2px dashed #8ee59a;border-radius:18px;padding:40px 56px;color:#e9e9ec;font:600 15px 'Geist',system-ui,sans-serif}
+      #sc2-modal{position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;padding:8vh 16px;overflow-y:auto}
+      #sc2-modal.on{display:flex}
+      #sc2-modal .c{width:min(560px,100%);background:#141416;border:1px solid #26262c;border-radius:16px;overflow:hidden;font-family:'Geist',system-ui,sans-serif}
+      #sc2-modal .h{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid #1e1e23;color:#e9e9ec}
+      #sc2-modal .h b{font-size:15px;font-weight:600;flex:1}
+      #sc2-modal .bd{padding:10px 14px;max-height:52vh;overflow-y:auto}
+      #sc2-modal .think{padding:34px;text-align:center;color:#a9a9b1;font-size:14px}
+      .sc2-card{border:1px solid #202024;border-radius:12px;padding:12px;margin:8px 4px;background:#17171b}
+      .sc2-card .t{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+      .sc2-card .hh{flex:1;min-height:36px;padding:0 11px;background:#0e0e10;border:1px solid #202024;border-radius:9px;color:#e9e9ec;font-weight:600;font-size:14px}
+      .sc2-card .x{width:32px;height:32px;border-radius:8px;color:#55555e;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;background:none;border:none}
+      .sc2-card .x:hover{color:#f4a3a3}
+      .sc2-card .g{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+      .sc2-card select,.sc2-card .nn{width:100%;min-height:34px;padding:5px 10px;background:#0e0e10;border:1px solid #202024;border-radius:9px;color:#e9e9ec;font-size:13px}
+      .sc2-card .low{font-size:11px;color:#d9b96a;margin-top:6px}
+      .sc2-card .ex{font-size:11px;color:#d9b96a;margin-top:6px}
+      #sc2-modal .f{padding:12px 18px;border-top:1px solid #1e1e23;display:flex;gap:10px}
+      #sc2-modal .f button{flex:1;min-height:44px;border-radius:11px;font-weight:600;font-size:14px;border:none;cursor:pointer}
+      #sc2-modal .add{background:#8ee59a;color:#0b1f10}
+      #sc2-modal .add:disabled{opacity:.5}
+      #sc2-modal .cancel{background:none;border:1px solid #26262c;color:#a9a9b1}
+    </style>
+    <div id="sc2-drop"><div class="b">Drop the screenshot to read it</div></div>
+    <div id="sc2-modal"><div class="c">
+      <div class="h"><b id="sc2-title">Leads from screenshot</b>
+        <button class="x" id="sc2-close" aria-label="Close" style="color:#55555e;background:none;border:none;cursor:pointer">✕</button></div>
+      <div class="bd" id="sc2-body"></div>
+      <div class="f"><button class="cancel" id="sc2-cancel">Cancel</button><button class="add" id="sc2-add">Add leads</button></div>
+    </div></div>`;
+  document.body.appendChild(el);
+  const $i = (id) => document.getElementById(id);
+  const escH = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let items = [];
+  const close = () => { $i('sc2-modal').classList.remove('on'); items = []; };
+  $i('sc2-close').onclick = close; $i('sc2-cancel').onclick = close;
+  $i('sc2-modal').addEventListener('mousedown', (e) => { if (e.target === $i('sc2-modal')) close(); });
+
+  function optHtml(list, sel, blank) {
+    return (blank ? '<option value="">' + blank + '</option>' : '') +
+      list.map((o) => '<option' + (o === sel ? ' selected' : '') + '>' + escH(o) + '</option>').join('');
+  }
+  function render(leads) {
+    items = leads;
+    $i('sc2-title').textContent = leads.length + ' lead' + (leads.length === 1 ? '' : 's') + ' found';
+    $i('sc2-add').disabled = false;
+    $i('sc2-body').innerHTML = leads.map((l, i) => {
+      const handle = (l.handle || l.name || '').trim().toLowerCase().replace(/^@/, '');
+      l._suggested = { handle, stage: l.stage || 'Engaged 1', status: l.status || '', temp: l.temp || '', notes: l.notes || '' };
+      const exists = opts.exists ? opts.exists(handle) : null;
+      return '<div class="sc2-card" data-i="' + i + '">' +
+        '<div class="t"><input class="hh" data-f="handle" value="' + escH(handle) + '" placeholder="handle">' +
+          '<button class="x" data-rm>✕</button></div>' +
+        '<div class="g">' +
+          '<select data-f="stage">' + optHtml(['Engaged 1','Engaged 2','Engaged 3','Booked','No Reply'], l.stage || 'Engaged 1') + '</select>' +
+          '<select data-f="temp">' + optHtml(['Hot Lead','Warm Lead','Cold Lead'], l.temp, 'Temp —') + '</select>' +
+          '<select data-f="status">' + optHtml(statuses, l.status, 'Status —') + '</select>' +
+        '</div>' +
+        '<input class="nn" data-f="notes" value="' + escH(l.notes || '') + '" placeholder="note">' +
+        (l.confidence && l.confidence !== 'high' ? '<div class="low">low confidence — double-check this one</div>' : '') +
+        (exists ? '<div class="ex">already a lead — this updates @' + escH(exists) + '</div>' : '') +
+      '</div>';
+    }).join('');
+    Array.prototype.forEach.call($i('sc2-body').querySelectorAll('[data-rm]'), (b) => {
+      b.onclick = () => { b.closest('.sc2-card').remove(); if (!$i('sc2-body').querySelector('.sc2-card')) close(); };
+    });
+    $i('sc2-modal').classList.add('on');
+  }
+  async function handleImage(file) {
+    if (!file || (file.type || '').indexOf('image/') !== 0) return;
+    $i('sc2-modal').classList.add('on');
+    $i('sc2-title').textContent = 'Reading screenshot…';
+    $i('sc2-add').disabled = true;
+    $i('sc2-body').innerHTML = '<div class="think">Claude is reading the image…</div>';
+    try {
+      const b64 = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => { const v = String(r.result); res(v.slice(v.indexOf(',') + 1)); };
+        r.onerror = rej; r.readAsDataURL(file);
+      });
+      const out = await visionScan(b64, file.type || 'image/jpeg');
+      const leads = (out.leads || []).filter((l) => (l.handle || l.name || '').trim());
+      if (!leads.length) { $i('sc2-body').innerHTML = '<div class="think">No leads found in that image.</div>'; return; }
+      render(leads);
+    } catch (e) {
+      $i('sc2-body').innerHTML = '<div class="think">Couldn’t read that: ' + escH(e.message) + '</div>';
+    }
+  }
+  $i('sc2-add').onclick = async () => {
+    const cards = [].slice.call($i('sc2-body').querySelectorAll('.sc2-card'));
+    $i('sc2-add').disabled = true; $i('sc2-add').textContent = 'Adding…';
+    let n = 0;
+    for (const card of cards) {
+      const g = (f) => { const x = card.querySelector('[data-f="' + f + '"]'); return x ? x.value.trim() : ''; };
+      const handle = g('handle').toLowerCase().replace(/^@/, '');
+      if (!handle) continue;
+      try {
+        await setterUpdate({ handle, stage: g('stage'), status: g('status'), temp: g('temp'), note: g('notes') });
+        const orig = items[+card.getAttribute('data-i')];
+        if (orig && orig._suggested) logAiFeedback('vision', handle, orig._suggested,
+          { handle, stage: g('stage'), status: g('status'), temp: g('temp'), notes: g('notes') });
+        n++;
+      } catch (e) { /* count only successes */ }
+    }
+    $i('sc2-add').disabled = false; $i('sc2-add').textContent = 'Add leads';
+    close();
+    if (opts.onDone) opts.onDone(n);
+  };
+  // paste + drop
+  window.addEventListener('paste', (e) => {
+    const its = (e.clipboardData && e.clipboardData.items) || [];
+    for (const it of its) if (it.type && it.type.indexOf('image/') === 0) { e.preventDefault(); handleImage(it.getAsFile()); return; }
+  });
+  let depth = 0;
+  window.addEventListener('dragenter', (e) => { if (e.dataTransfer && [].indexOf.call(e.dataTransfer.types, 'Files') !== -1) { depth++; $i('sc2-drop').classList.add('on'); } });
+  window.addEventListener('dragover', (e) => { if ($i('sc2-drop').classList.contains('on')) e.preventDefault(); });
+  window.addEventListener('dragleave', () => { depth = Math.max(0, depth - 1); if (!depth) $i('sc2-drop').classList.remove('on'); });
+  window.addEventListener('drop', (e) => {
+    if (!$i('sc2-drop').classList.contains('on')) return;
+    e.preventDefault(); depth = 0; $i('sc2-drop').classList.remove('on');
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) handleImage(f);
+  });
+  return { openFile: () => {
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+    inp.onchange = () => { if (inp.files[0]) handleImage(inp.files[0]); };
+    inp.click();
+  } };
 }

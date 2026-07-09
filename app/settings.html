@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Settings · AJR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e0e10; --panel:#17171b; --card:#141416;
+  --border:#202024; --border-2:#26262c; --hair:#1a1a1e;
+  --text:#e9e9ec; --text-2:#c9c9cf; --muted:#a9a9b1; --dim:#6e6e78; --faint:#55555e;
+  --primary:#e9e9ec; --primary-ink:#101013;
+  --money:#8ee59a; --amber:#d9b96a; --err:#f4a3a3;
+  --font:'Geist',system-ui,sans-serif; --mono:'Geist Mono',ui-monospace,monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:var(--money);text-decoration:none}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--muted);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+input::placeholder{color:var(--faint)}
+.wrap{max-width:720px;margin:0 auto;padding:22px 24px 60px}
+.hdr{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.hdr .title{font-size:1.18rem;font-weight:600;letter-spacing:-.02em}
+.hdr .sp{flex:1}
+.hdr a.nav{color:var(--money);font-size:12.5px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:16px}
+.card h2{font-size:15px;font-weight:600;margin-bottom:4px}
+.card .sub{color:var(--dim);font-size:12.5px;margin-bottom:14px}
+.rows{list-style:none}
+.rows li{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--hair);font-size:13px}
+.rows li:first-child{border-top:none}
+.rows .k{color:var(--muted);flex:1}
+.rows .v{font-family:var(--mono);font-size:12px;color:var(--text-2)}
+.st{width:8px;height:8px;border-radius:50%;flex:none}
+.st.ok{background:var(--money)}
+.st.warn{background:var(--amber)}
+.st.bad{background:var(--err)}
+.st.off{background:var(--faint)}
+.urlbox{display:flex;gap:8px;margin-top:10px}
+.urlbox input{flex:1;min-height:42px;padding:0 12px;background:var(--panel);border:1px solid var(--border-2);border-radius:10px;color:var(--text-2);font:400 12px var(--mono)}
+.btn{min-height:42px;padding:0 16px;border-radius:10px;font-weight:600;font-size:13px}
+.btn-primary{background:var(--primary);color:var(--primary-ink)}
+.btn-primary:hover:not(:disabled){filter:brightness(.94)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-ghost{border:1px solid var(--border-2);color:var(--muted)}
+.btn-ghost:hover{color:var(--text);border-color:#33333a}
+.note{color:var(--faint);font-size:12px;line-height:1.6;margin-top:10px}
+.note ol{margin:6px 0 0 18px}
+.msg{font-size:12.5px;margin-top:10px;min-height:18px}
+.msg.ok{color:var(--money)}
+.msg.err{color:var(--err)}
+.toasts{position:fixed;z-index:60;bottom:18px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:9px;width:min(420px,calc(100vw - 32px))}
+.toast{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--border-2);border-radius:12px;padding:13px 16px;font-size:13.5px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hdr">
+    <span class="title">Settings</span>
+    <span class="sp"></span>
+    <a class="nav" href="worklist.html">Worklist →</a>
+    <a class="nav" href="leads.html">All leads →</a>
+    <a class="nav" href="deals.html">Closing →</a>
+  </header>
+
+  <div class="card">
+    <h2>Health</h2>
+    <div class="sub">Live checks against the system.</div>
+    <ul class="rows" id="health"><li><span class="st off"></span><span class="k">Checking…</span></li></ul>
+  </div>
+
+  <div class="card">
+    <h2>Call transcripts (Fireflies)</h2>
+    <div class="sub" id="ff-sub">Calls flow into the CRM once Reinis saves this webhook in Fireflies.</div>
+    <div class="urlbox">
+      <input id="ff-url" readonly value="">
+      <button class="btn btn-ghost" id="ff-copy">Copy</button>
+    </div>
+    <div class="note">Send the URL to Reinis: <strong>app.fireflies.ai → Settings → Developer settings → Webhook</strong>, paste, save. Done once.</div>
+  </div>
+
+  <div class="card">
+    <h2>Team alerts (Slack)</h2>
+    <div class="sub">Booked-lead pings + the morning call sheet. Paste a Slack incoming-webhook URL.</div>
+    <div class="urlbox">
+      <input id="slack-url" placeholder="https://hooks.slack.com/services/…" spellcheck="false">
+      <button class="btn btn-primary" id="slack-save">Save</button>
+      <button class="btn btn-ghost" id="slack-test">Test</button>
+    </div>
+    <div class="msg" id="slack-msg"></div>
+    <div class="note">To create one:
+      <ol>
+        <li>api.slack.com/apps → Create App → From scratch → pick your workspace</li>
+        <li>Incoming Webhooks → activate → Add New Webhook → choose the channel</li>
+        <li>Copy the URL here, Save, then Test</li>
+      </ol>
+    </div>
+  </div>
+</div>
+<div class="toasts" id="toasts"></div>
+
+<script type="module">
+import * as core from './crm-core.js?v=20260711a';
+const session = await core.requireAuth();
+if (session) {
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+const FF_URL = 'https://cukjynfatkyiuzvstgcp.supabase.co/functions/v1/ffwebhook?secret=064df4cc164bcff4b95233f6a305100f8cbc6131bd3ba6aa';
+
+/* ---------- health ---------- */
+function row(state, label, value) {
+  return `<li><span class="st ${state}"></span><span class="k">${esc(label)}</span><span class="v">${esc(value)}</span></li>`;
+}
+async function health() {
+  const out = [];
+  if (core.isDemo) {
+    $('health').innerHTML = [
+      row('ok', 'Database', '13 leads · 42ms'),
+      row('ok', 'Deals', '6'),
+      row('warn', 'Fireflies webhook', 'no events yet — not repointed?'),
+      row('ok', 'Last write', 'demo · just now'),
+      row('off', 'Slack alerts', 'not set'),
+      row('ok', 'AI feedback collected', '3'),
+    ].join('');
+    return;
+  }
+  try {
+    const t0 = performance.now();
+    const { count: leads } = await core.supa.from('leads').select('id', { count: 'exact', head: true });
+    const ms = Math.round(performance.now() - t0);
+    out.push(row('ok', 'Database', `${leads} leads · ${ms}ms`));
+  } catch (e) { out.push(row('bad', 'Database', e.message)); }
+  try {
+    const { count: deals } = await core.supa.from('deals').select('id', { count: 'exact', head: true });
+    out.push(row('ok', 'Deals', String(deals)));
+  } catch (e) { out.push(row('bad', 'Deals', e.message)); }
+  try {
+    const { data } = await core.supa.from('pending_calls').select('created_at').order('created_at', { ascending: false }).limit(1);
+    out.push(data && data.length
+      ? row('ok', 'Last Fireflies event', core.relTime(data[0].created_at))
+      : row('warn', 'Fireflies webhook', 'no events yet — not repointed?'));
+  } catch (e) { out.push(row('bad', 'Fireflies', e.message)); }
+  try {
+    const { data } = await core.supa.from('activity').select('created_at,actor').order('id', { ascending: false }).limit(1);
+    out.push(data && data.length
+      ? row('ok', 'Last write', `${(data[0].actor || '').split('@')[0]} · ${core.relTime(data[0].created_at)}`)
+      : row('warn', 'Activity', 'none yet'));
+  } catch (e) { out.push(row('bad', 'Activity', e.message)); }
+  try {
+    const { data } = await core.supa.from('settings').select('value').eq('key', 'slack_webhook').maybeSingle();
+    out.push(data && data.value ? row('ok', 'Slack alerts', 'configured') : row('off', 'Slack alerts', 'not set'));
+    if (data && data.value) $('slack-url').value = data.value;
+  } catch (e) { out.push(row('bad', 'Settings', e.message)); }
+  try {
+    const { count } = await core.supa.from('ai_feedback').select('id', { count: 'exact', head: true });
+    out.push(row('ok', 'AI feedback collected', String(count || 0)));
+  } catch (e) { /* table optional */ }
+  $('health').innerHTML = out.join('');
+}
+
+/* ---------- fireflies ---------- */
+$('ff-url').value = FF_URL;
+$('ff-copy').onclick = async () => {
+  try { await navigator.clipboard.writeText(FF_URL); $('ff-copy').textContent = 'Copied'; }
+  catch (e) { $('ff-url').select(); document.execCommand('copy'); $('ff-copy').textContent = 'Copied'; }
+  setTimeout(() => { $('ff-copy').textContent = 'Copy'; }, 1500);
+};
+
+/* ---------- slack ---------- */
+function msg(t, ok) { const m = $('slack-msg'); m.textContent = t; m.className = 'msg ' + (ok ? 'ok' : 'err'); }
+$('slack-save').onclick = async () => {
+  const v = $('slack-url').value.trim();
+  if (v && v.indexOf('https://hooks.slack.com/') !== 0) { msg('That doesn’t look like a Slack webhook URL.', false); return; }
+  try {
+    await core.supa.from('settings').upsert({ key: 'slack_webhook', value: v || null, updated_at: new Date().toISOString() });
+    msg(v ? 'Saved. Hit Test to confirm.' : 'Cleared — alerts off.', true);
+    health();
+  } catch (e) { msg('Save failed: ' + e.message, false); }
+};
+$('slack-test').onclick = async () => {
+  msg('Sending test…', true);
+  try {
+    const { data, error } = await core.supa.functions.invoke('alerts', { body: { type: 'test' } });
+    if (error) throw new Error(error.message);
+    if (data && data.ok) msg('Test sent — check the Slack channel.', true);
+    else msg((data && data.error) || 'Test failed.', false);
+  } catch (e) { msg('Test failed: ' + e.message, false); }
+};
+
+health();
+}
+</script>
+</body>
+</html>

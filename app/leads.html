@@ -147,6 +147,7 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
     <a class="nav" href="worklist.html">Worklist →</a>
     <a class="nav" href="log-lead.html">Log a lead →</a>
     <a class="nav" href="deals.html">Closing →</a>
+    <a class="nav" href="settings.html">Settings →</a>
     <button class="icon-btn" id="signout" aria-label="Sign out">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/></svg>
     </button>
@@ -162,6 +163,7 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
     <select class="tempsel" id="tempsel">
       <option value="">Any temp</option><option>Hot Lead</option><option>Warm Lead</option><option>Cold Lead</option>
     </select>
+    <button class="chip" id="scanBtn" type="button" style="min-height:38px">⊕ Scan screenshot</button>
     <span class="hint"><kbd>⌘K</kbd> search anywhere</span>
   </div>
 
@@ -214,7 +216,7 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260710c';
+import * as core from './crm-core.js?v=20260711a';
 const session = await core.requireAuth();
 if (session) {
 const $ = (id) => document.getElementById(id);
@@ -435,6 +437,12 @@ $('q-fu').onclick = quickFu;
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.editing) closeDrawer(); });
 
 core.installPalette({ leads: () => state.leads, onLead: (l) => openDrawer(l.id) });
+const scanner = core.installScanner({
+  statuses: core.STATUSES,
+  exists: (h) => { const hit = state.leads.find((l) => l.h === h); return hit ? hit.h : null; },
+  onDone: (n) => { toast({ type: 'ok', html: 'Screenshot: ' + n + ' lead' + (n === 1 ? '' : 's') + ' written.' }); load(); },
+});
+$('scanBtn').onclick = () => scanner.openFile();
 load();
 }
 </script>
