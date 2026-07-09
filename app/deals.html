@@ -218,6 +218,8 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
         <option>Discovery Call</option><option>Closing call</option><option>Followup</option><option>Closed</option><option>No Close</option>
       </select>
     </div>
+    <div class="field" id="f-reason-wrap" hidden><label>Why no close?<span class="aitag" id="tag-f-reason" hidden>✦ Claude</span></label>
+      <input id="f-reason" type="text" placeholder="price · timing · went with competitor · ghosted"></div>
     <div class="field"><label>Meeting date<span class="aitag" id="tag-f-meeting" hidden>✦ Claude</span></label><input id="f-meeting" type="date"></div>
     <div class="field"><label>Follow-up date<span class="aitag" id="tag-f-followup" hidden>✦ Claude</span></label><input id="f-followup" type="date"></div>
     <div class="fu-nudge" id="fu-nudge" hidden>No follow-up set <button data-d="3">+3d</button><button data-d="7">+1w</button><button data-d="14">+2w</button></div>
@@ -237,7 +239,7 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260711a';
+import * as core from './crm-core.js?v=20260711b';
 const session = await core.requireAuth();
 if (session) {
 const $ = (id) => document.getElementById(id);
@@ -359,6 +361,8 @@ function openDrawer(id) {
   $('f-followup').value = core.dmyToIso(d.followup) || '';
   $('f-cash').value = (d.cash === '' || d.cash == null) ? '' : d.cash;
   $('f-notes').value = d.notes || '';
+  $('f-reason').value = d.noCloseReason || '';
+  syncReasonRow();
   $('ai-in').value = '';
   $('cash-warn').hidden = true;
   const ffWrap = $('f-ff-wrap');
@@ -419,7 +423,7 @@ async function runAI() {
     const res = await core.interpret(text, 'closer', displayName(d));
     const cmd = CRMParse.intentToCommand(res.intent, { now: new Date(), leads: state.leads, closing: state.deals, statuses: core.STATUSES });
     const f = (cmd.closer && cmd.closer.fields) || {};
-    if (f.status) { $('f-status').value = ['Discovery Call','Closing call','Followup','Closed','No Close'].includes(f.status) ? f.status : $('f-status').value; setTag('f-status', true); }
+    if (f.status) { $('f-status').value = ['Discovery Call','Closing call','Followup','Closed','No Close'].includes(f.status) ? f.status : $('f-status').value; setTag('f-status', true); syncReasonRow(); }
     if (f.meeting) { $('f-meeting').value = core.dmyToIso(f.meeting) || $('f-meeting').value; setTag('f-meeting', true); }
     if (f.followup) { $('f-followup').value = core.dmyToIso(f.followup) || $('f-followup').value; setTag('f-followup', true); }
     if (f.cash != null && f.cash !== '') { $('f-cash').value = f.cash; setTag('f-cash', true); }
@@ -462,6 +466,11 @@ function checkCashWarn() {
   return false;
 }
 
+// the "why no close?" row only makes sense when the status is No Close
+function syncReasonRow() {
+  const show = $('f-status').value === 'No Close';
+  $('f-reason-wrap').hidden = !show;
+}
 async function saveDrawer() {
   const d = dealById(state.editing); if (!d || state.busy) return;
   // cash gate: first Save with a changed cash just shows the words; second Save writes
@@ -478,6 +487,9 @@ async function saveDrawer() {
   if (cash !== '') fields.cash = Number(cash); else fields.cash = '';
   // strip undefined status (no change)
   if (fields.status === undefined) delete fields.status;
+  // no-close reason: store it when No Close, clear it when moving to any other explicit status
+  if ($('f-status').value === 'No Close') fields.no_close_reason = $('f-reason').value.trim();
+  else if ('status' in fields) fields.no_close_reason = '';
 
   state.busy = true; $('d-save').disabled = true;
   try {
@@ -490,6 +502,7 @@ async function saveDrawer() {
     }
     // reflect locally
     if ('status' in fields) d.status = fields.status || '';
+    if ('no_close_reason' in fields) d.noCloseReason = fields.no_close_reason;
     d.meeting = core.isoToDmy($('f-meeting').value);
     d.followup = core.isoToDmy($('f-followup').value);
     d.cash = cash === '' ? '' : Number(cash);
@@ -564,6 +577,7 @@ $('d-close').onclick = closeDrawer;
 $('d-cancel').onclick = closeDrawer;
 $('d-save').onclick = saveDrawer;
 ['f-status','f-meeting','f-followup','f-notes'].forEach((id) => $(id).addEventListener('input', () => { setTag(id, false); state.cashConfirmed = false; $('d-save').textContent = 'Save'; checkFuNudge(); }));
+$('f-status').addEventListener('change', syncReasonRow);
 $('f-cash').addEventListener('input', () => { setTag('f-cash', false); state.cashConfirmed = false; $('d-save').textContent = 'Save'; checkCashWarn(); });
 $('ai-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); runAI(); } });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.editing) closeDrawer(); });

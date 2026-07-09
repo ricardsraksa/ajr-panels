@@ -167,7 +167,7 @@ export async function loadLeads() {
 export async function loadDeals() {
   if (DEMO) return _demo.deals.map(_clone);
   const { data, error } = await supa.from('deals')
-    .select('id,lead_id,name,ig_link,status,meeting,followup,qualification,cash,notes,fireflies_link')
+    .select('id,lead_id,name,ig_link,status,meeting,followup,qualification,cash,notes,fireflies_link,no_close_reason')
     .order('id');
   if (error) throw new Error(error.message);
   return data.map((d) => ({
@@ -176,6 +176,7 @@ export async function loadDeals() {
     meeting: isoToDmy(d.meeting), followup: isoToDmy(d.followup),
     qual: d.qualification || '', cash: d.cash == null ? '' : d.cash,
     notes: d.notes || '', hasFF: !!d.fireflies_link, fireflies_link: d.fireflies_link || '',
+    noCloseReason: d.no_close_reason || '',
   }));
 }
 
@@ -273,11 +274,14 @@ export async function closerUpdate(args) {
     const d = _demo.deals.find((x) => x.row === args.row);
     if (!d) throw new Error('deal not found');
     const prev = { status: d.status, meeting: d.meeting, followup: d.followup, cash: d.cash, notes: d.notes };
+    const oldStatus = d.status;
     if (f.status) d.status = f.status;
     if (f.meeting) d.meeting = f.meeting;
     if (f.followup) d.followup = f.followup;
     if (f.cash != null && f.cash !== '') d.cash = Number(f.cash);
+    if (f.no_close_reason != null) d.noCloseReason = f.no_close_reason || '';
     if (f.notes) d.notes = (!d.notes || String(d.notes).indexOf('[draft]') === 0) ? f.notes : d.notes + '\n' + f.notes;
+    if (f.status) { try { await syncLeadFromDeal(d, f.status, oldStatus, f.no_close_reason || d.noCloseReason); } catch (e) { /* non-blocking */ } }
     return { ok: true, row: d.row, name: d.name || d.link, applied: f, prev, undo: _demoUndoToken('deals', 'row', d.row, prev) };
   }
   if (f.cash != null && f.cash !== '' && args.cashConfirmed !== true) {
@@ -295,6 +299,7 @@ export async function closerUpdate(args) {
   if (f.meeting) patch.meeting = dmyToIso(f.meeting);
   if (f.followup) patch.followup = dmyToIso(f.followup);
   if (f.cash != null && f.cash !== '') patch.cash = Number(f.cash);
+  if (f.no_close_reason != null) patch.no_close_reason = f.no_close_reason || null;
   if (f.notes) {
     patch.notes = (!d.notes || d.notes.indexOf('[draft]') === 0)
       ? f.notes : d.notes + '\n' + f.notes;
@@ -302,10 +307,47 @@ export async function closerUpdate(args) {
   const { error } = await supa.from('deals').update(patch).eq('id', d.id);
   if (error) throw new Error(error.message);
   const actId = await logActivity('deals', d.id, 'update', prev, patch);
+  // closer outcome flows back to the setter's lead (best-effort)
+  if (patch.status) {
+    try { await syncLeadFromDeal(d, patch.status, d.status, f.no_close_reason || d.no_close_reason); }
+    catch (e) { /* never block the deal write */ }
+  }
   // a logged call consumes its pending entry
   await supa.from('pending_calls').update({ consumed: true }).eq('deal_id', d.id);
   return { ok: true, row: d.id, name: d.name || d.ig_link, applied: f, prev,
     undo: { table: 'deals', rowId: d.id, prev, actId } };
+}
+
+/** Closer outcome flows back to the setter's lead. Deal → Closed marks the lead
+ *  Closed; deal → No Close archives it and records the reason on the lead note.
+ *  Best-effort: a failure here never blocks the deal write. Only fires on the
+ *  transition INTO Closed/No Close (oldStatus differs). */
+async function syncLeadFromDeal(deal, newStatus, oldStatus, reason) {
+  const leadId = deal.lead_id || deal.leadId;
+  if (!leadId) return null;
+  if (newStatus !== 'Closed' && newStatus !== 'No Close') return null;
+  if (newStatus === oldStatus) return null;
+  const dm = todayDmy().slice(0, 5); // dd/MM
+  const level = newStatus === 'Closed' ? 'Closed' : 'Archive';
+  const r = String(reason || '').trim();
+  const line = newStatus === 'Closed'
+    ? `[closed ${dm}] deal won`
+    : `[no close ${dm}]${r ? ' — ' + r : ''}`;
+  if (DEMO) {
+    const l = _demo.leads.find((x) => x.id === leadId);
+    if (!l) return null;
+    l.level = level;
+    l.notes = l.notes ? l.notes + '\n' + line : line;
+    return { row: leadId, level };
+  }
+  const { data: l } = await supa.from('leads').select('level,notes').eq('id', leadId).maybeSingle();
+  if (!l) return null;
+  const prev = { level: l.level, notes: l.notes };
+  const next = { level, notes: l.notes ? l.notes + '\n' + line : line };
+  const { error } = await supa.from('leads').update(next).eq('id', leadId);
+  if (error) throw new Error(error.message);
+  await logActivity('leads', leadId, 'update', prev, next);
+  return { row: leadId, level };
 }
 
 /** When a lead is Booked, the closer gets a deal — automatically.
@@ -388,20 +430,23 @@ export async function setDeal(id, fields, opts = {}) {
     const d = _demo.deals.find((x) => x.row === id);
     if (!d) throw new Error('deal not found');
     const prev = {};
+    const oldStatus = d.status;
     if ('cash' in fields) {
       const nc = (fields.cash === '' || fields.cash == null) ? '' : Number(fields.cash);
       if (nc !== '' && nc !== (d.cash === '' || d.cash == null ? '' : Number(d.cash)) && opts.cashConfirmed !== true) throw new Error('cash requires confirmation');
       prev.cash = d.cash; d.cash = nc;
     }
     ['status', 'notes', 'qualification'].forEach((k) => { const kk = k === 'qualification' ? 'qual' : k; if (k in fields) { prev[kk] = d[kk]; d[kk] = fields[k] || ''; } });
+    if ('no_close_reason' in fields) { prev.noCloseReason = d.noCloseReason; d.noCloseReason = fields.no_close_reason || ''; }
     ['meeting', 'followup'].forEach((k) => { if (k in fields) { prev[k] = d[k]; d[k] = fields[k] ? isoToDmy(fields[k]) : ''; } });
+    if ('status' in fields) { try { await syncLeadFromDeal(d, fields.status || '', oldStatus, fields.no_close_reason || d.noCloseReason); } catch (e) { /* non-blocking */ } }
     return { ok: true, row: id, name: d.name || d.link, prev, undo: _demoUndoToken('deals', 'row', id, prev) };
   }
   const { data: d, error: qErr } = await supa.from('deals').select('*').eq('id', id).maybeSingle();
   if (qErr) throw new Error(qErr.message);
   if (!d) throw new Error('deal not found');
   const patch = {};
-  ['status', 'notes', 'qualification', 'meeting', 'followup'].forEach((k) => {
+  ['status', 'notes', 'qualification', 'meeting', 'followup', 'no_close_reason'].forEach((k) => {
     if (k in fields) patch[k] = fields[k] === '' ? null : fields[k];
   });
   if ('cash' in fields) {
@@ -417,6 +462,11 @@ export async function setDeal(id, fields, opts = {}) {
   const { error } = await supa.from('deals').update(patch).eq('id', id);
   if (error) throw new Error(error.message);
   const actId = await logActivity('deals', id, 'update', prev, patch);
+  // closer outcome flows back to the setter's lead (best-effort)
+  if (patch.status) {
+    try { await syncLeadFromDeal(d, patch.status, d.status, patch.no_close_reason || d.no_close_reason); }
+    catch (e) { /* never block the deal write */ }
+  }
   return { ok: true, row: id, name: d.name || d.ig_link, prev, undo: { table: 'deals', rowId: id, prev, actId } };
 }
 
