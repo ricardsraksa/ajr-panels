@@ -416,8 +416,8 @@ export async function visionScan(imageB64, mediaType) {
   if (DEMO) {
     await new Promise((r) => setTimeout(r, 700));
     return { ok: true, leads: [
-      { handle: 'growthwithdan', name: 'Dan', status: 'Mid convo', temp: 'Hot Lead', notes: 'runs a supplement brand, asked about pricing', confidence: 'high' },
-      { handle: 'sara.ecom', name: 'Sara', status: 'Left on read', temp: 'Warm Lead', notes: 'sent audit offer, no reply yet', confidence: 'medium' },
+      { handle: 'growthwithdan', name: 'Dan', stage: 'Engaged 3', status: 'Call Pitched', temp: 'Hot Lead', notes: 'runs a supplement brand ~40k/mo, asked about the audit', confidence: 'high' },
+      { handle: 'sara.ecom', name: 'Sara', stage: 'Engaged 2', status: 'Left on read', temp: 'Warm Lead', notes: 'talked about her email flows, sent audit offer', confidence: 'medium' },
     ] };
   }
   const { data, error } = await supa.functions.invoke('vision', { body: { image: imageB64, media_type: mediaType } });
