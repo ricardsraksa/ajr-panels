@@ -200,7 +200,7 @@ a{color:var(--accent);cursor:pointer;text-decoration:none}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260711c';
+import * as core from './crm-core.js?v=20260711d';
 const session = await core.requireAuth();
 if (session) {
 var $ = function (id) { return document.getElementById(id); };
@@ -354,6 +354,10 @@ function buildIndex() {
 }
 
 /* ---------- the queue: value first, staleness second ---------- */
+// A No-Close lead (deal didn't close) auto-returns to the daily queue once it
+// has cooled this many days — a built-in "circle back later". The No Close
+// filter chip still force-shows all of them regardless of age.
+var NOCLOSE_RESURFACE_DAYS = 30;
 var LVL_W = { 'Engaged 3': 3, 'Engaged 2': 2, 'Engaged 1': 1, 'No Close': 0.5, 'No Reply': 0.5, '': 0.5 };
 var TEMP_W = { 'Hot Lead': 2, 'Warm Lead': 1 };
 function leadScore(l) {
@@ -387,6 +391,12 @@ function restoreFilters() {
 function queueLeads() {
   var f = activeFilters();
   var rows = state.unique.filter(function (l) {
+    // No-Close leads: show on demand (filter chip) OR auto-resurface once cooled
+    if (l.level === 'No Close') {
+      if (f['No Close']) return true;
+      var days = daysSince(l.lastContact);
+      return days !== null && days >= NOCLOSE_RESURFACE_DAYS;
+    }
     return f[l.level] !== undefined ? f[l.level] : false;
   }).filter(function (l) { return !isSweepable(l) && !isSnoozed(l.h); });
   rows.sort(function (a, b) {

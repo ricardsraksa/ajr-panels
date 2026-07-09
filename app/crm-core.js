@@ -51,7 +51,9 @@ const _demo = {
     { id: 10, h: 'thedtcguy', url: 'https://instagram.com/thedtcguy', level: 'No Reply', status: 'Follow up Sent', temp: 'Cold Lead', qual: '', notes: '', lastContact: _ago(43) },
     { id: 11, h: 'ecom.aiden', url: 'https://instagram.com/ecom.aiden', level: 'Engaged 3', status: 'Mid convo', temp: 'Hot Lead', qual: 'Qualified 2', notes: 'wants pricing', lastContact: _ago(2) },
     { id: 12, h: 'bram.vandijk', url: 'https://instagram.com/bram.vandijk', level: 'Archive', status: 'Left on read', temp: 'Cold Lead', qual: 'Unqualified', notes: '', lastContact: _ago(90) },
-    { id: 13, h: 'lena.builds', url: 'https://instagram.com/lena.builds', level: 'Booked', status: 'Call Pitched', temp: 'Hot Lead', qual: 'Qualified 3', notes: 'call booked friday', lastContact: _ago(1) }
+    { id: 13, h: 'lena.builds', url: 'https://instagram.com/lena.builds', level: 'Booked', status: 'Call Pitched', temp: 'Hot Lead', qual: 'Qualified 3', notes: 'call booked friday', lastContact: _ago(1) },
+    { id: 14, h: 'devon.scales', url: 'https://instagram.com/devon.scales', level: 'No Close', status: 'Call done', temp: 'Warm Lead', qual: 'Qualified 2', notes: '[no close 20/05] — price too high', lastContact: _ago(40) },
+    { id: 15, h: 'priya.dtc', url: 'https://instagram.com/priya.dtc', level: 'No Close', status: 'Call done', temp: 'Warm Lead', qual: 'Qualified 1', notes: '[no close 05/07] — bad timing, revisit Q4', lastContact: _ago(4) }
   ],
   deals: [
     { row: 101, id: 101, leadId: null, name: 'Oscar Wong', link: 'https://instagram.com/oscarwxng', status: 'Discovery Call', meeting: _ago(0), followup: '', qual: 'Qualified 2', cash: '', notes: 'supplement brand ~40k/mo', hasFF: true, fireflies_link: 'https://app.fireflies.ai/view/demo' },
@@ -319,9 +321,11 @@ export async function closerUpdate(args) {
 }
 
 /** Closer outcome flows back to the setter's lead. Deal → Closed marks the lead
- *  Closed; deal → No Close archives it and records the reason on the lead note.
- *  Best-effort: a failure here never blocks the deal write. Only fires on the
- *  transition INTO Closed/No Close (oldStatus differs). */
+ *  Closed; deal → No Close keeps it in the book (stage 'No Close') and records
+ *  the reason on the lead note. Stamps last_contact = today so the setter's
+ *  worklist can auto-resurface a No-Close lead once it has cooled (see
+ *  NOCLOSE_RESURFACE_DAYS in worklist). Best-effort: a failure here never blocks
+ *  the deal write. Only fires on the transition INTO Closed/No Close. */
 async function syncLeadFromDeal(deal, newStatus, oldStatus, reason) {
   const leadId = deal.lead_id || deal.leadId;
   if (!leadId) return null;
@@ -339,12 +343,14 @@ async function syncLeadFromDeal(deal, newStatus, oldStatus, reason) {
     if (!l) return null;
     l.level = level;
     l.notes = l.notes ? l.notes + '\n' + line : line;
+    l.lastContact = todayDmy();
     return { row: leadId, level };
   }
-  const { data: l } = await supa.from('leads').select('level,notes').eq('id', leadId).maybeSingle();
+  const todayIso = dmyToIso(todayDmy());
+  const { data: l } = await supa.from('leads').select('level,notes,last_contact').eq('id', leadId).maybeSingle();
   if (!l) return null;
-  const prev = { level: l.level, notes: l.notes };
-  const next = { level, notes: l.notes ? l.notes + '\n' + line : line };
+  const prev = { level: l.level, notes: l.notes, last_contact: l.last_contact };
+  const next = { level, notes: l.notes ? l.notes + '\n' + line : line, last_contact: todayIso };
   const { error } = await supa.from('leads').update(next).eq('id', leadId);
   if (error) throw new Error(error.message);
   await logActivity('leads', leadId, 'update', prev, next);
