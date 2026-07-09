@@ -375,7 +375,7 @@ kbd.hint{margin-left:6px;opacity:.6}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260710b';
+import * as core from './crm-core.js?v=20260710c';
 const session = await core.requireAuth();
 if (session) {
 
@@ -1153,6 +1153,7 @@ function renderScan(leads) {
   $('scanAdd').disabled = false;
   $('scanBody').innerHTML = leads.map(function (l, i) {
     var handle = CRMParse.normalizeHandle(l.handle) || (l.name || '').trim();
+    l._suggested = { handle: handle, stage: l.stage || 'Engaged 1', status: canonIn(state.statuses, l.status) || l.status || '', temp: l.temp || '', notes: l.notes || '' };
     var exists = state.byHandle.get(CRMParse.normalizeHandle(handle));
     return '<div class="lead-card" data-i="' + i + '">' +
       '<div class="lc-top"><input class="lc-h" data-f="handle" value="' + esc(handle) + '" placeholder="handle">' +
@@ -1186,6 +1187,11 @@ async function addScanned() {
     try {
       var res = await api('setterUpdate', { handle: handle, stage: g('stage'), status: g('status'), temp: g('temp'), note: g('notes') });
       if (res.mode === 'created') added++; else updated++;
+      var orig = scanLeads[+card.getAttribute('data-i')];
+      if (orig && orig._suggested) {
+        core.logAiFeedback('vision', handle, orig._suggested,
+          { handle: handle, stage: g('stage'), status: g('status'), temp: g('temp'), notes: g('notes') });
+      }
       applyWriteLocally(res, { handle: handle, stage: g('stage'), status: g('status'), temp: g('temp'), note: g('notes') });
       pushRecentFromScan(res, handle, g('stage'));
     } catch (e) { failed++; }

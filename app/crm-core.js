@@ -426,6 +426,16 @@ export async function visionScan(imageB64, mediaType) {
   return data;
 }
 
+/** Record what the AI suggested vs what the human saved — the raw material
+ *  for tuning the prompts to the team's real judgment. Fire-and-forget. */
+export async function logAiFeedback(source, context, suggested, final) {
+  if (DEMO) return;
+  try {
+    const email = await userEmail();
+    await supa.from('ai_feedback').insert({ source, context: String(context || ''), suggested, final, actor: email });
+  } catch (e) { /* never block the user on telemetry */ }
+}
+
 export async function bookedAlert(name, qual, link) {
   if (DEMO) return;
   try { await supa.functions.invoke('alerts', { body: { type: 'booked', name, qual, link } }); }

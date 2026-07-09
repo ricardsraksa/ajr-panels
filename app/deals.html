@@ -236,7 +236,7 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260710b';
+import * as core from './crm-core.js?v=20260710c';
 const session = await core.requireAuth();
 if (session) {
 const $ = (id) => document.getElementById(id);
@@ -350,6 +350,7 @@ function showEditor() { $('pick').hidden = true; $('dbody').hidden = false; $('d
 function openDrawer(id) {
   const d = dealById(id); if (!d) return;
   showEditor(); clearTags();
+  state.aiSnapshot = null;
   state.editing = id; state.cashConfirmed = false;
   $('d-name').textContent = displayName(d);
   $('f-status').value = ['Discovery Call','Closing call','Followup','Closed','No Close'].includes(d.status) ? d.status : '';
@@ -425,6 +426,8 @@ async function runAI() {
     const warns = (cmd.closer && cmd.closer.warnings) || [];
     toast({ type: 'ok', html: 'Claude filled the fields' + (warns.length ? ' · ' + esc(warns.join(' ')) : '') });
     $('ai-in').value = '';
+    state.aiSnapshot = { status: $('f-status').value, meeting: $('f-meeting').value,
+      followup: $('f-followup').value, cash: $('f-cash').value, notes: $('f-notes').value };
     checkCashWarn();
     checkFuNudge();
   } catch (e) {
@@ -478,6 +481,12 @@ async function saveDrawer() {
   state.busy = true; $('d-save').disabled = true;
   try {
     const res = await core.setDeal(d.row, fields, { cashConfirmed: true });
+    if (state.aiSnapshot) {
+      core.logAiFeedback('interpret', displayName(d), state.aiSnapshot,
+        { status: $('f-status').value, meeting: $('f-meeting').value,
+          followup: $('f-followup').value, cash: $('f-cash').value, notes: $('f-notes').value });
+      state.aiSnapshot = null;
+    }
     // reflect locally
     if ('status' in fields) d.status = fields.status || '';
     d.meeting = core.isoToDmy($('f-meeting').value);
