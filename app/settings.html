@@ -81,7 +81,7 @@ input::placeholder{color:var(--faint)}
 
   <div class="card">
     <h2>Call transcripts (Fireflies)</h2>
-    <div class="sub" id="ff-sub">Calls flow into the CRM once Reinis saves this webhook in Fireflies.</div>
+    <div class="sub" id="ff-sub">Calls are pulled from Fireflies automatically every 45 minutes. For instant processing, Reinis can additionally save this webhook.</div>
     <div class="urlbox">
       <input id="ff-url" readonly value="">
       <button class="btn btn-ghost" id="ff-copy">Copy</button>
@@ -128,7 +128,7 @@ async function health() {
     $('health').innerHTML = [
       row('ok', 'Database', '13 leads · 42ms'),
       row('ok', 'Deals', '6'),
-      row('warn', 'Fireflies webhook', 'no events yet — not repointed?'),
+      row('ok', 'Fireflies', 'polling every 45 min'),
       row('ok', 'Last write', 'demo · just now'),
       row('off', 'Slack alerts', 'not set'),
       row('ok', 'AI feedback collected', '3'),
@@ -148,8 +148,8 @@ async function health() {
   try {
     const { data } = await core.supa.from('pending_calls').select('created_at').order('created_at', { ascending: false }).limit(1);
     out.push(data && data.length
-      ? row('ok', 'Last Fireflies event', core.relTime(data[0].created_at))
-      : row('warn', 'Fireflies webhook', 'no events yet — not repointed?'));
+      ? row('ok', 'Last Fireflies call processed', core.relTime(data[0].created_at))
+      : row('ok', 'Fireflies', 'polling every 45 min — no matching calls yet'));
   } catch (e) { out.push(row('bad', 'Fireflies', e.message)); }
   try {
     const { data } = await core.supa.from('activity').select('created_at,actor').order('id', { ascending: false }).limit(1);
