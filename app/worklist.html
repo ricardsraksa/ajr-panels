@@ -178,6 +178,7 @@ a{color:var(--accent);cursor:pointer;text-decoration:none}
         <label><input type="checkbox" data-lvl="Engaged 1" checked> Engaged 1</label>
         <label><input type="checkbox" data-lvl="Engaged 2" checked> Engaged 2</label>
         <label><input type="checkbox" data-lvl="Engaged 3" checked> Engaged 3</label>
+        <label><input type="checkbox" data-lvl="No Close"> No Close</label>
         <label><input type="checkbox" data-lvl="No Reply"> No Reply</label>
         <label><input type="checkbox" data-lvl=""> No level <span class="opt" id="noLevelCount"></span></label>
       </div>
@@ -199,14 +200,14 @@ a{color:var(--accent);cursor:pointer;text-decoration:none}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260711b';
+import * as core from './crm-core.js?v=20260711c';
 const session = await core.requireAuth();
 if (session) {
 var $ = function (id) { return document.getElementById(id); };
 var LS_DONE = 'ajr_worklist_done', LS_FILTERS = 'ajr_worklist_filters', LS_SNOOZE = 'ajr_worklist_snooze';
 var LEVEL_COLORS = {
   'Engaged 1': '#a9a9b1', 'Engaged 2': '#c9c9cf', 'Engaged 3': '#e9e9ec',
-  'Booked': '#8ee59a', 'Archive': '#6e6e78', 'No Reply': '#8a8a92', 'Closed': '#c9c9cf', '': '#6e6e78'
+  'Booked': '#8ee59a', 'No Close': '#d99a9a', 'Archive': '#6e6e78', 'No Reply': '#8a8a92', 'Closed': '#c9c9cf', '': '#6e6e78'
 };
 
 var state = {
@@ -353,7 +354,7 @@ function buildIndex() {
 }
 
 /* ---------- the queue: value first, staleness second ---------- */
-var LVL_W = { 'Engaged 3': 3, 'Engaged 2': 2, 'Engaged 1': 1, 'No Reply': 0.5, '': 0.5 };
+var LVL_W = { 'Engaged 3': 3, 'Engaged 2': 2, 'Engaged 1': 1, 'No Close': 0.5, 'No Reply': 0.5, '': 0.5 };
 var TEMP_W = { 'Hot Lead': 2, 'Warm Lead': 1 };
 function leadScore(l) {
   var qualW = l.qual && !/^unqual/i.test(l.qual) ? 2 : 0;

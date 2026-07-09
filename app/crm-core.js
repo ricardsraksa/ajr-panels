@@ -11,7 +11,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 export const supa = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 /* canonical vocab (was Apps Script Config.gs) */
-export const STAGES = ['Engaged 1', 'Engaged 2', 'Engaged 3', 'Booked', 'Archive', 'No Reply', 'Closed'];
+export const STAGES = ['Engaged 1', 'Engaged 2', 'Engaged 3', 'Booked', 'No Close', 'Archive', 'No Reply', 'Closed'];
 export const STATUSES = ['Follow up Sent', "Haven't read", 'End of convo', 'Mid convo',
   'Lifestyle sent', 'Left on read', 'Story reply', 'Call Pitched', 'Meme sent', 'LM Sent'];
 export const TEMPS = ['Warm Lead', 'Cold Lead', 'Hot Lead'];
@@ -328,7 +328,8 @@ async function syncLeadFromDeal(deal, newStatus, oldStatus, reason) {
   if (newStatus !== 'Closed' && newStatus !== 'No Close') return null;
   if (newStatus === oldStatus) return null;
   const dm = todayDmy().slice(0, 5); // dd/MM
-  const level = newStatus === 'Closed' ? 'Closed' : 'Archive';
+  // No Close keeps the lead in the CRM (still followed up later), just re-stages it
+  const level = newStatus === 'Closed' ? 'Closed' : 'No Close';
   const r = String(reason || '').trim();
   const line = newStatus === 'Closed'
     ? `[closed ${dm}] deal won`

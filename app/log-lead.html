@@ -375,18 +375,18 @@ kbd.hint{margin-left:6px;opacity:.6}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260711b';
+import * as core from './crm-core.js?v=20260711c';
 const session = await core.requireAuth();
 if (session) {
 
 var $ = function (id) { return document.getElementById(id); };
 
 var PRIMARY = ['Engaged 1', 'Engaged 2', 'Engaged 3', 'Booked', 'Archive'];
-var SECONDARY = ['No Reply', 'Closed'];
+var SECONDARY = ['No Close', 'No Reply', 'Closed'];
 var ALL_STAGES = PRIMARY.concat(SECONDARY);
 var LEVEL_COLORS = {
   'Engaged 1': '#a9a9b1', 'Engaged 2': '#c9c9cf', 'Engaged 3': '#e9e9ec',
-  'Booked': '#8ee59a', 'Archive': '#6e6e78', 'No Reply': '#8a8a92', 'Closed': '#c9c9cf'
+  'Booked': '#8ee59a', 'No Close': '#d99a9a', 'Archive': '#6e6e78', 'No Reply': '#8a8a92', 'Closed': '#c9c9cf'
 };
 
 var state = {
