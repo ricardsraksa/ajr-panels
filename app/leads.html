@@ -65,7 +65,8 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 .trow{border-top:1px solid var(--hair);cursor:pointer;transition:background .12s}
 .trow:first-of-type{border-top:none}
 .trow:hover{background:var(--panel)}
-.lh{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lh{font-weight:600;color:var(--text);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.lh:hover{text-decoration:underline;text-decoration-color:var(--faint)}
 .badge{display:inline-block;padding:1px 9px;border-radius:999px;border:1px solid;font-size:11px;font-weight:600;white-space:nowrap}
 .temp{font-size:11px;font-weight:600}
 .temp.hot{color:var(--amber)}
@@ -297,7 +298,7 @@ function renderTable() {
     const c = LEVEL_COLORS[l.level] || '#8a8a92';
     const ds = daysSince(l.lastContact);
     return `<div class="trow" data-id="${l.id}">
-      <span class="lh">@${esc(l.h)}</span>
+      <a class="lh" href="${esc(l.url || 'https://instagram.com/' + l.h)}" target="_blank" rel="noopener" title="Open Instagram profile">@${esc(l.h)}</a>
       <span><span class="badge" style="color:${c};border-color:${c}55;background:${c}1A">${esc(l.level || 'no level')}</span></span>
       <span class="temp ${l.temp === 'Hot Lead' ? 'hot' : l.temp === 'Warm Lead' ? 'warm' : 'cold'}">${l.temp ? esc(l.temp.split(' ')[0].toUpperCase()) : ''}</span>
       <span class="cell">${esc(l.status || '')}</span>
@@ -308,7 +309,10 @@ function renderTable() {
     </div>`;
   }).join('') + (rows.length > state.shown ? `<button class="more" id="more">Show 100 more · ${rows.length - state.shown} left</button>` : '');
   bindHead();
-  Array.prototype.forEach.call(t.querySelectorAll('.trow'), (r) => { r.onclick = () => openDrawer(+r.getAttribute('data-id')); });
+  Array.prototype.forEach.call(t.querySelectorAll('.trow'), (r) => {
+    r.onclick = () => openDrawer(+r.getAttribute('data-id'));
+    const a = r.querySelector('.lh'); if (a) a.addEventListener('click', (e) => e.stopPropagation()); // @ opens IG, not the drawer
+  });
   const more = $('more'); if (more) more.onclick = () => { state.shown += 100; renderTable(); };
 }
 function bindHead() {

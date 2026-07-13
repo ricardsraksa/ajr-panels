@@ -417,7 +417,7 @@ function rowHtml(l, i, sweep) {
   var dups = state.dupCount.get(l.h) || 1;
   return '<li class="q-row' + (done ? ' done' : '') + (i === state.cursor && !sweep ? ' cursor' : '') + '" data-h="' + esc(l.h) + '">' +
     '<span class="q-main">' +
-      '<button class="q-handle" data-open="' + esc(l.h) + '" title="Open in Log a lead">@' + esc(l.h) + '</button>' +
+      '<a class="q-handle" href="' + esc(l.url || ('https://instagram.com/' + l.h)) + '" target="_blank" rel="noopener" title="Open Instagram profile">@' + esc(l.h) + '</a>' +
       '<span class="badge" style="color:' + c + ';border-color:' + c + '55;background:' + c + '1A">' + esc(l.level || 'no level') + '</span>' +
       (l.temp === 'Hot Lead' ? '<span class="temp-hot">HOT</span>' : '') +
       daysBadge(l.lastContact) +
@@ -431,8 +431,8 @@ function rowHtml(l, i, sweep) {
     '<span class="q-actions">' +
       (done
         ? '<span class="q-done-at">logged ' + esc(done) + '</span><button class="q-undo" data-undone="' + esc(l.h) + '">undo</button>'
-        : (l.url ? '<a class="q-ig" href="' + esc(l.url) + '" target="_blank" rel="noopener" aria-label="Open Instagram profile">' +
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg></a>' : '') +
+        : ('<button class="q-ig" data-open="' + esc(l.h) + '" title="Open in Log a lead" aria-label="Open in Log a lead">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.86 4.49a1.87 1.87 0 1 1 2.65 2.65L7.5 19.15l-3.5 1 1-3.5L16.86 4.49Z"/></svg></button>') +
           (sweep
             ? '<button class="q-archive" data-arch="' + esc(l.h) + '">Archive</button>'
             : '<button class="q-snz" data-snz="' + esc(l.h) + '" title="Snooze 7 days" aria-label="Snooze 7 days">' +
