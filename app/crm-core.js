@@ -464,10 +464,12 @@ async function attachLooseBooking(dealId, dealRow, leadId) {
 /** Unattached active Calendly bookings (for the closing page's link strip). */
 export async function looseBookings() {
   if (DEMO) return _demo.calendly.filter((b) => !b.dealId && b.status === 'active').map(_clone);
-  const freshIso = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString();
+  // only bookings whose call hasn't happened yet — a stale unlinked past call
+  // is noise, not something to action
+  const notPastIso = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
   const { data, error } = await supa.from('calendly_bookings')
     .select('id,name,email,phone,start_iso')
-    .is('deal_id', null).eq('status', 'active').gte('created_at', freshIso)
+    .is('deal_id', null).eq('status', 'active').gte('start_iso', notPastIso)
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return data;
