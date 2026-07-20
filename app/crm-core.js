@@ -383,6 +383,25 @@ export async function ensureDealForLead(lead) {
   const { data: created, error } = await supa.from('deals').insert(row).select('id').single();
   if (error) throw new Error(error.message);
   await logActivity('deals', created.id, 'create', null, row);
+  // one place for the booked ping, so it fires from every path that books a
+  // lead (log tool, All-leads drawer, palette) — re-marking Booked won't
+  // re-ping, since we only get here when a new deal is actually created.
+  try {
+    const { data: L } = await supa.from('leads')
+      .select('handle,ig_url,qualification,temp,phone,email,pain_points,last_status,notes')
+      .eq('id', lead.id).maybeSingle();
+    await bookedAlert({
+      name: '@' + ((L && L.handle) || h),
+      qual: (L && L.qualification) || lead.qualification || '',
+      temp: (L && L.temp) || '',
+      phone: (L && L.phone) || '',
+      email: (L && L.email) || '',
+      pains: (L && L.pain_points) || '',
+      status: (L && L.last_status) || '',
+      notes: (L && L.notes) || '',
+      link: (L && L.ig_url) || row.ig_link || '',
+    });
+  } catch (e) { /* never block the booking */ }
   return { created: true, row: created.id };
 }
 
@@ -536,9 +555,12 @@ export async function logAiFeedback(source, context, suggested, final) {
   } catch (e) { /* never block the user on telemetry */ }
 }
 
-export async function bookedAlert(name, qual, link) {
+/** Ping the team channel that a lead just booked. Takes a payload object so the
+ *  message can carry everything the closer needs to prep (qualification, temp,
+ *  phone/email, pain points, last DM status, notes, link). Fire-and-forget. */
+export async function bookedAlert(payload) {
   if (DEMO) return;
-  try { await supa.functions.invoke('alerts', { body: { type: 'booked', name, qual, link } }); }
+  try { await supa.functions.invoke('alerts', { body: { type: 'booked', ...payload } }); }
   catch (e) { /* fire-and-forget */ }
 }
 

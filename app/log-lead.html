@@ -375,7 +375,7 @@ kbd.hint{margin-left:6px;opacity:.6}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260711d';
+import * as core from './crm-core.js?v=20260711e';
 const session = await core.requireAuth();
 if (session) {
 
@@ -804,10 +804,8 @@ function doWrite(args) {
       (args.stage ? ' → <span class="mono">' + esc(args.stage) + '</span>' : ' logged') +
       (extras.length ? ' (' + esc(extras.join(', ')) + ')' : '') +
       (args.stage ? '' : ' — stage unchanged') + ', contact date stamped.';
-    if (args.stage === 'Booked') {
-      var bl = state.byHandle.get(res.handle);
-      core.bookedAlert(res.handle, (bl && bl.qual) || '', (bl && bl.url) || '');
-    }
+    // the booked ping now fires centrally in core (ensureDealForLead), so every
+    // path that books a lead alerts the channel — nothing to do here.
     var undoAction = (res.mode === 'updated' && res.prev)
       ? { label: 'Undo', fn: function () { undoWrite(res); } } : null;
     toast({ type: 'ok', html: html, ttl: 8000, action: undoAction });
