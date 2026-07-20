@@ -169,7 +169,7 @@ export async function loadLeads() {
 export async function loadDeals() {
   if (DEMO) return _demo.deals.map(_clone);
   const { data, error } = await supa.from('deals')
-    .select('id,lead_id,name,ig_link,status,meeting,followup,qualification,cash,notes,fireflies_link,no_close_reason')
+    .select('id,lead_id,name,ig_link,status,meeting,followup,qualification,cash,notes,fireflies_link,no_close_reason,phone,email,service_type')
     .order('id');
   if (error) throw new Error(error.message);
   return data.map((d) => ({
@@ -179,6 +179,7 @@ export async function loadDeals() {
     qual: d.qualification || '', cash: d.cash == null ? '' : d.cash,
     notes: d.notes || '', hasFF: !!d.fireflies_link, fireflies_link: d.fireflies_link || '',
     noCloseReason: d.no_close_reason || '',
+    phone: d.phone || '', email: d.email || '', service: d.service_type || '',
   }));
 }
 
@@ -462,7 +463,8 @@ export async function setDeal(id, fields, opts = {}) {
       if (nc !== '' && nc !== (d.cash === '' || d.cash == null ? '' : Number(d.cash)) && opts.cashConfirmed !== true) throw new Error('cash requires confirmation');
       prev.cash = d.cash; d.cash = nc;
     }
-    ['status', 'notes', 'qualification'].forEach((k) => { const kk = k === 'qualification' ? 'qual' : k; if (k in fields) { prev[kk] = d[kk]; d[kk] = fields[k] || ''; } });
+    const DMAP = { qualification: 'qual', service_type: 'service' };
+    ['status', 'notes', 'qualification', 'phone', 'email', 'service_type'].forEach((k) => { const kk = DMAP[k] || k; if (k in fields) { prev[kk] = d[kk]; d[kk] = fields[k] || ''; } });
     if ('no_close_reason' in fields) { prev.noCloseReason = d.noCloseReason; d.noCloseReason = fields.no_close_reason || ''; }
     ['meeting', 'followup'].forEach((k) => { if (k in fields) { prev[k] = d[k]; d[k] = fields[k] ? isoToDmy(fields[k]) : ''; } });
     if ('status' in fields) { try { await syncLeadFromDeal(d, fields.status || '', oldStatus, fields.no_close_reason || d.noCloseReason); } catch (e) { /* non-blocking */ } }
@@ -472,7 +474,8 @@ export async function setDeal(id, fields, opts = {}) {
   if (qErr) throw new Error(qErr.message);
   if (!d) throw new Error('deal not found');
   const patch = {};
-  ['status', 'notes', 'qualification', 'meeting', 'followup', 'no_close_reason'].forEach((k) => {
+  ['status', 'notes', 'qualification', 'meeting', 'followup', 'no_close_reason',
+    'phone', 'email', 'service_type'].forEach((k) => {
     if (k in fields) patch[k] = fields[k] === '' ? null : fields[k];
   });
   if ('cash' in fields) {
