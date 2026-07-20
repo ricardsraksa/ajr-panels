@@ -62,6 +62,10 @@ const _demo = {
     { row: 104, id: 104, leadId: null, name: 'Marcus Media', link: 'https://instagram.com/marcus_media', status: 'Closed', meeting: _ago(20), followup: '', qual: 'Qualified 3', cash: 4000, notes: 'paid in full', hasFF: true, fireflies_link: 'https://app.fireflies.ai/view/demo2' },
     { row: 105, id: 105, leadId: null, name: 'Viktor A.', link: 'https://instagram.com/viktorandersson1u', status: 'Discovery Call', meeting: _ago(-2), followup: '', qual: '', cash: '', notes: 'need to book', hasFF: false, fireflies_link: '' },
     { row: 106, id: 106, leadId: null, name: 'Greg Leet', link: 'https://instagram.com/gregleet', status: 'No Close', meeting: _ago(30), followup: '', qual: 'Qualified 1', cash: '', notes: 'went cold', hasFF: false, fireflies_link: '' }
+  ],
+  calendly: [
+    { id: 'demo-booking-1', name: 'Sam Carter', email: 'sam@carterbrand.com', phone: '+371 26443210',
+      start_iso: new Date(Date.now() + 2 * 24 * 3600 * 1000).toISOString(), time: '14:30', status: 'active', dealId: null }
   ]
 };
 function _demoUndoToken(coll, key, id, prev) { return { _demo: true, coll, key, id, prev }; }
@@ -390,6 +394,14 @@ export async function ensureDealForLead(lead, when = {}) {
   const { data: created, error } = await supa.from('deals').insert(row).select('id').single();
   if (error) throw new Error(error.message);
   await logActivity('deals', created.id, 'create', null, row);
+  // Calendly-first order: if the setter already booked the slot in Calendly,
+  // there'll be exactly one fresh unattached booking — attach it now so the
+  // deal (and the ping below) carry the confirmed slot + contact info.
+  // Any ambiguity is left for the closing page's one-click strip.
+  let cal = null;
+  if (!mIso) {
+    try { cal = await attachLooseBooking(created.id, row, lead.id); } catch (e) { /* never block the booking */ }
+  }
   // one place for the booked ping, so it fires from every path that books a
   // lead (log tool, All-leads drawer, palette) — re-marking Booked won't
   // re-ping, since we only get here when a new deal is actually created.
@@ -401,17 +413,113 @@ export async function ensureDealForLead(lead, when = {}) {
       name: '@' + ((L && L.handle) || h),
       qual: (L && L.qualification) || lead.qualification || '',
       temp: (L && L.temp) || '',
-      phone: (L && L.phone) || '',
-      email: (L && L.email) || '',
+      phone: (cal && cal.phone) || (L && L.phone) || '',
+      email: (cal && cal.email) || (L && L.email) || '',
       pains: (L && L.pain_points) || '',
       status: (L && L.last_status) || '',
       notes: (L && L.notes) || '',
       link: (L && L.ig_url) || row.ig_link || '',
-      meeting: mIso ? isoToDmy(mIso) : '',
-      meetingTime: mTime,
+      meeting: (cal && cal.meeting) || (mIso ? isoToDmy(mIso) : ''),
+      meetingTime: (cal && cal.time) || mTime,
     });
   } catch (e) { /* never block the booking */ }
   return { created: true, row: created.id };
+}
+
+/** If exactly ONE unattached active Calendly booking exists from the last 2h,
+ *  attach it to this just-created deal: slot onto the deal, email/phone onto
+ *  deal + lead (blanks only). Ambiguity → do nothing (strip handles it). */
+async function attachLooseBooking(dealId, dealRow, leadId) {
+  const freshIso = new Date(Date.now() - 2 * 3600 * 1000).toISOString();
+  const { data: loose } = await supa.from('calendly_bookings')
+    .select('id,name,email,phone,start_iso')
+    .is('deal_id', null).eq('status', 'active').gte('created_at', freshIso);
+  if (!loose || loose.length !== 1) return null;
+  const b = loose[0];
+  const d = new Date(b.start_iso);
+  const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Riga' }).format(d); // yyyy-mm-dd
+  const time = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Riga', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+  const patch = { meeting: date, meeting_time: time };
+  if (!dealRow.phone && b.phone) patch.phone = b.phone;
+  if (!dealRow.email && b.email) patch.email = b.email;
+  const { error } = await supa.from('deals').update(patch).eq('id', dealId);
+  if (error) throw new Error(error.message);
+  await logActivity('deals', dealId, 'update', { meeting: null, meeting_time: null }, patch);
+  await supa.from('calendly_bookings').update({ deal_id: dealId }).eq('id', b.id);
+  if (leadId && (b.email || b.phone)) {
+    const { data: l } = await supa.from('leads').select('email,phone').eq('id', leadId).maybeSingle();
+    if (l) {
+      const lp = {}, lprev = {};
+      if (!l.email && b.email) { lprev.email = l.email; lp.email = b.email; }
+      if (!l.phone && b.phone) { lprev.phone = l.phone; lp.phone = b.phone; }
+      if (Object.keys(lp).length) {
+        await supa.from('leads').update(lp).eq('id', leadId);
+        await logActivity('leads', leadId, 'update', lprev, lp);
+      }
+    }
+  }
+  return { meeting: isoToDmy(date), time, phone: b.phone || '', email: b.email || '' };
+}
+
+/** Unattached active Calendly bookings (for the closing page's link strip). */
+export async function looseBookings() {
+  if (DEMO) return _demo.calendly.filter((b) => !b.dealId && b.status === 'active').map(_clone);
+  const freshIso = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString();
+  const { data, error } = await supa.from('calendly_bookings')
+    .select('id,name,email,phone,start_iso')
+    .is('deal_id', null).eq('status', 'active').gte('created_at', freshIso)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Manually link a booking to a deal (the strip's one-click attach). */
+export async function linkBooking(bookingId, dealRow) {
+  if (DEMO) {
+    const b = _demo.calendly.find((x) => x.id === bookingId);
+    const d = _demo.deals.find((x) => x.row === dealRow);
+    if (!b || !d) throw new Error('not found');
+    const prev = { meeting: d.meeting, meetingTime: d.meetingTime, phone: d.phone, email: d.email };
+    d.meeting = isoToDmyLocal(new Date(b.start_iso));
+    d.meetingTime = b.time || '15:00';
+    if (!d.phone && b.phone) d.phone = b.phone;
+    if (!d.email && b.email) d.email = b.email;
+    b.dealId = d.row;
+    return { ok: true, name: d.name || d.link, meeting: d.meeting, time: d.meetingTime,
+      phone: d.phone || '', email: d.email || '', undo: _demoUndoToken('deals', 'row', d.row, prev) };
+  }
+  const { data: b, error: bErr } = await supa.from('calendly_bookings').select('*').eq('id', bookingId).maybeSingle();
+  if (bErr || !b) throw new Error((bErr && bErr.message) || 'booking not found');
+  const { data: d, error: dErr } = await supa.from('deals').select('*').eq('id', dealRow).maybeSingle();
+  if (dErr || !d) throw new Error((dErr && dErr.message) || 'deal not found');
+  const dt = new Date(b.start_iso);
+  const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Riga' }).format(dt);
+  const time = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Riga', hour: '2-digit', minute: '2-digit', hour12: false }).format(dt);
+  const prev = { meeting: d.meeting, meeting_time: d.meeting_time };
+  const patch = { meeting: date, meeting_time: time };
+  if (!d.phone && b.phone) { prev.phone = d.phone; patch.phone = b.phone; }
+  if (!d.email && b.email) { prev.email = d.email; patch.email = b.email; }
+  const { error } = await supa.from('deals').update(patch).eq('id', d.id);
+  if (error) throw new Error(error.message);
+  const actId = await logActivity('deals', d.id, 'update', prev, patch);
+  await supa.from('calendly_bookings').update({ deal_id: d.id }).eq('id', b.id);
+  if (d.lead_id && (b.email || b.phone)) {
+    try {
+      const { data: l } = await supa.from('leads').select('email,phone').eq('id', d.lead_id).maybeSingle();
+      if (l) {
+        const lp = {}, lprev = {};
+        if (!l.email && b.email) { lprev.email = l.email; lp.email = b.email; }
+        if (!l.phone && b.phone) { lprev.phone = l.phone; lp.phone = b.phone; }
+        if (Object.keys(lp).length) {
+          await supa.from('leads').update(lp).eq('id', d.lead_id);
+          await logActivity('leads', d.lead_id, 'update', lprev, lp);
+        }
+      }
+    } catch (e) { /* enrich is best-effort */ }
+  }
+  return { ok: true, name: d.name || d.ig_link, meeting: isoToDmy(date), time,
+    phone: patch.phone || d.phone || '', email: patch.email || d.email || '',
+    undo: { table: 'deals', rowId: d.id, prev, actId }, bookingId: b.id };
 }
 
 /** Direct-set a lead's fields (leads-browser editor). Only present keys write. */

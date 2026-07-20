@@ -46,6 +46,14 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 .today{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:-4px 0 14px;padding:10px 14px;border:1px solid var(--border);border-radius:11px;background:var(--card);color:var(--muted);font-size:13px}
+.calstrip{display:flex;flex-direction:column;gap:8px;margin:-4px 0 14px;padding:10px 14px;border:1px solid #4a4430;border-radius:11px;background:#17150f;color:var(--muted);font-size:13px}
+.calstrip .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.calstrip svg{width:14px;height:14px;color:var(--amber);flex:none}
+.calstrip .who{font-weight:600;color:var(--text)}
+.calstrip .slot{font-family:var(--mono);color:var(--amber)}
+.calstrip select{min-height:34px;padding:0 8px;background:var(--panel);border:1px solid var(--border-2);border-radius:8px;color:var(--text);font-size:12.5px;max-width:220px}
+.calstrip .lnk{min-height:34px;padding:0 12px;border-radius:8px;border:1px solid #5a4d2a;color:var(--amber);font-weight:600;font-size:12.5px}
+.calstrip .lnk:hover{background:#1f1b12}
 .today .n{font-family:var(--mono);font-weight:600;color:var(--text)}
 .today .warn .n{color:var(--amber)}
 .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
@@ -178,6 +186,7 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
   </header>
 
   <div class="today" id="today" hidden></div>
+  <div class="calstrip" id="calstrip" hidden></div>
 
   <div class="toolbar">
     <div class="filters" id="filters">
@@ -246,7 +255,7 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260711g';
+import * as core from './crm-core.js?v=20260711h';
 const session = await core.requireAuth();
 if (session) {
 const $ = (id) => document.getElementById(id);
@@ -572,13 +581,62 @@ function initVoice() {
   };
 }
 
+/* ---------- unlinked Calendly bookings (ambiguous auto-attach fallback) ---------- */
+const CAL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>';
+function slotLabel(iso) {
+  const d = new Date(iso);
+  const day = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Riga', weekday: 'short', day: '2-digit', month: '2-digit' }).format(d);
+  const t = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Riga', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+  return day + ' ' + t;
+}
+async function loadStrip() {
+  const el = $('calstrip');
+  try {
+    const loose = await core.looseBookings();
+    if (!loose || !loose.length) { el.hidden = true; el.innerHTML = ''; return; }
+    const open = state.deals.filter((d) => d.status !== 'Closed' && d.status !== 'No Close');
+    el.innerHTML = loose.map((b) => {
+      const opts = open.map((d) => '<option value="' + d.row + '">' + esc(displayName(d)) + '</option>').join('');
+      return '<div class="row" data-b="' + esc(b.id) + '">' + CAL_SVG +
+        '<span class="who">' + esc(b.name || b.email || 'Booking') + '</span>' +
+        '<span class="slot">' + esc(slotLabel(b.start_iso)) + '</span>' +
+        '<span>not linked to a deal</span>' +
+        '<select><option value="">link to…</option>' + opts + '</select>' +
+        '<button class="lnk">Link</button></div>';
+    }).join('');
+    el.hidden = false;
+  } catch (e) { el.hidden = true; }
+}
+$('calstrip').addEventListener('click', async (e) => {
+  const btn = e.target.closest('.lnk'); if (!btn) return;
+  const rowEl = btn.closest('.row');
+  const dealRow = Number(rowEl.querySelector('select').value);
+  if (!dealRow) { toast({ type: 'err', html: 'Pick a deal first.' }); return; }
+  btn.disabled = true;
+  try {
+    const res = await core.linkBooking(rowEl.getAttribute('data-b'), dealRow);
+    const d = dealById(dealRow);
+    if (d) {
+      d.meeting = res.meeting || d.meeting; d.meetingTime = res.time || d.meetingTime;
+      if (res.phone) d.phone = res.phone;
+      if (res.email) d.email = res.email;
+    }
+    render(); loadStrip();
+    toast({ type: 'ok', html: 'Booking linked to <span class="mono">' + esc(res.name) + '</span>.', ttl: 8000,
+      action: res.undo ? { label: 'Undo', fn: async () => { await core.undoWrite(res.undo); load(); } } : null });
+  } catch (err) {
+    btn.disabled = false;
+    toast({ type: 'err', html: 'Link failed: ' + esc(err.message), sticky: true });
+  }
+});
+
 /* ---------- boot ---------- */
 async function load() {
   $('refresh').classList.add('spin');
   try {
     const d = await core.bootstrap();
     state.deals = d.deals; state.leads = d.leads; state.serverDate = d.serverDate;
-    setDot(false); render();
+    setDot(false); render(); loadStrip();
   } catch (e) {
     setDot(true);
     $('table').innerHTML = '<div class="empty">Couldn’t load: ' + esc(e.message) + '</div>';
