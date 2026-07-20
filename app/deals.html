@@ -221,6 +221,7 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
     <div class="field" id="f-reason-wrap" hidden><label>Why no close?<span class="aitag" id="tag-f-reason" hidden>✦ Claude</span></label>
       <input id="f-reason" type="text" placeholder="price · timing · went with competitor · ghosted"></div>
     <div class="field"><label>Meeting date<span class="aitag" id="tag-f-meeting" hidden>✦ Claude</span></label><input id="f-meeting" type="date"></div>
+    <div class="field"><label>Meeting time</label><input id="f-mtime" type="time"></div>
     <div class="field"><label>Follow-up date<span class="aitag" id="tag-f-followup" hidden>✦ Claude</span></label><input id="f-followup" type="date"></div>
     <div class="fu-nudge" id="fu-nudge" hidden>No follow-up set <button data-d="3">+3d</button><button data-d="7">+1w</button><button data-d="14">+2w</button></div>
     <div class="field"><label>Cash collected<span class="aitag" id="tag-f-cash" hidden>✦ Claude</span></label><input id="f-cash" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
@@ -245,7 +246,7 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260711f';
+import * as core from './crm-core.js?v=20260711g';
 const session = await core.requireAuth();
 if (session) {
 const $ = (id) => document.getElementById(id);
@@ -368,6 +369,7 @@ function openDrawer(id) {
   $('f-cash').value = (d.cash === '' || d.cash == null) ? '' : d.cash;
   $('f-notes').value = d.notes || '';
   $('f-reason').value = d.noCloseReason || '';
+  $('f-mtime').value = d.meetingTime || '';
   $('f-qual').value = ['Qualified 1','Qualified 2','Qualified 3','Unqualified'].includes(d.qual) ? d.qual : '';
   $('f-phone').value = d.phone || '';
   $('f-email').value = d.email || '';
@@ -496,6 +498,7 @@ async function saveDrawer() {
     status: $('f-status').value || undefined,
     meeting: $('f-meeting').value || '',
     followup: $('f-followup').value || '',
+    meeting_time: $('f-mtime').value || '',
     notes: $('f-notes').value,
     qualification: $('f-qual').value,
     phone: $('f-phone').value.trim(),
@@ -524,6 +527,7 @@ async function saveDrawer() {
     d.qual = fields.qualification || '';
     d.phone = fields.phone; d.email = fields.email; d.service = fields.service_type;
     d.meeting = core.isoToDmy($('f-meeting').value);
+    d.meetingTime = fields.meeting_time;
     d.followup = core.isoToDmy($('f-followup').value);
     d.cash = cash === '' ? '' : Number(cash);
     d.notes = fields.notes;

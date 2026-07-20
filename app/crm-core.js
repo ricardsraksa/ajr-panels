@@ -169,13 +169,13 @@ export async function loadLeads() {
 export async function loadDeals() {
   if (DEMO) return _demo.deals.map(_clone);
   const { data, error } = await supa.from('deals')
-    .select('id,lead_id,name,ig_link,status,meeting,followup,qualification,cash,notes,fireflies_link,no_close_reason,phone,email,service_type')
+    .select('id,lead_id,name,ig_link,status,meeting,meeting_time,followup,qualification,cash,notes,fireflies_link,no_close_reason,phone,email,service_type')
     .order('id');
   if (error) throw new Error(error.message);
   return data.map((d) => ({
     row: d.id, id: d.id, leadId: d.lead_id,
     name: d.name || '', link: d.ig_link || '', status: d.status || '',
-    meeting: isoToDmy(d.meeting), followup: isoToDmy(d.followup),
+    meeting: isoToDmy(d.meeting), meetingTime: d.meeting_time || '', followup: isoToDmy(d.followup),
     qual: d.qualification || '', cash: d.cash == null ? '' : d.cash,
     notes: d.notes || '', hasFF: !!d.fireflies_link, fireflies_link: d.fireflies_link || '',
     noCloseReason: d.no_close_reason || '',
@@ -218,7 +218,7 @@ export async function setterUpdate(args) {
       if (args.note) hit.notes = hit.notes ? hit.notes + '\n' + args.note : args.note;
       hit.lastContact = todayDmy();
       let deal = null;
-      if (args.stage === 'Booked') deal = await ensureDealForLead(hit);
+      if (args.stage === 'Booked') deal = await ensureDealForLead(hit, { meeting: args.meeting, time: args.meetingTime });
       return { ok: true, mode: 'updated', row: hit.id, handle, prev, deal, undo: _demoUndoToken('leads', 'id', hit.id, { level: prev.level, status: prev.last_status, temp: prev.temp, notes: prev.notes, lastContact: isoToDmy(prev.last_contact) }) };
     }
     if (!args.stage) throw new Error('stage required to create');
@@ -244,7 +244,7 @@ export async function setterUpdate(args) {
     const actId = await logActivity('leads', hit.id, 'update', prev, patch);
     let deal = null;
     if (args.stage === 'Booked') {
-      try { deal = await ensureDealForLead(hit); } catch (e) { /* surfaced via missing deal, not a blocked write */ }
+      try { deal = await ensureDealForLead(hit, { meeting: args.meeting, time: args.meetingTime }); } catch (e) { /* surfaced via missing deal, not a blocked write */ }
     }
     return { ok: true, mode: 'updated', row: hit.id, handle, prev, deal,
       undo: { table: 'leads', rowId: hit.id, prev, actId } };
@@ -262,7 +262,7 @@ export async function setterUpdate(args) {
   await logActivity('leads', created.id, 'create', null, rowNew);
   let deal = null;
   if (args.stage === 'Booked') {
-    try { deal = await ensureDealForLead({ id: created.id, h: handle, ig_url: rowNew.ig_url, qualification: null, notes: rowNew.notes }); } catch (e) { /* non-blocking */ }
+    try { deal = await ensureDealForLead({ id: created.id, h: handle, ig_url: rowNew.ig_url, qualification: null, notes: rowNew.notes }, { meeting: args.meeting, time: args.meetingTime }); } catch (e) { /* non-blocking */ }
   }
   return { ok: true, mode: 'created', row: created.id, handle, deal };
 }
@@ -359,15 +359,20 @@ async function syncLeadFromDeal(deal, newStatus, oldStatus, reason) {
 }
 
 /** When a lead is Booked, the closer gets a deal — automatically.
- *  Skips if an open deal already exists for this lead/handle. */
-export async function ensureDealForLead(lead) {
+ *  Skips if an open deal already exists for this lead/handle.
+ *  when: { meeting: 'dd/MM/yyyy'|'yyyy-MM-dd', time: 'HH:MM' } — the call slot
+ *  the setter booked, carried onto the deal and into the Slack ping. */
+export async function ensureDealForLead(lead, when = {}) {
   const h = lead.h || lead.handle || '';
+  const mIso = when.meeting ? (dmyToIso(when.meeting) || when.meeting) : '';
+  const mTime = String(when.time || '').trim();
   if (DEMO) {
     const open = _demo.deals.find((d) => (d.link || '').toLowerCase().includes(h) && d.status !== 'Closed' && d.status !== 'No Close');
     if (open) return { created: false, row: open.row };
     const nd = { row: Date.now(), id: Date.now(), leadId: lead.id, name: '@' + h,
       link: lead.url || 'https://instagram.com/' + h, status: 'Discovery Call',
-      meeting: '', followup: '', qual: lead.qual || '', cash: '', notes: lead.notes || '', hasFF: false, fireflies_link: '' };
+      meeting: mIso ? isoToDmy(mIso) : '', meetingTime: mTime,
+      followup: '', qual: lead.qual || '', cash: '', notes: lead.notes || '', hasFF: false, fireflies_link: '' };
     _demo.deals.push(nd);
     return { created: true, row: nd.row };
   }
@@ -380,6 +385,7 @@ export async function ensureDealForLead(lead) {
     ig_link: lead.ig_url || lead.url || 'https://www.instagram.com/' + h + '/',
     status: 'Discovery Call', qualification: lead.qualification || null,
     notes: lead.notes || null, email: lead.email || null, phone: lead.phone || null,
+    meeting: mIso || null, meeting_time: mTime || null,
   };
   const { data: created, error } = await supa.from('deals').insert(row).select('id').single();
   if (error) throw new Error(error.message);
@@ -401,6 +407,8 @@ export async function ensureDealForLead(lead) {
       status: (L && L.last_status) || '',
       notes: (L && L.notes) || '',
       link: (L && L.ig_url) || row.ig_link || '',
+      meeting: mIso ? isoToDmy(mIso) : '',
+      meetingTime: mTime,
     });
   } catch (e) { /* never block the booking */ }
   return { created: true, row: created.id };
@@ -474,7 +482,7 @@ export async function setDeal(id, fields, opts = {}) {
   if (qErr) throw new Error(qErr.message);
   if (!d) throw new Error('deal not found');
   const patch = {};
-  ['status', 'notes', 'qualification', 'meeting', 'followup', 'no_close_reason',
+  ['status', 'notes', 'qualification', 'meeting', 'meeting_time', 'followup', 'no_close_reason',
     'phone', 'email', 'service_type'].forEach((k) => {
     if (k in fields) patch[k] = fields[k] === '' ? null : fields[k];
   });
