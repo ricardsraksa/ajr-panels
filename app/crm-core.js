@@ -501,6 +501,16 @@ export async function linkBooking(bookingId, dealRow) {
   const patch = { meeting: date, meeting_time: time };
   if (!d.phone && b.phone) { prev.phone = d.phone; patch.phone = b.phone; }
   if (!d.email && b.email) { prev.email = d.email; patch.email = b.email; }
+  // the booking form doubles as a qualification questionnaire — carry it onto the deal
+  const digest = (Array.isArray(b.qa) ? b.qa : [])
+    .map((it) => ({ q: String((it && it.question) || '').trim(), a: String((it && it.answer) || '').replace(/\s+/g, ' ').trim() }))
+    .filter((x) => x.q && x.a && x.a !== '-' && !/phone/i.test(x.q) && !/^\+?[\d\s().-]{7,20}$/.test(x.a))
+    .map((x) => x.q.replace(/\?+$/, '') + ': ' + x.a.slice(0, 100))
+    .join(' · ').slice(0, 600);
+  if (digest && !String(d.notes || '').includes('[calendly]')) {
+    prev.notes = d.notes;
+    patch.notes = (d.notes ? d.notes + '\n' : '') + '[calendly] ' + digest;
+  }
   const { error } = await supa.from('deals').update(patch).eq('id', d.id);
   if (error) throw new Error(error.message);
   const actId = await logActivity('deals', d.id, 'update', prev, patch);
