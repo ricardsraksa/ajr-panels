@@ -445,6 +445,10 @@ async function runAI() {
     const cmd = CRMParse.intentToCommand(res.intent, { now: new Date(), leads: state.leads, closing: state.deals, statuses: core.STATUSES });
     const f = (cmd.closer && cmd.closer.fields) || {};
     if (f.status) { $('f-status').value = ['Discovery Call','Closing call','Followup','Closed','No Close'].includes(f.status) ? f.status : $('f-status').value; setTag('f-status', true); syncReasonRow(); }
+    // clock time for the call, when stated ("booked follow up tuesday 3pm")
+    if (res.intent && res.intent.meeting_time && /^\d{2}:\d{2}$/.test(res.intent.meeting_time)) {
+      $('f-mtime').value = res.intent.meeting_time;
+    }
     // no-close reason: the AI pulls it from whatever was said/typed (often a DM, not a call)
     if ($('f-status').value === 'No Close' && res.intent && res.intent.no_close_reason) {
       $('f-reason').value = res.intent.no_close_reason; setTag('f-reason', true);
