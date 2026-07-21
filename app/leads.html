@@ -49,6 +49,12 @@
 .poolcell{display:flex;align-items:center;gap:9px;padding:10px 18px;border-top:1px solid #f0ede6;min-width:0}
 .poolcell input{width:15px;height:15px;flex:none;cursor:pointer;accent-color:#2a6a4d}
 .poolcell a{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.poolage{margin-left:auto;font:400 11px 'IBM Plex Mono',monospace;color:#98917f;flex:none}
+.tf{display:inline-flex;background:#f0ede6;border:1px solid #e6e2da;border-radius:9px;padding:2px;gap:2px}
+.tf button{border-radius:7px;padding:5px 12px;min-height:30px;border:none;background:none;cursor:pointer;
+  font:600 11.5px 'Instrument Sans',system-ui,sans-serif;color:#6d675b}
+.tf button:hover{color:#211f1b}
+.tf button[aria-pressed="true"]{background:#fff;color:#211f1b;box-shadow:0 1px 2px rgba(33,31,27,.07)}
 .impbar{display:flex;align-items:center;gap:12px;padding:13px 18px;margin-bottom:14px;border:1px solid #c9dfd2;
   border-radius:12px;background:#eef5f0;color:#4d4a42;font-size:13px}
 .impbar b{font-family:'IBM Plex Mono',monospace;color:#211f1b}
@@ -121,7 +127,7 @@
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721j';
+import * as core from './crm-core.js?v=20260721k';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -134,7 +140,7 @@ const LEVEL_COLORS = {
   'Engaged 1': '#a9a9b1', 'Engaged 2': '#c9c9cf', 'Engaged 3': '#e9e9ec',
   'Booked': '#8ee59a', 'No Close': '#d99a9a', 'Archive': '#6e6e78', 'No Reply': '#8a8a92', 'Closed': '#c9c9cf', 'Outreach': '#7f8fa6', '': '#6e6e78'
 };
-const state = { leads: [], sel: new Set(), filter: 'ALL', temp: '', q: '', sort: { key: 'lastContact', dir: -1 }, shown: 100, editing: null, busy: false };
+const state = { leads: [], sel: new Set(), src: 'due', kind: 'followup', stale: null, filter: 'ALL', temp: '', q: '', sort: { key: 'lastContact', dir: -1 }, shown: 100, editing: null, busy: false };
 
 const toast = core.toast;
 
@@ -186,26 +192,48 @@ function visible() {
   list.sort((a, b) => cmp(a, b, state.sort.key) * state.sort.dir);
   return list;
 }
-/* ---------- outreach pool: work a mass-DM batch ---------- */
+/* ---------- batch DMs: work a queue, copy handles, mark them sent ----------
+   Two queues share one tool. 'due' is leads that have gone quiet past the
+   overdue window — real leads with history, so a re-touch. 'pool' is the
+   imported IG following, nobody's ever messaged them. */
+function batchList() {
+  if (state.src === 'pool') return state.leads.filter((l) => l.level === 'Outreach' && !l.lastContact);
+  return state.stale || [];
+}
 function renderPool() {
   const pool = state.leads.filter((l) => l.level === 'Outreach');
-  const todo = pool.filter((l) => !l.lastContact);
-  const sent = pool.length - todo.length;
+  const poolTodo = pool.filter((l) => !l.lastContact).length;
+  const due = (state.stale || []).length;
+  const todo = batchList();
   const sel = state.sel;
   const t = $('table');
-  if (!pool.length) {
-    t.innerHTML = '<div class="pooldash" style="margin:18px">' +
-      '<div style="font-weight:600;color:#211f1b;margin-bottom:6px">Nothing imported yet</div>' +
-      '<div style="margin-bottom:14px">Takes <b>following.json</b> from your Instagram data export, or a CSV with a column of handles or profile links. ' +
-      'Pool entries stay out of the lead book and the Worklist.</div>' +
-      '<button class="v2-btn dark" id="poolImport">Import IG following…</button></div>';
-    $('count').textContent = '0 in pool';
+
+  const tabs = '<div class="poolbar">' +
+    '<div class="tf" id="srcTabs" role="group" aria-label="Batch source">' +
+      '<button data-src="due" aria-pressed="' + (state.src === 'due') + '">Due a follow-up ' + due.toLocaleString() + '</button>' +
+      '<button data-src="pool" aria-pressed="' + (state.src === 'pool') + '">Never messaged ' + poolTodo.toLocaleString() + '</button>' +
+    '</div>' +
+    '<span class="sp"></span>' +
+    (state.src === 'pool' ? '<button class="v2-btn sm" id="poolImport">Import IG following…</button>' : '') +
+    '</div>';
+
+  if (!todo.length) {
+    t.innerHTML = tabs + '<div class="pooldash" style="margin:18px">' +
+      (state.src === 'pool'
+        ? '<div style="font-weight:600;color:#211f1b;margin-bottom:6px">Nothing imported yet</div>' +
+          '<div style="margin-bottom:14px">Takes <b>following.json</b> from your Instagram data export, or a CSV with a column of handles or profile links. ' +
+          'Pool entries stay out of the lead book and the Worklist.</div>' +
+          '<button class="v2-btn dark" id="poolImport2">Import IG following…</button>'
+        : '<div style="font-weight:600;color:#211f1b;margin-bottom:6px">Nobody is overdue</div>' +
+          '<div>Every live lead has been touched inside the overdue window. Nothing to batch.</div>') +
+      '</div>';
+    $('count').textContent = state.src === 'pool' ? pool.length.toLocaleString() + ' in pool' : '0 due';
     return;
   }
-  t.innerHTML =
+
+  t.innerHTML = tabs +
     '<div class="poolbar">' +
-      '<b>' + todo.length.toLocaleString() + '</b><span>not yet messaged</span>' +
-      '<span style="color:#98917f">·</span><span>' + sent.toLocaleString() + ' sent</span>' +
+      '<b>' + todo.length.toLocaleString() + '</b><span>' + (state.src === 'pool' ? 'not yet messaged' : 'waiting on a follow-up') + '</span>' +
       '<span class="sp"></span>' +
       '<button class="v2-btn sm' + (sel.size ? '' : ' dark') + '" data-take="25">Next 25</button>' +
       '<button class="v2-btn sm" data-take="50">50</button>' +
@@ -215,15 +243,22 @@ function renderPool() {
       '<b>' + (sel.size || 0) + '</b><span>selected</span>' +
       '<button class="v2-btn sm" id="poolCopy">Copy handles</button>' +
       '<span class="sp"></span>' +
+      '<span style="color:#8a8375">counts as</span>' +
+      '<div class="tf" id="kindTabs" role="group" aria-label="Counts as">' +
+        '<button data-kind="followup" aria-pressed="' + (state.kind === 'followup') + '">Follow-up</button>' +
+        '<button data-kind="cold" aria-pressed="' + (state.kind === 'cold') + '">Cold DM</button>' +
+      '</div>' +
       '<button class="v2-btn go sm" id="poolMark"' + (sel.size ? '' : ' disabled') + '>Mark batch sent today</button>' +
     '</div>' +
     '<div class="poolgrid">' + todo.slice(0, 300).map((l) =>
       '<label class="poolcell">' +
         '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>' +
         '<a href="' + esc(l.url || ('https://instagram.com/' + l.h)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
+        (state.src === 'due' ? '<span class="poolage">' + esc(l.last || 'never') + '</span>' : '') +
       '</label>').join('') + '</div>' +
     (todo.length > 300 ? '<div class="v2-empty">+ ' + (todo.length - 300).toLocaleString() + ' more…</div>' : '');
-  $('count').textContent = pool.length.toLocaleString() + ' in pool';
+  $('count').textContent = state.src === 'pool'
+    ? pool.length.toLocaleString() + ' in pool' : due.toLocaleString() + ' due a follow-up';
 }
 
 function renderTable() {
@@ -360,8 +395,9 @@ async function quickFu() {
 async function load() {
   $('refresh').classList.add('spin');
   try {
-    const leads = await core.loadLeads();
+    const [leads, stale] = await Promise.all([core.loadLeads(), core.staleBatch({ limit: 500 })]);
     state.leads = leads;
+    state.stale = stale;
     renderSumbar(); renderTable();
     // ?lead=<handle> deep link (palette / cross-page)
     const dl = new URLSearchParams(location.search).get('lead');
@@ -401,16 +437,25 @@ $('table').addEventListener('change', (e) => {
   renderPool();
 });
 $('table').addEventListener('click', async (e) => {
+  const src = e.target.closest('#srcTabs button');
+  if (src) {
+    state.src = src.getAttribute('data-src');
+    state.kind = state.src === 'pool' ? 'cold' : 'followup'; // sane default, still changeable
+    state.sel = new Set();
+    renderPool();
+    return;
+  }
+  const kind = e.target.closest('#kindTabs button');
+  if (kind) { state.kind = kind.getAttribute('data-kind'); renderPool(); return; }
   const take = e.target.closest('[data-take]');
   if (take) {
     const n = +take.getAttribute('data-take');
-    const todo = state.leads.filter((l) => l.level === 'Outreach' && !l.lastContact);
-    state.sel = new Set(todo.slice(0, n).map((l) => l.id));
+    state.sel = new Set(batchList().slice(0, n).map((l) => l.id));
     renderPool();
     return;
   }
   if (e.target.closest('#poolCopy')) {
-    const todo = state.leads.filter((l) => l.level === 'Outreach' && !l.lastContact);
+    const todo = batchList();
     const pick = state.sel.size ? todo.filter((l) => state.sel.has(l.id)) : todo.slice(0, 100);
     const txt = pick.map((l) => '@' + l.h).join('\n');
     try { await navigator.clipboard.writeText(txt); toast({ type: 'ok', html: 'Copied ' + pick.length + ' handles.' }); }
@@ -422,12 +467,15 @@ $('table').addEventListener('click', async (e) => {
     const ids = Array.from(state.sel);
     mark.disabled = true;
     try {
-      const res = await core.markOutreachSent(ids);
+      const res = await core.markBatchSent(ids, { kind: state.kind });
       const today = core.todayDmy();
       state.leads.forEach((l) => { if (state.sel.has(l.id)) { l.lastContact = today; l.status = 'Follow up Sent'; } });
+      if (state.stale) state.stale = state.stale.filter((l) => !state.sel.has(l.id));
       state.sel = new Set();
       renderSumbar(); renderPool();
-      toast({ type: 'ok', html: 'Marked <b>' + res.marked + '</b> as sent today.', ttl: 10000,
+      toast({ type: 'ok', ttl: 10000,
+        html: 'Marked <b>' + res.marked + '</b> as sent today — counted as ' +
+          (res.kind === 'followup' ? 'follow-ups' : 'cold DMs') + '.',
         action: res.undo ? { label: 'Undo', fn: async () => { await core.undoOutreachSent(res.undo); load(); } } : null });
     } catch (err) {
       mark.disabled = false;
@@ -438,7 +486,9 @@ $('table').addEventListener('click', async (e) => {
 
 /* ---------- import the IG following export ---------- */
 $('importBtn').onclick = () => $('importFile').click();
-$('table').addEventListener('click', (e) => { if (e.target.closest('#poolImport')) $('importFile').click(); });
+$('table').addEventListener('click', (e) => {
+  if (e.target.closest('#poolImport') || e.target.closest('#poolImport2')) $('importFile').click();
+});
 $('importFile').onchange = async () => {
   const f = $('importFile').files[0];
   if (!f) return;

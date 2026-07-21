@@ -706,8 +706,36 @@ export async function outreachPool(opts = {}) {
 /** Mark a batch as messaged today. One bulk write (a 100-lead batch shouldn't be
  *  100 round trips) and one summary activity row. Deliberately does NOT touch
  *  `level`, so this can never disturb a lead's real stage. */
-export async function markOutreachSent(ids, opts = {}) {
+/** Leads due another touch: worked before, gone quiet past the worklist's own
+ *  overdue window, still live. Oldest first — the ones rotting longest go out
+ *  in tonight's batch. Booked leads are excluded; they're the closer's now. */
+export async function staleBatch(opts = {}) {
+  const limit = opts.limit || 500;
+  const rules = await worklistRules();
+  const cutoff = new Date(Date.now() - rules.overdueDays * 86400000).toISOString().slice(0, 10);
+  if (DEMO) {
+    return _demo.leads.filter((l) => ['Engaged 1', 'Engaged 2', 'Engaged 3', 'No Reply', 'No Close'].indexOf(l.level) >= 0)
+      .slice(0, limit).map((l) => ({ id: l.id, h: l.handle, url: l.igUrl || '', last: l.lastContact || '', level: l.level }));
+  }
+  const { data, error } = await supa.from('leads')
+    .select('id,handle,ig_url,last_contact,level')
+    .not('level', 'in', '("Archive","Closed","Outreach","Booked")')
+    .or(`last_contact.is.null,last_contact.lt.${cutoff}`)
+    .order('last_contact', { ascending: true, nullsFirst: true }).limit(limit);
+  if (error) throw new Error(error.message);
+  return data.map((l) => ({ id: l.id, h: l.handle, url: l.ig_url || '',
+    last: l.last_contact ? isoToDmy(l.last_contact) : '', level: l.level || '' }));
+}
+
+/** Stamp a batch of leads as messaged today.
+ *  `kind` decides which number it feeds on the dashboard — 'cold' for a first
+ *  ever DM, 'followup' for re-touching someone who went quiet. It rides along
+ *  in the activity row so the split is retrievable later, not just today.
+ *  Previous values are captured per lead so undo can put them back: these are
+ *  real leads with real history, and blanking last_contact would destroy it. */
+export async function markBatchSent(ids, opts = {}) {
   const status = opts.status || 'Follow up Sent';
+  const kind = opts.kind === 'followup' ? 'followup' : 'cold';
   if (!ids || !ids.length) return { ok: true, marked: 0 };
   if (DEMO) {
     const s = new Set(ids);
@@ -716,7 +744,14 @@ export async function markOutreachSent(ids, opts = {}) {
       if (s.has(l.id)) { prev.push({ id: l.id, lastContact: l.lastContact, status: l.status });
         l.lastContact = todayDmy(); l.status = status; }
     });
-    return { ok: true, marked: prev.length, undo: { _demo: true, outreach: prev } };
+    return { ok: true, marked: prev.length, kind, undo: { _demo: true, outreach: prev } };
+  }
+  // snapshot first — the update is destructive and undo has to be exact
+  const before = [];
+  for (let i = 0; i < ids.length; i += 500) {
+    const { data } = await supa.from('leads').select('id,last_contact,last_status')
+      .in('id', ids.slice(i, i + 500));
+    before.push(...(data || []));
   }
   const todayIso = dmyToIso(todayDmy());
   for (let i = 0; i < ids.length; i += 500) {
@@ -726,11 +761,14 @@ export async function markOutreachSent(ids, opts = {}) {
     if (error) throw new Error(error.message);
   }
   await logActivity('leads', ids[0], 'update', { outreach_batch: ids.length },
-    { last_contact: todayIso, last_status: status, batch: ids.length });
-  return { ok: true, marked: ids.length, undo: { outreachIds: ids } };
+    { last_contact: todayIso, last_status: status, batch: ids.length, batch_kind: kind });
+  return { ok: true, marked: ids.length, kind, undo: { outreachIds: ids, before } };
+}
+/** Back-compat wrapper: the outreach pool is always a first touch. */
+export async function markOutreachSent(ids, opts = {}) {
+  return markBatchSent(ids, { ...opts, kind: opts.kind || 'cold' });
 }
 
-/** Undo a batch mark: back to un-messaged. */
 export async function undoOutreachSent(undo) {
   if (!undo) return { ok: true };
   if (undo._demo) {
@@ -741,7 +779,17 @@ export async function undoOutreachSent(undo) {
     return { ok: true };
   }
   const ids = undo.outreachIds || [];
-  for (let i = 0; i < ids.length; i += 500) {
+  const before = undo.before || [];
+  if (before.length) {
+    // put each lead back exactly as it was — a shared blanket update would wipe
+    // the contact history of anyone who had been worked before this batch
+    for (const b of before) {
+      await supa.from('leads')
+        .update({ last_contact: b.last_contact, last_status: b.last_status }).eq('id', b.id);
+    }
+    return { ok: true, restored: before.length };
+  }
+  for (let i = 0; i < ids.length; i += 500) { // pool entries: nothing to restore to
     const { error } = await supa.from('leads')
       .update({ last_contact: null, last_status: null }).in('id', ids.slice(i, i + 500));
     if (error) throw new Error(error.message);
@@ -1056,7 +1104,11 @@ export async function setterStats(days = 14) {
       continue;
     }
     if (r.action !== 'update') continue; // import/restore don't count
-    if (next.batch) { b.outreach += Number(next.batch) || 0; continue; }
+    if (next.batch) { // older rows carry no kind; those were all first touches
+      const n = Number(next.batch) || 0;
+      if (next.batch_kind === 'followup') b.followups += n; else b.outreach += n;
+      continue;
+    }
     if (human && next.last_contact) b.followups++;
     if (next.level && next.level !== prev.level) {
       if (next.level === 'Booked') b.booked++;
