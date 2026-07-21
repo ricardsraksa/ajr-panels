@@ -6,6 +6,9 @@
 <meta name="color-scheme" content="light">
 <title>Settings · AJR</title>
 <style>
+.demo-banner{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;
+  color:#8a8375;text-align:center;padding:6px 12px;border:1px solid #e6e2da;border-radius:8px;
+  background:#f4f2ed;margin-bottom:14px}
 .colw{max-width:640px}
 .card{background:#fff;border:1px solid #e6e2da;border-radius:12px;margin-bottom:16px}
 .card h2{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#98917f;
@@ -40,6 +43,7 @@
 </head>
 <body>
 <main class="v2-main colw">
+  <div class="demo-banner" id="demoBanner" hidden>DEMO — writes go nowhere</div>
   <header class="v2-h">
     <h1>Settings</h1>
     <span class="sub" id="whoami"></span>
@@ -91,6 +95,16 @@
   </div>
 
   <div class="card">
+    <h2>Alert times</h2>
+    <div class="sub">When the two scheduled Slack messages land. Local time (Riga) — stays correct through daylight saving.</div>
+    <div class="blk" id="alerttimes"></div>
+    <div class="blk" style="padding-top:0">
+      <button class="v2-btn dark" id="times-save">Save times</button>
+      <span class="msg" id="times-msg" style="margin-left:10px"></span>
+    </div>
+  </div>
+
+  <div class="card">
     <h2>Daily targets</h2>
     <div class="sub">The Dashboard and the evening Slack report measure against these.</div>
     <div class="blk" id="targets"></div>
@@ -113,12 +127,13 @@
 
 
 <script type="module">
-import * as core from './crm-core.js?v=20260721e';
+import * as core from './crm-core.js?v=20260721f';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'settings' });
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+if (core.isDemo) $('demoBanner').hidden = false;
 
 
 /* ---------- health ---------- */
@@ -245,6 +260,7 @@ function renderTeam() {
     : '<div class="hint">No roles set — everyone lands on the Worklist.</div>';
 }
 async function saveTeam(msg) {
+  if (core.isDemo) { $('team-msg').className = 'msg err'; $('team-msg').textContent = 'Demo mode — nothing was saved.'; return; }
   try {
     await core.saveSetting('team_roles', teamRoles);
     await core.loadSettings(true);
@@ -286,6 +302,7 @@ function renderRules() {
     `<input class="v2-in" type="number" min="1" max="365" data-r="${k}" value="${Number(rules[k]) || ''}"></div>`).join('');
 }
 $('rules-save').onclick = async () => {
+  if (core.isDemo) { $('rules-msg').className = 'msg err'; $('rules-msg').textContent = 'Demo mode — nothing was saved.'; return; }
   const next = {};
   let bad = '';
   $('rules').querySelectorAll('[data-r]').forEach((i) => {
@@ -302,6 +319,37 @@ $('rules-save').onclick = async () => {
   } catch (e) { $('rules-msg').className = 'msg err'; $('rules-msg').textContent = e.message; }
 };
 
+/* ---------- alert times ---------- */
+const TIME_DEFS = [
+  ['morning', 'Morning call sheet', 'today’s calls + follow-ups due'],
+  ['evening', 'Setter day report', 'cold DMs / follow-ups / new leads vs targets'],
+];
+let alertTimes = {};
+function renderTimes() {
+  $('alerttimes').innerHTML = TIME_DEFS.map(([k, label, hint]) =>
+    `<div class="rule-row"><span class="k">${esc(label)}<br><span style="color:#98917f;font-size:11.5px">${esc(hint)}</span></span>` +
+    `<input class="v2-in" type="time" step="900" data-time="${k}" value="${esc(alertTimes[k] || '')}" style="width:110px"></div>`).join('');
+}
+$('times-save').onclick = async () => {
+  if (core.isDemo) { $('times-msg').className = 'msg err'; $('times-msg').textContent = 'Demo mode — nothing was saved.'; return; }
+  const next = {}; let bad = '';
+  $('alerttimes').querySelectorAll('[data-time]').forEach((i) => {
+    const v = i.value;
+    if (!/^\d{2}:\d{2}$/.test(v)) { bad = 'Pick a time for both.'; return; }
+    // the scheduler ticks every 15 min, so a time it never lands on would never fire
+    const m = Number(v.slice(3));
+    if (m % 15 !== 0) { bad = 'Times must be on the quarter hour (:00, :15, :30, :45).'; return; }
+    next[i.getAttribute('data-time')] = v;
+  });
+  if (bad) { $('times-msg').className = 'msg err'; $('times-msg').textContent = bad; return; }
+  try {
+    await core.saveSetting('alert_times', next);
+    alertTimes = next;
+    $('times-msg').className = 'msg ok';
+    $('times-msg').textContent = 'Saved — morning ' + next.morning + ', evening ' + next.evening + '.';
+  } catch (e) { $('times-msg').className = 'msg err'; $('times-msg').textContent = e.message; }
+};
+
 /* ---------- daily targets ---------- */
 const TARGET_DEFS = [
   ['outreach', 'Cold DMs / day', 'outreach pool batch sends'],
@@ -315,6 +363,7 @@ function renderTargets() {
     `<input class="v2-in" type="number" min="1" max="1000" data-t="${k}" value="${Number(targets[k]) || ''}"></div>`).join('');
 }
 $('targets-save').onclick = async () => {
+  if (core.isDemo) { $('targets-msg').className = 'msg err'; $('targets-msg').textContent = 'Demo mode — nothing was saved.'; return; }
   const next = {}; let bad = '';
   $('targets').querySelectorAll('[data-t]').forEach((i) => {
     const n = parseInt(i.value, 10);
@@ -335,7 +384,8 @@ $('targets-save').onclick = async () => {
   teamRoles = Object.assign({}, st.team_roles);
   rules = Object.assign({}, st.worklist_rules);
   targets = Object.assign({}, st.setter_targets);
-  renderTeam(); renderRules(); renderTargets();
+  alertTimes = Object.assign({ morning: '08:00', evening: '21:00' }, st.alert_times);
+  renderTeam(); renderRules(); renderTargets(); renderTimes();
 })();
 
 health();

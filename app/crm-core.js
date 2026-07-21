@@ -885,18 +885,19 @@ export async function bookedAlert(payload) {
 
 const DEFAULT_RULES = { overdueDays: 14, autoArchiveDays: 60, snoozeDays: 7, noCloseResurfaceDays: 30 };
 const DEFAULT_TARGETS = { outreach: 20, followups: 100, newLeads: 10 };
+const DEFAULT_TIMES = { morning: '08:00', evening: '21:00' };
 const DEMO_ROLES = { 'reinis@agencyjr.com': 'closer' };
 let _settingsCache = null;
 
 export async function loadSettings(force) {
   if (_settingsCache && !force) return _settingsCache;
   if (DEMO) {
-    _settingsCache = { team_roles: DEMO_ROLES, worklist_rules: DEFAULT_RULES, setter_targets: DEFAULT_TARGETS };
+    _settingsCache = { team_roles: DEMO_ROLES, worklist_rules: DEFAULT_RULES, setter_targets: DEFAULT_TARGETS, alert_times: DEFAULT_TIMES };
     return _settingsCache;
   }
-  const out = { team_roles: {}, worklist_rules: { ...DEFAULT_RULES }, setter_targets: { ...DEFAULT_TARGETS } };
+  const out = { team_roles: {}, worklist_rules: { ...DEFAULT_RULES }, setter_targets: { ...DEFAULT_TARGETS }, alert_times: { ...DEFAULT_TIMES } };
   try {
-    const { data } = await supa.from('settings').select('key,value').in('key', ['team_roles', 'worklist_rules', 'setter_targets']);
+    const { data } = await supa.from('settings').select('key,value').in('key', ['team_roles', 'worklist_rules', 'setter_targets', 'alert_times']);
     for (const r of data || []) {
       let v = r.value;
       if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) { v = null; } }
@@ -904,6 +905,7 @@ export async function loadSettings(force) {
       if (r.key === 'team_roles') out.team_roles = v;
       if (r.key === 'worklist_rules') out.worklist_rules = { ...DEFAULT_RULES, ...v };
       if (r.key === 'setter_targets') out.setter_targets = { ...DEFAULT_TARGETS, ...v };
+      if (r.key === 'alert_times') out.alert_times = { ...DEFAULT_TIMES, ...v };
     }
   } catch (e) { /* defaults are fine */ }
   _settingsCache = out;
