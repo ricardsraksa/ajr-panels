@@ -26,6 +26,10 @@
 .stat .big .of{font-size:14px;color:#98917f;font-weight:400}
 .stat .sub{font-size:11.5px;color:#8a8375;min-height:16px}
 .stat .sub.hit{color:#2a6a4d;font-weight:600}
+.chg{font:600 11.5px 'IBM Plex Mono',monospace;margin-left:8px;vertical-align:2px}
+.chg.up{color:#2a6a4d}
+.chg.down{color:#b4543e}
+.chg.flat,.chg.new{color:#98917f}
 .bar{height:5px;border-radius:99px;background:#f0ede6;margin-top:9px;overflow:hidden}
 .bar i{display:block;height:100%;border-radius:99px;background:#2a6a4d;transition:width .3s}
 .bar i.warn{background:#a8762a}
@@ -100,22 +104,38 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':
 const toast = core.toast;
 if (core.isDemo) $('demoBanner').hidden = false;
 
-function card(label, value, target, sub) {
+function card(label, value, target, sub, chg) {
   const pct = target ? Math.min(100, Math.round((value / target) * 100)) : null;
   const hit = target && value >= target;
   return `<div class="stat">
     <span class="lab">${esc(label)}</span>
-    <div class="big">${value}${target ? `<span class="of"> / ${target}</span>` : ''}</div>
-    <div class="sub${hit ? ' hit' : ''}">${hit ? 'target hit' : esc(sub || '')}</div>
+    <div class="big">${value}${target ? `<span class="of"> / ${target}</span>` : ''}${chg ? chip(chg) : ''}</div>
+    <div class="sub${hit ? ' hit' : ''}">${hit ? 'target hit' : esc(chg ? chg.note : (sub || ''))}</div>
     ${target ? `<div class="bar"><i class="${pct < 50 ? 'warn' : ''}" style="width:${pct}%"></i></div>` : ''}
   </div>`;
 }
+
+/** Period-over-period change. `prev` is a like-for-like baseline: the window
+ *  immediately before this one, or — for a single day, which is still in
+ *  progress and would lose every comparison against a finished one — the daily
+ *  average of the past week. */
+function change(value, prev, basis) {
+  if (!(prev > 0)) return value > 0 ? { cls: 'new', txt: 'new', note: 'nothing to compare with ' + basis } : null;
+  const d = Math.round(((value - prev) / prev) * 100);
+  const shown = Math.round(prev * 10) / 10;
+  return {
+    cls: d > 0 ? 'up' : d < 0 ? 'down' : 'flat',
+    txt: (d > 0 ? '+' : '') + d + '%',
+    note: `${d === 0 ? 'level with' : (d > 0 ? 'up on' : 'down on')} ${basis} (${shown})`,
+  };
+}
+function chip(c) { return `<span class="chg ${c.cls}">${esc(c.txt)}</span>`; }
 
 // Rolling windows, not calendar ones: "last 7 days" is always 7 days of work,
 // so Monday morning doesn't reset the week to a near-empty box.
 const WINDOWS = { 1: 'today', 7: 'Last 7 days', 30: 'Last 30 days' };
 let win = 1;      // days in the selected window
-let allStats = null;  // 30 days, fetched once and re-sliced on switch
+let allStats = null;  // 60 days: the selected window plus the one it's compared against
 
 function dayLabel(iso) { // yyyy-mm-dd -> dd/MM
   return iso.slice(8, 10) + '/' + iso.slice(5, 7);
@@ -140,12 +160,19 @@ function render(targets) {
 
   // a daily target covers the whole window when the window is wider than a day
   const t = (k) => Number(targets[k] || 0) * win;
+  // baseline: the window before this one; for Today, the past week's daily
+  // average (a half-finished day vs a whole one is a rigged comparison)
+  const basisDays = win === 1 ? 7 : win;
+  const before = allStats.slice(-(win + basisDays), -win);
+  const base = (k) => before.reduce((a, d) => a + (d[k] || 0), 0) / (win === 1 ? basisDays : 1);
+  const basis = win === 1 ? 'the 7-day daily average' : 'the previous ' + win + ' days';
+  const c = (k) => change(sum[k], base(k), basis);
   $('cards').innerHTML =
-    card('Cold DMs sent', sum.outreach, t('outreach')) +
-    card('Follow-ups logged', sum.followups, t('followups')) +
-    card('New leads', sum.newLeads, t('newLeads')) +
-    card('Meetings booked', sum.booked, t('booked'), sum.booked ? 'handed to the closer' : '—') +
-    card('Closed deals', sum.closed, t('closed'), sum.closed ? 'won by the closer' : '—');
+    card('Cold DMs sent', sum.outreach, t('outreach'), '', c('outreach')) +
+    card('Follow-ups logged', sum.followups, t('followups'), '', c('followups')) +
+    card('New leads', sum.newLeads, t('newLeads'), '', c('newLeads')) +
+    card('Meetings booked', sum.booked, t('booked'), 'handed to the closer', c('booked')) +
+    card('Closed deals', sum.closed, t('closed'), 'won by the closer', c('closed'));
 
   // chart: follow-ups full scale, outreach divided by 10 so both read on one axis
   {
@@ -180,7 +207,7 @@ function render(targets) {
 async function load() {
   $('refresh').disabled = true;
   try {
-    const [stats, targets] = await Promise.all([core.setterStats(30), core.setterTargets()]);
+    const [stats, targets] = await Promise.all([core.setterStats(60), core.setterTargets()]);
     allStats = stats;
     render(targets);
     $('seg').onclick = (e) => {
