@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Dashboard · AJR</title>
+<style>
+.colw{max-width:880px}
+/* today cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:20px}
+.stat{background:#fff;border:1px solid #e6e2da;border-radius:12px;padding:15px 17px}
+.stat .lab{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#98917f}
+.stat .big{font:600 26px 'IBM Plex Mono',monospace;color:#211f1b;margin:4px 0 2px;letter-spacing:-.01em}
+.stat .big .of{font-size:14px;color:#98917f;font-weight:400}
+.stat .sub{font-size:11.5px;color:#8a8375;min-height:16px}
+.stat .sub.hit{color:#2a6a4d;font-weight:600}
+.bar{height:5px;border-radius:99px;background:#f0ede6;margin-top:9px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;background:#2a6a4d;transition:width .3s}
+.bar i.warn{background:#a8762a}
+/* chart */
+.chart-card{background:#fff;border:1px solid #e6e2da;border-radius:12px;padding:16px 18px;margin-bottom:20px}
+.chart{display:flex;align-items:flex-end;gap:6px;height:120px;margin-top:12px}
+.col{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;min-width:0;cursor:default}
+.col .seg{border-radius:3px 3px 0 0;min-height:2px}
+.col .seg.fu{background:#2a6a4d}
+.col .seg.or{background:#c9dfd2}
+.col.today .seg.fu{background:#1d4d37}
+.xlab{display:flex;gap:6px;margin-top:6px}
+.xlab span{flex:1;text-align:center;font:400 9.5px 'IBM Plex Mono',monospace;color:#98917f;overflow:hidden;white-space:nowrap}
+.legend{display:flex;gap:16px;font-size:11.5px;color:#6d675b;margin-top:10px}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+/* history table */
+.h-thead,.h-row{grid-template-columns:96px 1fr 1fr 1fr 1fr 1fr 64px}
+.h-cell{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#4d4a42}
+.h-cell.dim{color:#ccc5b6}
+.hit{color:#2a6a4d;font-weight:600}
+.miss{color:#b4543e}
+.dot-hit{color:#2a6a4d}
+.dot-miss{color:#b4543e}
+</style>
+</head>
+<body>
+<main class="v2-main colw">
+  <header class="v2-h">
+    <h1>Dashboard</h1>
+    <span class="sub" id="subline">today</span>
+    <span class="sp"></span>
+    <a class="v2-btn sm" href="settings.html">Edit targets</a>
+    <button class="v2-btn sm" id="refresh">Refresh</button>
+  </header>
+
+  <section id="skel" class="v2-card v2-empty">Crunching the activity log…</section>
+
+  <div id="app" hidden>
+    <div class="cards" id="cards"></div>
+
+    <div class="chart-card">
+      <span class="v2-lab">Last 14 days</span>
+      <div class="chart" id="chart"></div>
+      <div class="xlab" id="xlab"></div>
+      <div class="legend">
+        <span><i style="background:#2a6a4d"></i>Follow-ups</span>
+        <span><i style="background:#c9dfd2"></i>Outreach ÷10</span>
+      </div>
+    </div>
+
+    <section class="v2-card">
+      <div class="v2-thead h-thead"><span>Day</span><span>Follow-ups</span><span>Outreach</span><span>New leads</span><span>Stage-ups</span><span>Booked</span><span>Target</span></div>
+      <div id="hist"></div>
+    </section>
+  </div>
+</main>
+
+<script type="module">
+import * as core from './crm-core.js?v=20260721c';
+const session = await core.requireAuth();
+if (session) {
+await core.installChrome({ active: 'report' });
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+const toast = core.toast;
+
+function card(label, value, target, sub) {
+  const pct = target ? Math.min(100, Math.round((value / target) * 100)) : null;
+  const hit = target && value >= target;
+  return `<div class="stat">
+    <span class="lab">${esc(label)}</span>
+    <div class="big">${value}${target ? `<span class="of"> / ${target}</span>` : ''}</div>
+    <div class="sub${hit ? ' hit' : ''}">${hit ? 'target hit' : esc(sub || '')}</div>
+    ${target ? `<div class="bar"><i class="${pct < 50 ? 'warn' : ''}" style="width:${pct}%"></i></div>` : ''}
+  </div>`;
+}
+
+function dayLabel(iso) { // yyyy-mm-dd -> dd/MM
+  return iso.slice(8, 10) + '/' + iso.slice(5, 7);
+}
+function weekday(iso) {
+  return new Intl.DateTimeFormat('en-GB', { weekday: 'short' }).format(new Date(iso + 'T12:00:00'));
+}
+
+async function load() {
+  $('refresh').disabled = true;
+  try {
+    const [stats, targets] = await Promise.all([core.setterStats(14), core.setterTargets()]);
+    const today = stats[stats.length - 1];
+
+    $('subline').textContent = weekday(today.day) + ' ' + dayLabel(today.day);
+    $('cards').innerHTML =
+      card('Outreach sent', today.outreach, targets.outreach) +
+      card('Follow-ups logged', today.followups, targets.followups) +
+      card('New leads', today.newLeads, targets.newLeads) +
+      card('Booked', today.booked, 0, today.booked ? 'handed to the closer' : '—') +
+      card('Stage-ups', today.stageUps, 0, 'moved to E2/E3');
+
+    // chart: follow-ups full scale, outreach divided by 10 so both read on one axis
+    const max = Math.max(1, ...stats.map((d) => Math.max(d.followups, d.outreach / 10)));
+    $('chart').innerHTML = stats.map((d, i) => {
+      const fu = Math.round((d.followups / max) * 100);
+      const or = Math.round(((d.outreach / 10) / max) * 100);
+      const t = `${dayLabel(d.day)}: ${d.followups} follow-ups · ${d.outreach} outreach · ${d.newLeads} new · ${d.booked} booked`;
+      return `<div class="col${i === stats.length - 1 ? ' today' : ''}" title="${esc(t)}">
+        <div class="seg fu" style="height:${fu}%"></div>
+        <div class="seg or" style="height:${or}%"></div>
+      </div>`;
+    }).join('');
+    $('xlab').innerHTML = stats.map((d) => `<span>${dayLabel(d.day).slice(0, 2)}</span>`).join('');
+
+    // history, newest first; target = all three hit
+    $('hist').innerHTML = stats.slice().reverse().map((d) => {
+      const hit = d.outreach >= targets.outreach && d.followups >= targets.followups && d.newLeads >= targets.newLeads;
+      const any = d.followups || d.outreach || d.newLeads || d.booked || d.stageUps;
+      const c = (v) => `<span class="h-cell${v ? '' : ' dim'}">${v || '—'}</span>`;
+      return `<div class="v2-row h-row">
+        <span class="h-cell">${weekday(d.day)} ${dayLabel(d.day)}</span>
+        ${c(d.followups)}${c(d.outreach)}${c(d.newLeads)}${c(d.stageUps)}${c(d.booked)}
+        <span class="h-cell ${any ? (hit ? 'dot-hit' : 'dot-miss') : 'dim'}">${any ? (hit ? '● hit' : '○ miss') : '—'}</span>
+      </div>`;
+    }).join('');
+
+    $('skel').hidden = true; $('app').hidden = false;
+  } catch (e) {
+    $('skel').textContent = 'Couldn’t load: ' + e.message;
+  } finally { $('refresh').disabled = false; }
+}
+$('refresh').onclick = load;
+core.installPalette({});
+load();
+}
+</script>
+</body>
+</html>

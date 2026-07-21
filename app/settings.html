@@ -91,6 +91,16 @@
   </div>
 
   <div class="card">
+    <h2>Daily targets</h2>
+    <div class="sub">The Dashboard and the evening Slack report measure against these.</div>
+    <div class="blk" id="targets"></div>
+    <div class="blk" style="padding-top:0">
+      <button class="v2-btn dark" id="targets-save">Save targets</button>
+      <span class="msg" id="targets-msg" style="margin-left:10px"></span>
+    </div>
+  </div>
+
+  <div class="card">
     <h2>Worklist rules</h2>
     <div class="sub">The queue reads these directly.</div>
     <div class="blk" id="rules"></div>
@@ -103,7 +113,7 @@
 
 
 <script type="module">
-import * as core from './crm-core.js?v=20260721b';
+import * as core from './crm-core.js?v=20260721c';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'settings' });
@@ -292,11 +302,40 @@ $('rules-save').onclick = async () => {
   } catch (e) { $('rules-msg').className = 'msg err'; $('rules-msg').textContent = e.message; }
 };
 
+/* ---------- daily targets ---------- */
+const TARGET_DEFS = [
+  ['outreach', 'Outreach DMs / day', 'pool batch sends'],
+  ['followups', 'Follow-ups / day', 'logged contacts'],
+  ['newLeads', 'New leads / day', 'created by hand or scan'],
+];
+let targets = {};
+function renderTargets() {
+  $('targets').innerHTML = TARGET_DEFS.map(([k, label, hint]) =>
+    `<div class="rule-row"><span class="k">${esc(label)}<br><span style="color:#98917f;font-size:11.5px">${esc(hint)}</span></span>` +
+    `<input class="v2-in" type="number" min="1" max="1000" data-t="${k}" value="${Number(targets[k]) || ''}"></div>`).join('');
+}
+$('targets-save').onclick = async () => {
+  const next = {}; let bad = '';
+  $('targets').querySelectorAll('[data-t]').forEach((i) => {
+    const n = parseInt(i.value, 10);
+    if (!Number.isFinite(n) || n < 1 || n > 1000) bad = 'Values must be between 1 and 1000.';
+    next[i.getAttribute('data-t')] = n;
+  });
+  if (bad) { $('targets-msg').className = 'msg err'; $('targets-msg').textContent = bad; return; }
+  try {
+    await core.saveSetting('setter_targets', next);
+    await core.loadSettings(true);
+    targets = next;
+    $('targets-msg').className = 'msg ok'; $('targets-msg').textContent = 'Saved.';
+  } catch (e) { $('targets-msg').className = 'msg err'; $('targets-msg').textContent = e.message; }
+};
+
 (async () => {
   const st = await core.loadSettings(true);
   teamRoles = Object.assign({}, st.team_roles);
   rules = Object.assign({}, st.worklist_rules);
-  renderTeam(); renderRules();
+  targets = Object.assign({}, st.setter_targets);
+  renderTeam(); renderRules(); renderTargets();
 })();
 
 health();

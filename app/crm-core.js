@@ -884,24 +884,26 @@ export async function bookedAlert(payload) {
    Settings edit, not a deploy. Cached per page load. */
 
 const DEFAULT_RULES = { overdueDays: 14, autoArchiveDays: 60, snoozeDays: 7, noCloseResurfaceDays: 30 };
+const DEFAULT_TARGETS = { outreach: 100, followups: 30, newLeads: 10 };
 const DEMO_ROLES = { 'reinis@agencyjr.com': 'closer' };
 let _settingsCache = null;
 
 export async function loadSettings(force) {
   if (_settingsCache && !force) return _settingsCache;
   if (DEMO) {
-    _settingsCache = { team_roles: DEMO_ROLES, worklist_rules: DEFAULT_RULES };
+    _settingsCache = { team_roles: DEMO_ROLES, worklist_rules: DEFAULT_RULES, setter_targets: DEFAULT_TARGETS };
     return _settingsCache;
   }
-  const out = { team_roles: {}, worklist_rules: { ...DEFAULT_RULES } };
+  const out = { team_roles: {}, worklist_rules: { ...DEFAULT_RULES }, setter_targets: { ...DEFAULT_TARGETS } };
   try {
-    const { data } = await supa.from('settings').select('key,value').in('key', ['team_roles', 'worklist_rules']);
+    const { data } = await supa.from('settings').select('key,value').in('key', ['team_roles', 'worklist_rules', 'setter_targets']);
     for (const r of data || []) {
       let v = r.value;
       if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) { v = null; } }
       if (!v) continue;
       if (r.key === 'team_roles') out.team_roles = v;
       if (r.key === 'worklist_rules') out.worklist_rules = { ...DEFAULT_RULES, ...v };
+      if (r.key === 'setter_targets') out.setter_targets = { ...DEFAULT_TARGETS, ...v };
     }
   } catch (e) { /* defaults are fine */ }
   _settingsCache = out;
@@ -922,6 +924,78 @@ export async function roleFor(email) {
   return (s.team_roles && s.team_roles[key]) === 'closer' ? 'closer' : 'setter';
 }
 export async function worklistRules() { return (await loadSettings()).worklist_rules; }
+export async function setterTargets() { return (await loadSettings()).setter_targets; }
+
+/* ---------- setter daily stats (dashboard + evening report) ----------
+   Everything the setter does already lands in `activity` with prev/next and a
+   timestamp, so the tracker is pure aggregation — no new logging anywhere.
+   Buckets are Europe/Riga calendar days. */
+
+function rigaDay(ts) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Riga' }).format(new Date(ts));
+}
+
+/** Per-day setter numbers for the last `days` days (today included, oldest first).
+ *  followups: human writes that stamped last_contact (batch marks excluded)
+ *  outreach:  handles marked sent via the pool's batch action
+ *  newLeads:  leads created by hand or via the screenshot scanner (imports excluded)
+ *  booked:    leads moved to Booked
+ *  stageUps:  moves into Engaged 2/3 (momentum, not vanity) */
+export async function setterStats(days = 14) {
+  const n = Math.max(1, Math.min(days, 60));
+  const dayKeys = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    dayKeys.push(rigaDay(d));
+  }
+  const empty = () => ({ followups: 0, outreach: 0, newLeads: 0, booked: 0, stageUps: 0 });
+  const byDay = new Map(dayKeys.map((k) => [k, empty()]));
+
+  if (DEMO) {
+    const seed = [ [22,95,6,1,4],[31,110,9,2,5],[18,0,3,0,2],[27,100,11,1,6],[35,120,8,3,7],[24,80,5,1,3],[12,0,2,0,1],
+                   [29,105,10,2,5],[33,115,7,1,6],[21,90,6,2,4],[26,100,9,1,5],[30,110,12,2,7],[17,60,4,0,2],[19,74,6,1,3] ];
+    dayKeys.forEach((k, i) => {
+      const [f, o, nl, b, su] = seed[i % seed.length];
+      byDay.set(k, { followups: f, outreach: o, newLeads: nl, booked: b, stageUps: su });
+    });
+    return dayKeys.map((k) => ({ day: k, ...byDay.get(k) }));
+  }
+
+  const start = new Date(); start.setDate(start.getDate() - (n - 1)); start.setHours(0, 0, 0, 0);
+  // one page is plenty at this team's volume; page anyway to be safe
+  const rows = [];
+  for (let off = 0; ; off += 1000) {
+    const { data, error } = await supa.from('activity')
+      .select('actor,action,prev,next,created_at')
+      .eq('table_name', 'leads')
+      .gte('created_at', start.toISOString())
+      .order('created_at').range(off, off + 999);
+    if (error) throw new Error(error.message);
+    rows.push(...data);
+    if (data.length < 1000) break;
+  }
+
+  for (const r of rows) {
+    const day = rigaDay(r.created_at);
+    const b = byDay.get(day);
+    if (!b) continue;
+    const next = r.next || {}, prev = r.prev || {};
+    const human = !String(r.actor || '').startsWith('ai:');
+    if (r.action === 'create' && human) {
+      b.newLeads++;
+      if (next.level === 'Booked') b.booked++;
+      continue;
+    }
+    if (r.action !== 'update') continue; // import/restore don't count
+    if (next.batch) { b.outreach += Number(next.batch) || 0; continue; }
+    if (human && next.last_contact) b.followups++;
+    if (next.level && next.level !== prev.level) {
+      if (next.level === 'Booked') b.booked++;
+      else if (human && (next.level === 'Engaged 2' || next.level === 'Engaged 3')) b.stageUps++;
+    }
+  }
+  return dayKeys.map((k) => ({ day: k, ...byDay.get(k) }));
+}
 
 /* ---------- shared chrome (v2 "paper" design) ----------
    One sidebar + one set of tokens for every page, so the app can't drift
@@ -1053,6 +1127,7 @@ const NAV_ITEMS = [
   { id: 'worklist', label: 'Worklist', href: 'worklist.html' },
   { id: 'log-lead', label: 'Log a lead', href: 'log-lead.html' },
   { id: 'leads', label: 'All leads', href: 'leads.html' },
+  { id: 'report', label: 'Dashboard', href: 'report.html' },
   { grp: 'CLOSER', gap: true },
   { id: 'deals', label: 'Deals', href: 'deals.html' },
   { id: 'close-call', label: 'Voice log', href: 'close-call.html' },
