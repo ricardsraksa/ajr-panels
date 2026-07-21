@@ -10,6 +10,12 @@
   color:#8a8375;text-align:center;padding:6px 12px;border:1px solid #e6e2da;border-radius:8px;
   background:#f4f2ed;margin-bottom:14px}
 .colw{max-width:880px}
+/* timeframe switcher */
+.tf{display:inline-flex;background:#f0ede6;border:1px solid #e6e2da;border-radius:9px;padding:2px;gap:2px}
+.tf button{border-radius:7px;padding:5px 12px;min-height:30px;font:600 11.5px 'Instrument Sans',system-ui,sans-serif;
+  color:#6d675b;cursor:pointer;background:none;border:none}
+.tf button:hover{color:#211f1b}
+.tf button[aria-pressed="true"]{background:#fff;color:#211f1b;box-shadow:0 1px 2px rgba(33,31,27,.07)}
 /* today cards */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:20px}
 .stat{background:#fff;border:1px solid #e6e2da;border-radius:12px;padding:15px 17px}
@@ -50,6 +56,11 @@
     <h1>Dashboard</h1>
     <span class="sub" id="subline">today</span>
     <span class="sp"></span>
+    <div class="tf" id="seg" role="group" aria-label="Timeframe">
+      <button data-days="1" aria-pressed="true">Today</button>
+      <button data-days="7" aria-pressed="false">7 days</button>
+      <button data-days="30" aria-pressed="false">30 days</button>
+    </div>
     <a class="v2-btn sm" href="settings.html">Edit targets</a>
     <button class="v2-btn sm" id="refresh">Refresh</button>
   </header>
@@ -60,7 +71,7 @@
     <div class="cards" id="cards"></div>
 
     <div class="chart-card">
-      <span class="v2-lab">Last 14 days</span>
+      <span class="v2-lab" id="chartLab">Last 14 days</span>
       <div class="chart" id="chart"></div>
       <div class="xlab" id="xlab"></div>
       <div class="legend">
@@ -70,14 +81,14 @@
     </div>
 
     <section class="v2-card">
-      <div class="v2-thead h-thead"><span>Day</span><span>Follow-ups</span><span>Cold DMs</span><span>New leads</span><span>Stage-ups</span><span>Booked</span><span>Target</span></div>
+      <div class="v2-thead h-thead"><span>Day</span><span>Follow-ups</span><span>Cold DMs</span><span>New leads</span><span>Booked</span><span>Closed</span><span>Target</span></div>
       <div id="hist"></div>
     </section>
   </div>
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260721f';
+import * as core from './crm-core.js?v=20260721g';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'report' });
@@ -98,6 +109,12 @@ function card(label, value, target, sub) {
   </div>`;
 }
 
+// Rolling windows, not calendar ones: "last 7 days" is always 7 days of work,
+// so Monday morning doesn't reset the week to a near-empty box.
+const WINDOWS = { 1: 'today', 7: 'Last 7 days', 30: 'Last 30 days' };
+let win = 1;      // days in the selected window
+let allStats = null;  // 30 days, fetched once and re-sliced on switch
+
 function dayLabel(iso) { // yyyy-mm-dd -> dd/MM
   return iso.slice(8, 10) + '/' + iso.slice(5, 7);
 }
@@ -105,45 +122,72 @@ function weekday(iso) {
   return new Intl.DateTimeFormat('en-GB', { weekday: 'short' }).format(new Date(iso + 'T12:00:00'));
 }
 
-async function load() {
-  $('refresh').disabled = true;
-  try {
-    const [stats, targets] = await Promise.all([core.setterStats(14), core.setterTargets()]);
-    const today = stats[stats.length - 1];
+function render(targets) {
+  const stats = allStats.slice(-Math.max(win, 14)); // chart/history context: never fewer than 14 days
+  const sum = allStats.slice(-win).reduce((a, d) => {
+    for (const k of core.TARGET_KEYS) a[k] += d[k] || 0;
+    return a;
+  }, Object.fromEntries(core.TARGET_KEYS.map((k) => [k, 0])));
 
-    $('subline').textContent = weekday(today.day) + ' ' + dayLabel(today.day);
-    $('cards').innerHTML =
-      card('Cold DMs sent', today.outreach, targets.outreach) +
-      card('Follow-ups logged', today.followups, targets.followups) +
-      card('New leads', today.newLeads, targets.newLeads) +
-      card('Booked', today.booked, 0, today.booked ? 'handed to the closer' : '—') +
-      card('Stage-ups', today.stageUps, 0, 'moved to E2/E3');
+  const last = allStats[allStats.length - 1];
+  const first = allStats[allStats.length - win];
+  $('subline').textContent = win === 1
+    ? weekday(last.day) + ' ' + dayLabel(last.day)
+    : WINDOWS[win] + ' · ' + dayLabel(first.day) + ' – ' + dayLabel(last.day);
+  $('chartLab').textContent = 'Last ' + stats.length + ' days';
 
-    // chart: follow-ups full scale, outreach divided by 10 so both read on one axis
+  // a daily target covers the whole window when the window is wider than a day
+  const t = (k) => Number(targets[k] || 0) * win;
+  $('cards').innerHTML =
+    card('Cold DMs sent', sum.outreach, t('outreach')) +
+    card('Follow-ups logged', sum.followups, t('followups')) +
+    card('New leads', sum.newLeads, t('newLeads')) +
+    card('Meetings booked', sum.booked, t('booked'), sum.booked ? 'handed to the closer' : '—') +
+    card('Closed deals', sum.closed, t('closed'), sum.closed ? 'won by the closer' : '—');
+
+  // chart: follow-ups full scale, outreach divided by 10 so both read on one axis
+  {
     const max = Math.max(1, ...stats.map((d) => Math.max(d.followups, d.outreach / 10)));
     $('chart').innerHTML = stats.map((d, i) => {
       const fu = Math.round((d.followups / max) * 100);
       const or = Math.round(((d.outreach / 10) / max) * 100);
-      const t = `${dayLabel(d.day)}: ${d.followups} follow-ups · ${d.outreach} cold DMs · ${d.newLeads} new · ${d.booked} booked`;
+      const t = `${dayLabel(d.day)}: ${d.followups} follow-ups · ${d.outreach} cold DMs · ${d.newLeads} new · ${d.booked} booked · ${d.closed} closed`;
       return `<div class="col${i === stats.length - 1 ? ' today' : ''}" title="${esc(t)}">
         <div class="seg fu" style="height:${fu}%"></div>
         <div class="seg or" style="height:${or}%"></div>
       </div>`;
     }).join('');
     $('xlab').innerHTML = stats.map((d) => `<span>${dayLabel(d.day).slice(0, 2)}</span>`).join('');
+  }
 
-    // history, newest first; target = all three hit
-    $('hist').innerHTML = stats.slice().reverse().map((d) => {
-      const hit = d.outreach >= targets.outreach && d.followups >= targets.followups && d.newLeads >= targets.newLeads;
-      const any = d.followups || d.outreach || d.newLeads || d.booked || d.stageUps;
-      const c = (v) => `<span class="h-cell${v ? '' : ' dim'}">${v || '—'}</span>`;
-      return `<div class="v2-row h-row">
-        <span class="h-cell">${weekday(d.day)} ${dayLabel(d.day)}</span>
-        ${c(d.followups)}${c(d.outreach)}${c(d.newLeads)}${c(d.stageUps)}${c(d.booked)}
-        <span class="h-cell ${any ? (hit ? 'dot-hit' : 'dot-miss') : 'dim'}">${any ? (hit ? '● hit' : '○ miss') : '—'}</span>
-      </div>`;
-    }).join('');
+  // history is always per-day, whatever window is selected — the daily targets
+  // apply as-is here, and a day with no targets set can't be judged.
+  $('hist').innerHTML = stats.slice().reverse().map((d) => {
+    const hit = core.targetsHit(d, targets);
+    const any = d.followups || d.outreach || d.newLeads || d.booked || d.closed;
+    const c = (v) => `<span class="h-cell${v ? '' : ' dim'}">${v || '—'}</span>`;
+    const verdict = !any || hit == null ? '—' : (hit ? '● hit' : '○ miss');
+    return `<div class="v2-row h-row">
+      <span class="h-cell">${weekday(d.day)} ${dayLabel(d.day)}</span>
+      ${c(d.followups)}${c(d.outreach)}${c(d.newLeads)}${c(d.booked)}${c(d.closed)}
+      <span class="h-cell ${any && hit != null ? (hit ? 'dot-hit' : 'dot-miss') : 'dim'}">${verdict}</span>
+    </div>`;
+  }).join('');
+}
 
+async function load() {
+  $('refresh').disabled = true;
+  try {
+    const [stats, targets] = await Promise.all([core.setterStats(30), core.setterTargets()]);
+    allStats = stats;
+    render(targets);
+    $('seg').onclick = (e) => {
+      const b = e.target.closest('button[data-days]');
+      if (!b) return;
+      win = Number(b.dataset.days);
+      [...$('seg').children].forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      render(targets);
+    };
     $('skel').hidden = true; $('app').hidden = false;
   } catch (e) {
     $('skel').textContent = 'Couldn’t load: ' + e.message;

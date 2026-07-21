@@ -884,7 +884,19 @@ export async function bookedAlert(payload) {
    Settings edit, not a deploy. Cached per page load. */
 
 const DEFAULT_RULES = { overdueDays: 14, autoArchiveDays: 60, snoozeDays: 7, noCloseResurfaceDays: 30 };
-const DEFAULT_TARGETS = { outreach: 20, followups: 100, newLeads: 10 };
+// 0 means "track it, but don't hold me to a number" — the metric still shows a
+// count, it just gets no progress bar and no say in the day's hit/miss.
+const DEFAULT_TARGETS = { outreach: 20, followups: 100, newLeads: 10, booked: 0, closed: 0 };
+export const TARGET_KEYS = ['outreach', 'followups', 'newLeads', 'booked', 'closed'];
+
+/** Did a period meet its targets? `days` scales a daily target to the window
+ *  (a 7-day view wants 7× the daily number). Metrics with target 0 sit it out;
+ *  if every target is 0 there's nothing to hit, so it returns null. */
+export function targetsHit(stat, targets, days = 1) {
+  const live = TARGET_KEYS.filter((k) => Number(targets[k]) > 0);
+  if (!live.length) return null;
+  return live.every((k) => (stat[k] || 0) >= Number(targets[k]) * days);
+}
 const DEFAULT_TIMES = { morning: '08:00', evening: '21:00' };
 const DEMO_ROLES = { 'reinis@agencyjr.com': 'closer' };
 let _settingsCache = null;
@@ -941,8 +953,9 @@ function rigaDay(ts) {
  *  followups: human writes that stamped last_contact (batch marks excluded)
  *  outreach:  handles marked sent via the pool's batch action
  *  newLeads:  leads created by hand or via the screenshot scanner (imports excluded)
- *  booked:    leads moved to Booked
- *  stageUps:  moves into Engaged 2/3 (momentum, not vanity) */
+ *  booked:    leads moved to Booked (meetings handed to the closer)
+ *  closed:    deals the closer marked Closed — counted on the deal, not the lead,
+ *             so the mirrored lead update can't double-count it */
 export async function setterStats(days = 14) {
   const n = Math.max(1, Math.min(days, 60));
   const dayKeys = [];
@@ -950,15 +963,18 @@ export async function setterStats(days = 14) {
     const d = new Date(); d.setDate(d.getDate() - i);
     dayKeys.push(rigaDay(d));
   }
-  const empty = () => ({ followups: 0, outreach: 0, newLeads: 0, booked: 0, stageUps: 0 });
+  const empty = () => ({ followups: 0, outreach: 0, newLeads: 0, booked: 0, closed: 0 });
   const byDay = new Map(dayKeys.map((k) => [k, empty()]));
 
   if (DEMO) {
-    const seed = [ [22,95,6,1,4],[31,110,9,2,5],[18,0,3,0,2],[27,100,11,1,6],[35,120,8,3,7],[24,80,5,1,3],[12,0,2,0,1],
-                   [29,105,10,2,5],[33,115,7,1,6],[21,90,6,2,4],[26,100,9,1,5],[30,110,12,2,7],[17,60,4,0,2],[19,74,6,1,3] ];
+    const seed = [ [22,95,6,1,0],[31,110,9,2,1],[18,0,3,0,0],[27,100,11,1,1],[35,120,8,3,0],[24,80,5,1,1],[12,0,2,0,0],
+                   [29,105,10,2,1],[33,115,7,1,0],[21,90,6,2,1],[26,100,9,1,0],[30,110,12,2,2],[17,60,4,0,0],[19,74,6,1,1],
+                   [28,100,8,2,1],[23,85,5,1,0],[34,118,10,2,1],[16,0,3,0,0],[25,95,7,1,1],[32,112,9,3,1],[20,70,4,0,0],
+                   [27,102,8,1,1],[30,108,11,2,0],[18,55,3,0,1],[29,99,9,2,1],[36,125,12,3,2],[15,0,2,0,0],[24,88,6,1,0],
+                   [31,106,10,2,1],[22,80,5,1,1] ];
     dayKeys.forEach((k, i) => {
-      const [f, o, nl, b, su] = seed[i % seed.length];
-      byDay.set(k, { followups: f, outreach: o, newLeads: nl, booked: b, stageUps: su });
+      const [f, o, nl, b, c] = seed[i % seed.length];
+      byDay.set(k, { followups: f, outreach: o, newLeads: nl, booked: b, closed: c });
     });
     return dayKeys.map((k) => ({ day: k, ...byDay.get(k) }));
   }
@@ -968,8 +984,8 @@ export async function setterStats(days = 14) {
   const rows = [];
   for (let off = 0; ; off += 1000) {
     const { data, error } = await supa.from('activity')
-      .select('actor,action,prev,next,created_at')
-      .eq('table_name', 'leads')
+      .select('actor,action,prev,next,created_at,table_name')
+      .in('table_name', ['leads', 'deals'])
       .gte('created_at', start.toISOString())
       .order('created_at').range(off, off + 999);
     if (error) throw new Error(error.message);
@@ -983,6 +999,11 @@ export async function setterStats(days = 14) {
     if (!b) continue;
     const next = r.next || {}, prev = r.prev || {};
     const human = !String(r.actor || '').startsWith('ai:');
+    if (r.table_name === 'deals') {
+      // a close counts however it was recorded — voice log, drawer, or Fireflies
+      if (next.status === 'Closed' && prev.status !== 'Closed') b.closed++;
+      continue;
+    }
     if (r.action === 'create' && human) {
       b.newLeads++;
       if (next.level === 'Booked') b.booked++;
@@ -991,10 +1012,7 @@ export async function setterStats(days = 14) {
     if (r.action !== 'update') continue; // import/restore don't count
     if (next.batch) { b.outreach += Number(next.batch) || 0; continue; }
     if (human && next.last_contact) b.followups++;
-    if (next.level && next.level !== prev.level) {
-      if (next.level === 'Booked') b.booked++;
-      else if (human && (next.level === 'Engaged 2' || next.level === 'Engaged 3')) b.stageUps++;
-    }
+    if (next.level && next.level !== prev.level && next.level === 'Booked') b.booked++;
   }
   return dayKeys.map((k) => ({ day: k, ...byDay.get(k) }));
 }

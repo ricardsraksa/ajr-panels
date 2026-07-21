@@ -127,7 +127,7 @@
 
 
 <script type="module">
-import * as core from './crm-core.js?v=20260721f';
+import * as core from './crm-core.js?v=20260721g';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'settings' });
@@ -355,19 +355,23 @@ const TARGET_DEFS = [
   ['outreach', 'Cold DMs / day', 'outreach pool batch sends'],
   ['followups', 'Follow-ups / day', 'logged contacts to existing leads'],
   ['newLeads', 'New leads / day', 'created by hand or scan'],
+  ['booked', 'Meetings booked / day', 'leads handed to the closer — 0 = track only'],
+  ['closed', 'Closed deals / day', 'deals the closer won — 0 = track only'],
 ];
 let targets = {};
 function renderTargets() {
   $('targets').innerHTML = TARGET_DEFS.map(([k, label, hint]) =>
     `<div class="rule-row"><span class="k">${esc(label)}<br><span style="color:#98917f;font-size:11.5px">${esc(hint)}</span></span>` +
-    `<input class="v2-in" type="number" min="1" max="1000" data-t="${k}" value="${Number(targets[k]) || ''}"></div>`).join('');
+    `<input class="v2-in" type="number" min="0" max="1000" data-t="${k}" value="${Number(targets[k]) || 0}"></div>`).join('');
 }
 $('targets-save').onclick = async () => {
   if (core.isDemo) { $('targets-msg').className = 'msg err'; $('targets-msg').textContent = 'Demo mode — nothing was saved.'; return; }
   const next = {}; let bad = '';
   $('targets').querySelectorAll('[data-t]').forEach((i) => {
     const n = parseInt(i.value, 10);
-    if (!Number.isFinite(n) || n < 1 || n > 1000) bad = 'Values must be between 1 and 1000.';
+    // 0 is legal: the metric still gets counted and charted, it just has no
+    // number to hit, so it stays out of the day's hit/miss verdict.
+    if (!Number.isFinite(n) || n < 0 || n > 1000) bad = 'Values must be between 0 and 1000.';
     next[i.getAttribute('data-t')] = n;
   });
   if (bad) { $('targets-msg').className = 'msg err'; $('targets-msg').textContent = bad; return; }
