@@ -188,14 +188,22 @@ async function pagedSelect(table, cols, order = 'id') {
    2-person team. */
 const BOOK_KEY = 'ajr_book_v1';
 const BOOK_TTL = 60000;
-function dropBookCache() { try { sessionStorage.removeItem(BOOK_KEY); } catch (e) { /* private mode */ } }
+const _ttlGet = (k) => {
+  try {
+    const c = JSON.parse(sessionStorage.getItem(k) || 'null');
+    if (c && Date.now() - c.t < BOOK_TTL) return c.v;
+  } catch (e) { /* miss */ }
+  return null;
+};
+const _ttlSet = (k, v) => { try { sessionStorage.setItem(k, JSON.stringify({ t: Date.now(), v })); } catch (e) { /* quota */ } };
+function dropBookCache() {
+  try { ['ajr_book_v1', 'ajr_stale_v1', 'ajr_deals_v1'].forEach((k) => sessionStorage.removeItem(k)); } catch (e) { /* private mode */ }
+}
 
 export async function loadLeads() {
   if (DEMO) return _demo.leads.map(_clone);
-  try {
-    const c = JSON.parse(sessionStorage.getItem(BOOK_KEY) || 'null');
-    if (c && Date.now() - c.t < BOOK_TTL) return c.rows;
-  } catch (e) { /* fall through to network */ }
+  const hit = _ttlGet(BOOK_KEY);
+  if (hit) return hit;
   const out = await pagedSelect('leads',
     'id,handle,ig_url,level,last_status,temp,qualification,notes,last_contact,date_added,pain_points,email,phone,linkedin');
   const mapped = out.map((l) => ({
@@ -205,17 +213,19 @@ export async function loadLeads() {
     lastContact: isoToDmy(l.last_contact), dateAdded: isoToDmy(l.date_added),
     pains: l.pain_points || '', email: l.email || '', phone: l.phone || '', linkedin: l.linkedin || '',
   }));
-  try { sessionStorage.setItem(BOOK_KEY, JSON.stringify({ t: Date.now(), rows: mapped })); } catch (e) { /* quota/private */ }
+  _ttlSet(BOOK_KEY, mapped);
   return mapped;
 }
 
 export async function loadDeals() {
   if (DEMO) return _demo.deals.map(_clone);
+  const hit = _ttlGet('ajr_deals_v1');
+  if (hit) return hit;
   const { data, error } = await supa.from('deals')
     .select('id,lead_id,name,ig_link,status,meeting,meeting_time,followup,qualification,cash,notes,fireflies_link,no_close_reason,phone,email,service_type')
     .order('id');
   if (error) throw new Error(error.message);
-  return data.map((d) => ({
+  const mapped = data.map((d) => ({
     row: d.id, id: d.id, leadId: d.lead_id,
     name: d.name || '', link: d.ig_link || '', status: d.status || '',
     meeting: isoToDmy(d.meeting), meetingTime: d.meeting_time || '', followup: isoToDmy(d.followup),
@@ -225,6 +235,8 @@ export async function loadDeals() {
     phone: d.phone || '', email: d.email || '', service: d.service_type || '',
     callType: d.call_type || '',
   }));
+  _ttlSet('ajr_deals_v1', mapped);
+  return mapped;
 }
 
 // Everything the panels need on boot, in one call pattern.
@@ -753,14 +765,18 @@ export async function staleBatch(opts = {}) {
       .slice(0, limit)
       .map((l) => ({ id: l.id, h: l.h, url: l.url || '', last: l.lastContact || '', level: l.level || '' }));
   }
+  const hit = _ttlGet('ajr_stale_v1');
+  if (hit) return hit;
   const { data, error } = await supa.from('leads')
     .select('id,handle,ig_url,last_contact,level')
     .not('level', 'in', '("Archive","Closed","Outreach","Booked")')
     .or(`last_contact.is.null,last_contact.lt.${cutoff}`)
     .order('last_contact', { ascending: true, nullsFirst: true }).limit(limit);
   if (error) throw new Error(error.message);
-  return data.map((l) => ({ id: l.id, h: l.handle, url: l.ig_url || '',
+  const mapped = data.map((l) => ({ id: l.id, h: l.handle, url: l.ig_url || '',
     last: l.last_contact ? isoToDmy(l.last_contact) : '', level: l.level || '' }));
+  _ttlSet('ajr_stale_v1', mapped);
+  return mapped;
 }
 
 /** Stamp a batch of leads as messaged today.
@@ -1024,6 +1040,10 @@ let _settingsCache = null;
 
 export async function loadSettings(force) {
   if (_settingsCache && !force) return _settingsCache;
+  if (!force && !DEMO) {
+    const hit = _ttlGet('ajr_settings_v1');
+    if (hit) { _settingsCache = hit; return hit; }
+  }
   if (DEMO) {
     _settingsCache = { team_roles: DEMO_ROLES, worklist_rules: DEFAULT_RULES, setter_targets: DEFAULT_TARGETS, alert_times: DEFAULT_TIMES, currency: DEFAULT_CURRENCY };
     return _settingsCache;
@@ -1043,9 +1063,11 @@ export async function loadSettings(force) {
     }
   } catch (e) { /* defaults are fine */ }
   _settingsCache = out;
+  if (!DEMO) _ttlSet('ajr_settings_v1', out);
   return out;
 }
 export async function saveSetting(key, value) {
+  try { sessionStorage.removeItem('ajr_settings_v1'); } catch (e) { /* fine */ }
   if (DEMO) { _settingsCache = null; return { ok: true }; }
   const { error } = await supa.from('settings')
     .upsert({ key, value: JSON.stringify(value), updated_at: new Date().toISOString() });
