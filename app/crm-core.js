@@ -1277,6 +1277,7 @@ export async function snapshotTrend(days = 30) {
    <main class="v2-main">. */
 
 const V2_CSS = `
+@view-transition{navigation:auto}
 :root{
   --bg:#f9f8f5; --side:#f4f2ed; --card:#fff; --rowsel:#fdfcf9;
   --line:#e6e2da; --line-2:#ddd8cd; --divider:#f0ede6;
@@ -1410,6 +1411,16 @@ const NAV_ITEMS = [
 /** Inject the v2 stylesheet + fonts once. Safe to call from any page. */
 export function installTheme() {
   if (document.getElementById('v2-theme')) return;
+  try {
+    if (HTMLScriptElement.supports && HTMLScriptElement.supports('speculationrules')) {
+      const sr = document.createElement('script');
+      sr.type = 'speculationrules';
+      sr.textContent = JSON.stringify({
+        prerender: [{ where: { href_matches: '/*\\.html*' }, eagerness: 'moderate' }],
+      });
+      document.head.append(sr);
+    }
+  } catch (e) { /* an optimization, never a requirement */ }
   const pre1 = document.createElement('link'); pre1.rel = 'preconnect'; pre1.href = 'https://fonts.googleapis.com';
   const pre2 = document.createElement('link'); pre2.rel = 'preconnect'; pre2.href = 'https://fonts.gstatic.com'; pre2.crossOrigin = '';
   const f = document.createElement('link'); f.rel = 'stylesheet'; f.href = V2_FONTS;
@@ -1424,6 +1435,7 @@ export function installTheme() {
    Kept to the last 30 views in settings.perf_log; remove once solved. */
 function perfBeacon() {
   if (DEMO) return;
+  if (document.prerendering) return; // speculative load, not a real view
   setTimeout(async () => {
     try {
       const nav = performance.getEntriesByType('navigation')[0];
