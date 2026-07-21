@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
+<link rel="modulepreload" href="./crm-core.js?v=20260721s">
+<link rel="modulepreload" href="./supabase-js.mjs?v=1">
+<link rel="preload" as="script" href="./parser.js">
 <script>/* hold the raw markup off-screen until the shared theme lands; a dead
 script may never strand the user on a blank page, hence the timeout */
 document.documentElement.classList.add('v2-boot');
@@ -195,7 +198,7 @@ setTimeout(function () { document.documentElement.classList.remove('v2-boot'); }
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721r';
+import * as core from './crm-core.js?v=20260721s';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'log-lead' });

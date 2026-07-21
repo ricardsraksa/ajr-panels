@@ -6,7 +6,7 @@
 // Bundled locally (tools/bundle-supabase.md). The esm.sh version arrived as a
 // 16-request waterfall, three levels deep, that re-resolved every 10 minutes —
 // the single biggest fixed cost on every page load.
-import { createClient } from './supabase-js.mjs';
+import { createClient } from './supabase-js.mjs?v=1';
 
 const SUPABASE_URL = 'https://cukjynfatkyiuzvstgcp.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1a2p5bmZhdGt5aXV6dnN0Z2NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0Mzg3MjAsImV4cCI6MjA5OTAxNDcyMH0.l8-zXB6AgAKutZJTh30t6Tl2c3-f-H8kG6D9iF9eQtM';
@@ -1415,8 +1415,16 @@ export function installTheme() {
     if (HTMLScriptElement.supports && HTMLScriptElement.supports('speculationrules')) {
       const sr = document.createElement('script');
       sr.type = 'speculationrules';
+      const others = ['worklist', 'log-lead', 'leads', 'report', 'deals', 'close-call', 'settings']
+        .map((p) => p + '.html')
+        .filter((p) => !location.pathname.endsWith('/' + p));
       sr.textContent = JSON.stringify({
-        prerender: [{ where: { href_matches: '/*\\.html*' }, eagerness: 'moderate' }],
+        // the sidebar's pages: built as soon as this page settles, so any click
+        // lands on a finished page. Everything else still prerenders on hover.
+        prerender: [
+          { urls: others, eagerness: 'immediate' },
+          { where: { href_matches: '/*\\.html*' }, eagerness: 'moderate' },
+        ],
       });
       document.head.append(sr);
     }
@@ -1435,7 +1443,10 @@ export function installTheme() {
    Kept to the last 30 views in settings.perf_log; remove once solved. */
 function perfBeacon() {
   if (DEMO) return;
-  if (document.prerendering) return; // speculative load, not a real view
+  if (document.prerendering) { // log it when (if) the user actually arrives
+    document.addEventListener('prerenderingchange', () => perfBeacon(), { once: true });
+    return;
+  }
   setTimeout(async () => {
     try {
       const nav = performance.getEntriesByType('navigation')[0];
@@ -1469,6 +1480,7 @@ function perfBeacon() {
 export async function installChrome(opts = {}) {
   installTheme();
   perfBeacon();
+  try { navigator.serviceWorker && navigator.serviceWorker.register('./sw.js'); } catch (e) { /* optional */ }
   const active = opts.active || '';
   const side = document.createElement('nav');
   side.className = 'v2-side';
