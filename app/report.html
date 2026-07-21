@@ -61,19 +61,19 @@
       <div class="xlab" id="xlab"></div>
       <div class="legend">
         <span><i style="background:#2a6a4d"></i>Follow-ups</span>
-        <span><i style="background:#c9dfd2"></i>Outreach ÷10</span>
+        <span><i style="background:#c9dfd2"></i>Cold DMs ÷10</span>
       </div>
     </div>
 
     <section class="v2-card">
-      <div class="v2-thead h-thead"><span>Day</span><span>Follow-ups</span><span>Outreach</span><span>New leads</span><span>Stage-ups</span><span>Booked</span><span>Target</span></div>
+      <div class="v2-thead h-thead"><span>Day</span><span>Follow-ups</span><span>Cold DMs</span><span>New leads</span><span>Stage-ups</span><span>Booked</span><span>Target</span></div>
       <div id="hist"></div>
     </section>
   </div>
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260721c';
+import * as core from './crm-core.js?v=20260721d';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'report' });
@@ -108,7 +108,7 @@ async function load() {
 
     $('subline').textContent = weekday(today.day) + ' ' + dayLabel(today.day);
     $('cards').innerHTML =
-      card('Outreach sent', today.outreach, targets.outreach) +
+      card('Cold DMs sent', today.outreach, targets.outreach) +
       card('Follow-ups logged', today.followups, targets.followups) +
       card('New leads', today.newLeads, targets.newLeads) +
       card('Booked', today.booked, 0, today.booked ? 'handed to the closer' : '—') +
@@ -119,7 +119,7 @@ async function load() {
     $('chart').innerHTML = stats.map((d, i) => {
       const fu = Math.round((d.followups / max) * 100);
       const or = Math.round(((d.outreach / 10) / max) * 100);
-      const t = `${dayLabel(d.day)}: ${d.followups} follow-ups · ${d.outreach} outreach · ${d.newLeads} new · ${d.booked} booked`;
+      const t = `${dayLabel(d.day)}: ${d.followups} follow-ups · ${d.outreach} cold DMs · ${d.newLeads} new · ${d.booked} booked`;
       return `<div class="col${i === stats.length - 1 ? ' today' : ''}" title="${esc(t)}">
         <div class="seg fu" style="height:${fu}%"></div>
         <div class="seg or" style="height:${or}%"></div>
