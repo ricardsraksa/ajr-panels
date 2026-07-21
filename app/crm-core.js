@@ -714,8 +714,12 @@ export async function staleBatch(opts = {}) {
   const rules = await worklistRules();
   const cutoff = new Date(Date.now() - rules.overdueDays * 86400000).toISOString().slice(0, 10);
   if (DEMO) {
-    return _demo.leads.filter((l) => ['Engaged 1', 'Engaged 2', 'Engaged 3', 'No Reply', 'No Close'].indexOf(l.level) >= 0)
-      .slice(0, limit).map((l) => ({ id: l.id, h: l.handle, url: l.igUrl || '', last: l.lastContact || '', level: l.level }));
+    return _demo.leads
+      .filter((l) => ['Archive', 'Closed', 'Outreach', 'Booked'].indexOf(l.level) < 0)
+      .filter((l) => !l.lastContact || dmyToIso(l.lastContact) < cutoff)
+      .sort((a, b) => String(dmyToIso(a.lastContact) || '').localeCompare(String(dmyToIso(b.lastContact) || '')))
+      .slice(0, limit)
+      .map((l) => ({ id: l.id, h: l.h, url: l.url || '', last: l.lastContact || '', level: l.level || '' }));
   }
   const { data, error } = await supa.from('leads')
     .select('id,handle,ig_url,last_contact,level')
