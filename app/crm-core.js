@@ -898,18 +898,20 @@ export function targetsHit(stat, targets, days = 1) {
   return live.every((k) => (stat[k] || 0) >= Number(targets[k]) * days);
 }
 const DEFAULT_TIMES = { morning: '08:00', evening: '21:00' };
+// deals.cash is a bare number; the symbol is the team's to choose
+const DEFAULT_CURRENCY = '\u20ac';
 const DEMO_ROLES = { 'reinis@agencyjr.com': 'closer' };
 let _settingsCache = null;
 
 export async function loadSettings(force) {
   if (_settingsCache && !force) return _settingsCache;
   if (DEMO) {
-    _settingsCache = { team_roles: DEMO_ROLES, worklist_rules: DEFAULT_RULES, setter_targets: DEFAULT_TARGETS, alert_times: DEFAULT_TIMES };
+    _settingsCache = { team_roles: DEMO_ROLES, worklist_rules: DEFAULT_RULES, setter_targets: DEFAULT_TARGETS, alert_times: DEFAULT_TIMES, currency: DEFAULT_CURRENCY };
     return _settingsCache;
   }
-  const out = { team_roles: {}, worklist_rules: { ...DEFAULT_RULES }, setter_targets: { ...DEFAULT_TARGETS }, alert_times: { ...DEFAULT_TIMES } };
+  const out = { team_roles: {}, worklist_rules: { ...DEFAULT_RULES }, setter_targets: { ...DEFAULT_TARGETS }, alert_times: { ...DEFAULT_TIMES }, currency: DEFAULT_CURRENCY };
   try {
-    const { data } = await supa.from('settings').select('key,value').in('key', ['team_roles', 'worklist_rules', 'setter_targets', 'alert_times']);
+    const { data } = await supa.from('settings').select('key,value').in('key', ['team_roles', 'worklist_rules', 'setter_targets', 'alert_times', 'currency']);
     for (const r of data || []) {
       let v = r.value;
       if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) { v = null; } }
@@ -918,6 +920,7 @@ export async function loadSettings(force) {
       if (r.key === 'worklist_rules') out.worklist_rules = { ...DEFAULT_RULES, ...v };
       if (r.key === 'setter_targets') out.setter_targets = { ...DEFAULT_TARGETS, ...v };
       if (r.key === 'alert_times') out.alert_times = { ...DEFAULT_TIMES, ...v };
+      if (r.key === 'currency' && typeof v === 'string' && v.trim()) out.currency = v.trim().slice(0, 4);
     }
   } catch (e) { /* defaults are fine */ }
   _settingsCache = out;
@@ -939,6 +942,12 @@ export async function roleFor(email) {
 }
 export async function worklistRules() { return (await loadSettings()).worklist_rules; }
 export async function setterTargets() { return (await loadSettings()).setter_targets; }
+export async function currency() { return (await loadSettings()).currency; }
+/** Money for humans: 5500 -> "€5,500". Rounded — nobody reads cents on a KPI. */
+export function money(n, sym) {
+  const v = Math.round(Number(n) || 0);
+  return (sym || DEFAULT_CURRENCY) + v.toLocaleString('en-US');
+}
 
 /* ---------- setter daily stats (dashboard + evening report) ----------
    Everything the setter does already lands in `activity` with prev/next and a
@@ -963,7 +972,7 @@ export async function setterStats(days = 14) {
     const d = new Date(); d.setDate(d.getDate() - i);
     dayKeys.push(rigaDay(d));
   }
-  const empty = () => ({ followups: 0, outreach: 0, newLeads: 0, booked: 0, closed: 0 });
+  const empty = () => ({ followups: 0, outreach: 0, newLeads: 0, booked: 0, closed: 0, cash: 0, replies: 0 });
   const byDay = new Map(dayKeys.map((k) => [k, empty()]));
 
   if (DEMO) {
@@ -974,7 +983,9 @@ export async function setterStats(days = 14) {
                    [31,106,10,2,1],[22,80,5,1,1] ];
     dayKeys.forEach((k, i) => {
       const [f, o, nl, b, c] = seed[i % seed.length];
-      byDay.set(k, { followups: f, outreach: o, newLeads: nl, booked: b, closed: c });
+      // derived so the demo funnel and revenue stay internally consistent
+      byDay.set(k, { followups: f, outreach: o, newLeads: nl, booked: b, closed: c,
+        cash: c * (1500 + ((i * 370) % 1900)), replies: Math.round(o * 0.05) + (o ? 1 : 0) });
     });
     return dayKeys.map((k) => ({ day: k, ...byDay.get(k) }));
   }
@@ -1002,6 +1013,8 @@ export async function setterStats(days = 14) {
     if (r.table_name === 'deals') {
       // a close counts however it was recorded — voice log, drawer, or Fireflies
       if (next.status === 'Closed' && prev.status !== 'Closed') b.closed++;
+      // the delta, not the value: correcting 3000 -> 3500 later adds 500, not 3500
+      if (next.cash != null) b.cash += (Number(next.cash) || 0) - (Number(prev.cash) || 0);
       continue;
     }
     if (r.action === 'create' && human) {
@@ -1012,9 +1025,112 @@ export async function setterStats(days = 14) {
     if (r.action !== 'update') continue; // import/restore don't count
     if (next.batch) { b.outreach += Number(next.batch) || 0; continue; }
     if (human && next.last_contact) b.followups++;
-    if (next.level && next.level !== prev.level && next.level === 'Booked') b.booked++;
+    if (next.level && next.level !== prev.level) {
+      if (next.level === 'Booked') b.booked++;
+      // the only reply signal the system records: someone from the cold-DM pool
+      // answered, so the setter logged them as a real lead
+      if (prev.level === 'Outreach') b.replies++;
+    }
   }
   return dayKeys.map((k) => ({ day: k, ...byDay.get(k) }));
+}
+
+/* ---------- state-derived numbers (stock, not flow) ----------
+   setterStats reads the activity log, which only knows what has happened since
+   the app went live. These read the tables themselves, so they describe the
+   whole book — 1,000+ leads imported before any of it was logged included. */
+
+const DEAD_LEVELS = ['Archive', 'Closed', 'Outreach'];
+
+/** What's sitting in the pipeline right now, and what's rotting in it.
+ *  `stale` uses the worklist's own overdue window so the two screens can never
+ *  disagree about what "overdue" means. */
+export async function pipelineHealth() {
+  const rules = await worklistRules();
+  const cutoffMs = Date.now() - rules.overdueDays * 86400000;
+  if (DEMO) {
+    return { total: 1160, byLevel: { 'Engaged 1': 185, 'Engaged 2': 67, 'Engaged 3': 27,
+      'Booked': 19, 'No Reply': 95, 'No Close': 6, 'Closed': 8, 'Archive': 629 },
+      stale: 356, never: 167, noLevel: 130, overdueDays: rules.overdueDays };
+  }
+  const rows = [];
+  for (let off = 0; ; off += 1000) {
+    const { data, error } = await supa.from('leads')
+      .select('level,last_contact').range(off, off + 999);
+    if (error) throw new Error(error.message);
+    rows.push(...data);
+    if (data.length < 1000) break;
+  }
+  const byLevel = {};
+  let stale = 0, never = 0, noLevel = 0;
+  for (const r of rows) {
+    const lv = r.level || null;
+    if (!lv) noLevel++; else byLevel[lv] = (byLevel[lv] || 0) + 1;
+    if (DEAD_LEVELS.indexOf(lv) >= 0) continue;
+    // kept apart: "went quiet" and "never worked at all" are different problems
+    if (!r.last_contact) never++;
+    else if (Date.parse(r.last_contact + 'T12:00:00') < cutoffMs) stale++;
+  }
+  return { total: rows.length, byLevel, stale, never, noLevel, overdueDays: rules.overdueDays };
+}
+
+/** The funnel as it stands over the whole book, not just the logged window.
+ *  `booked` counts leads that ever reached a call (they carry a deal), so a
+ *  lead now marked Closed still counts as booked on the way through. */
+export async function funnelAllTime() {
+  if (DEMO) return { leads: 1160, booked: 33, closed: 8, cash: 24500, pool: 812 };
+  const count = async (q) => { const { count: c } = await q; return c || 0; };
+  const [leads, pool, deals, closed] = await Promise.all([
+    count(supa.from('leads').select('id', { count: 'exact', head: true }).neq('level', 'Outreach')),
+    count(supa.from('leads').select('id', { count: 'exact', head: true }).eq('level', 'Outreach')),
+    count(supa.from('deals').select('id', { count: 'exact', head: true })),
+    count(supa.from('deals').select('id', { count: 'exact', head: true }).eq('status', 'Closed')),
+  ]);
+  const { data: cashRows } = await supa.from('deals').select('cash').eq('status', 'Closed');
+  const cash = (cashRows || []).reduce((a, d) => a + (Number(d.cash) || 0), 0);
+  return { leads, booked: deals, closed, cash, pool };
+}
+
+/** Why deals died, verbatim. Identical text is grouped and counted; nothing is
+ *  bucketed into invented categories — the wording is the finding. */
+export async function noCloseReasons(limit = 20) {
+  if (DEMO) {
+    return [{ reason: 'price — wants to start at half the retainer', n: 3, last: '18/07' },
+            { reason: 'timing, revisiting after their Q3 launch', n: 2, last: '15/07' },
+            { reason: 'went with an in-house hire instead', n: 1, last: '11/07' }];
+  }
+  const { data, error } = await supa.from('deals')
+    .select('no_close_reason,updated_at').eq('status', 'No Close')
+    .not('no_close_reason', 'is', null).order('updated_at', { ascending: false }).limit(200);
+  if (error) throw new Error(error.message);
+  const seen = new Map();
+  for (const d of data || []) {
+    const key = String(d.no_close_reason || '').trim();
+    if (!key) continue;
+    const dt = new Date(d.updated_at);
+    const last = String(dt.getDate()).padStart(2, '0') + '/' + String(dt.getMonth() + 1).padStart(2, '0');
+    if (seen.has(key)) seen.get(key).n++;
+    else seen.set(key, { reason: key, n: 1, last });
+  }
+  return [...seen.values()].sort((a, b) => b.n - a.n).slice(0, limit);
+}
+
+/** Backlog history. Current state can't be rewound, so the evening job writes a
+ *  row a day; before those accumulate there is simply nothing to draw. */
+export async function snapshotTrend(days = 30) {
+  if (DEMO) {
+    return Array.from({ length: 14 }, (_, i) => ({
+      day: rigaDay(new Date(Date.now() - (13 - i) * 86400000)),
+      stale: 402 - i * 4 + (i % 3) * 6, noLevel: 130 }));
+  }
+  const from = rigaDay(new Date(Date.now() - days * 86400000));
+  const { data, error } = await supa.from('daily_snapshot')
+    .select('day,data').gte('day', from).order('day');
+  if (error) return []; // table may not exist yet on an older deploy
+  return (data || []).map((r) => {
+    const v = typeof r.data === 'string' ? JSON.parse(r.data) : (r.data || {});
+    return { day: r.day, stale: Number(v.stale) || 0, noLevel: Number(v.noLevel) || 0 };
+  });
 }
 
 /* ---------- shared chrome (v2 "paper" design) ----------

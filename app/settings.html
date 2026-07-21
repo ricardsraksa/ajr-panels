@@ -108,6 +108,9 @@
     <h2>Daily targets</h2>
     <div class="sub">The Dashboard and the evening Slack report measure against these.</div>
     <div class="blk" id="targets"></div>
+    <div class="blk"><div class="rule-row"><span class="k">Currency symbol<br>
+      <span style="color:#98917f;font-size:11.5px">how deal values print on the Dashboard</span></span>
+      <input class="v2-in" id="currency" maxlength="4" style="max-width:90px"></div></div>
     <div class="blk" style="padding-top:0">
       <button class="v2-btn dark" id="targets-save">Save targets</button>
       <span class="msg" id="targets-msg" style="margin-left:10px"></span>
@@ -127,7 +130,7 @@
 
 
 <script type="module">
-import * as core from './crm-core.js?v=20260721g';
+import * as core from './crm-core.js?v=20260721h';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'settings' });
@@ -375,8 +378,10 @@ $('targets-save').onclick = async () => {
     next[i.getAttribute('data-t')] = n;
   });
   if (bad) { $('targets-msg').className = 'msg err'; $('targets-msg').textContent = bad; return; }
+  const sym = $('currency').value.trim().slice(0, 4) || '\u20ac';
   try {
     await core.saveSetting('setter_targets', next);
+    await core.saveSetting('currency', sym);
     await core.loadSettings(true);
     targets = next;
     $('targets-msg').className = 'msg ok'; $('targets-msg').textContent = 'Saved.';
@@ -388,6 +393,7 @@ $('targets-save').onclick = async () => {
   teamRoles = Object.assign({}, st.team_roles);
   rules = Object.assign({}, st.worklist_rules);
   targets = Object.assign({}, st.setter_targets);
+  $('currency').value = st.currency || '\u20ac';
   alertTimes = Object.assign({ morning: '08:00', evening: '21:00' }, st.alert_times);
   renderTeam(); renderRules(); renderTargets(); renderTimes();
 })();
