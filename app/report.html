@@ -130,7 +130,7 @@
       <div class="flags" id="flags"></div>
       <div id="staleTrend" hidden>
         <div class="spark" id="spark"></div>
-        <div class="fnote">Overdue backlog, one point per evening</div>
+        <div class="fnote" id="trendNote"></div>
       </div>
     </div>
 
@@ -226,7 +226,9 @@ function renderFunnel(sum, basis) {
 const STAGE_COLOURS = { 'Engaged 1': '#c9dfd2', 'Engaged 2': '#8cbba4', 'Engaged 3': '#4f8f6c',
   'Booked': '#2a6a4d', 'Closed': '#1d4d37', 'No Close': '#a8762a', 'No Reply': '#ccc5b6',
   'Archive': '#e0d9c9', 'Outreach': '#efeadd' };
-const LIVE_STAGES = ['Engaged 1', 'Engaged 2', 'Engaged 3', 'Booked', 'No Close', 'Closed', 'No Reply', 'Archive'];
+// Archive is not pipeline — 629 of them would squash every live stage into a
+// sliver. It stays in the legend so the book still adds up.
+const LIVE_STAGES = ['Engaged 1', 'Engaged 2', 'Engaged 3', 'Booked', 'No Close', 'Closed', 'No Reply'];
 
 function renderPipeline(health, trend) {
   const total = LIVE_STAGES.reduce((a, k) => a + (health.byLevel[k] || 0), 0) || 1;
@@ -238,7 +240,9 @@ function renderPipeline(health, trend) {
       title="${esc(k)}: ${n}">${w > 6 ? n : ''}</span>`;
   }).join('');
   $('slegend').innerHTML = LIVE_STAGES.filter((k) => health.byLevel[k]).map((k) =>
-    `<span><i style="background:${STAGE_COLOURS[k]}"></i>${esc(k)} ${health.byLevel[k]}</span>`).join('');
+    `<span><i style="background:${STAGE_COLOURS[k]}"></i>${esc(k)} ${health.byLevel[k]}</span>`).join('') +
+    (health.byLevel['Archive'] ? `<span style="color:#98917f"><i style="background:${STAGE_COLOURS['Archive']}"></i>` +
+      `Archive ${health.byLevel['Archive']} — not shown above</span>` : '');
 
   const flags = [`<a class="flag${health.stale ? '' : ' calm'}" href="leads.html"><b>${health.stale}</b>` +
     `silent ${health.overdueDays}+ days</a>`];
@@ -248,10 +252,17 @@ function renderPipeline(health, trend) {
 
   // one point is not a trend — wait until there's a shape to read
   if (trend && trend.length >= 3) {
-    const max = Math.max(1, ...trend.map((d) => d.stale));
+    // scaled between min and max, not from zero: a backlog moving 402 -> 356 is
+    // the whole story, and a zero baseline would flatten it into one solid block
+    const vals = trend.map((d) => d.stale);
+    const lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1;
     $('spark').innerHTML = trend.map((d, i) =>
-      `<i class="${i === trend.length - 1 ? 'last' : ''}" style="height:${Math.round((d.stale / max) * 100)}%"
+      `<i class="${i === trend.length - 1 ? 'last' : ''}" style="height:${12 + Math.round(((d.stale - lo) / span) * 88)}%"
         title="${esc(d.day)}: ${d.stale} overdue"></i>`).join('');
+    const first = trend[0], lastd = trend[trend.length - 1];
+    const dir = lastd.stale === first.stale ? 'flat' : (lastd.stale < first.stale ? 'shrinking' : 'growing');
+    $('trendNote').textContent =
+      `Overdue backlog ${dir}: ${first.stale} on ${first.day.slice(8, 10)}/${first.day.slice(5, 7)} → ${lastd.stale} today`;
     $('staleTrend').hidden = false;
   }
 }
