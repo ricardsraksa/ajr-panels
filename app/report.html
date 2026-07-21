@@ -172,10 +172,10 @@ function card(label, value, target, sub, chg) {
  *  immediately before this one, or — for a single day, which is still in
  *  progress and would lose every comparison against a finished one — the daily
  *  average of the past week. */
-function change(value, prev, basis) {
+function change(value, prev, basis, fmt) {
   if (!(prev > 0)) return value > 0 ? { cls: 'new', txt: 'new', note: 'nothing to compare with ' + basis } : null;
   const d = Math.round(((value - prev) / prev) * 100);
-  const shown = Math.round(prev * 10) / 10;
+  const shown = fmt ? fmt(prev) : Math.round(prev * 10) / 10;
   return {
     cls: d > 0 ? 'up' : d < 0 ? 'down' : 'flat',
     txt: (d > 0 ? '+' : '') + d + '%',
@@ -287,7 +287,7 @@ function render(targets) {
   const before = allStats.slice(-(win + basisDays), -win);
   const base = (k) => before.reduce((a, d) => a + (d[k] || 0), 0) / (win === 1 ? basisDays : 1);
   const basis = win === 1 ? 'the 7-day daily average' : 'the previous ' + win + ' days';
-  const c = (k) => change(sum[k], base(k), basis);
+  const c = (k, fmt) => change(sum[k], base(k), basis, fmt);
   $('cards').innerHTML =
     card('Cold DMs sent', sum.outreach, t('outreach'), '', c('outreach')) +
     card('Follow-ups logged', sum.followups, t('followups'), '', c('followups')) +
@@ -296,7 +296,7 @@ function render(targets) {
     card('Closed deals', sum.closed, t('closed'), 'won by the closer', c('closed')) +
     card('Revenue', core.money(sum.cash, cur), 0,
       sum.closed ? 'avg ' + core.money(sum.cash / sum.closed, cur) + ' a deal' : 'nothing closed yet',
-      c('cash'));
+      c('cash', (n) => core.money(n, cur)));
 
   renderFunnel(sum, basis);
 
