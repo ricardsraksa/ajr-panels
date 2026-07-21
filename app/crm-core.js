@@ -564,9 +564,41 @@ function normHandle(s) {
  *  instagram.com URL / bare handle string. Accepts an object or raw JSON text. */
 export function parseFollowing(input) {
   let data = input;
-  if (typeof input === 'string') { try { data = JSON.parse(input); } catch (e) { data = null; } }
   const out = [];
   const push = (v) => { const h = normHandle(v); if (h) out.push(h); };
+  if (typeof input === 'string') {
+    try {
+      data = JSON.parse(input);
+    } catch (e) {
+      // Not JSON — treat it as CSV/TSV/one-per-line text. Reading every cell
+      // would import the header row and the follower-count column as leads, so
+      // pick the single column that looks most like handles and read only that.
+      const rows = input.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+        .map((l) => l.split(/[,;\t|]/).map((c) => c.trim().replace(/^"|"$/g, '')));
+      if (!rows.length) return [];
+      const width = Math.max(...rows.map((r) => r.length));
+      let best = -1, bestScore = 0;
+      for (let c = 0; c < width; c++) {
+        let score = 0;
+        for (const r of rows) {
+          const cell = r[c];
+          if (!cell || /^\d+$/.test(cell)) continue;      // follower counts aren't handles
+          if (/instagram\.com\//i.test(cell)) score += 2; // a profile URL is the strongest signal
+          else if (normHandle(cell)) score += 1;
+        }
+        if (score > bestScore) { bestScore = score; best = c; }
+      }
+      if (best < 0) return [];
+      rows.forEach((r, i) => {
+        const cell = r[best];
+        if (!cell || /^\d+$/.test(cell)) return;
+        // a one-word header ('username') is handle-shaped; multi-word ones fail on their own
+        if (i === 0 && /^(user ?name|handle|profile|account|ig|instagram|link|url|name|following)$/i.test(cell)) return;
+        push(cell);
+      });
+      return Array.from(new Set(out));
+    }
+  }
   const walkPreferred = (node) => {
     if (!node || typeof node !== 'object') return;
     if (Array.isArray(node)) { node.forEach(walkPreferred); return; }

@@ -64,7 +64,7 @@
     <span class="sp"></span>
     <button class="v2-btn dash" id="scanBtn" type="button">Paste screenshot ⌘V</button>
     <button class="v2-btn dash" id="importBtn" type="button">Import IG following…</button>
-    <input id="importFile" type="file" accept=".json,application/json" hidden>
+    <input id="importFile" type="file" accept=".json,.csv,.txt,.tsv,application/json,text/csv,text/plain" hidden>
     <button class="v2-btn sm" id="refresh">Refresh</button>
   </header>
 
@@ -121,7 +121,7 @@
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721i';
+import * as core from './crm-core.js?v=20260721j';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -196,7 +196,8 @@ function renderPool() {
   if (!pool.length) {
     t.innerHTML = '<div class="pooldash" style="margin:18px">' +
       '<div style="font-weight:600;color:#211f1b;margin-bottom:6px">Nothing imported yet</div>' +
-      '<div style="margin-bottom:14px">Pool entries stay out of the lead book and the Worklist.</div>' +
+      '<div style="margin-bottom:14px">Takes <b>following.json</b> from your Instagram data export, or a CSV with a column of handles or profile links. ' +
+      'Pool entries stay out of the lead book and the Worklist.</div>' +
       '<button class="v2-btn dark" id="poolImport">Import IG following…</button></div>';
     $('count').textContent = '0 in pool';
     return;
@@ -445,7 +446,7 @@ $('importFile').onchange = async () => {
   try {
     const text = await f.text();
     const res = await core.importFollowing(text);
-    if (!res.total) { toast({ type: 'err', html: 'No handles found in that file — is it the following.json from your IG export?', sticky: true }); return; }
+    if (!res.total) { toast({ type: 'err', html: 'No handles found in that file. Works with following.json from your IG export, or a CSV/text file with a column of handles or profile links.', sticky: true }); return; }
     await load();
     state.filter = 'Outreach'; renderSumbar(); renderTable();
     const bar = document.createElement('div');
