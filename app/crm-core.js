@@ -884,7 +884,7 @@ export async function bookedAlert(payload) {
    Settings edit, not a deploy. Cached per page load. */
 
 const DEFAULT_RULES = { overdueDays: 14, autoArchiveDays: 60, snoozeDays: 7, noCloseResurfaceDays: 30 };
-const DEFAULT_TARGETS = { outreach: 100, followups: 100, newLeads: 10 };
+const DEFAULT_TARGETS = { outreach: 20, followups: 100, newLeads: 10 };
 const DEMO_ROLES = { 'reinis@agencyjr.com': 'closer' };
 let _settingsCache = null;
 
