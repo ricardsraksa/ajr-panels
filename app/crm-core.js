@@ -1448,6 +1448,7 @@ function perfBeacon() {
         page: location.pathname.split('/').pop(),
         ts: new Date().toISOString().slice(0, 19),
         navMs: Math.round(nav ? nav.duration : 0),
+        prerendered: !!(nav && nav.activationStart > 0), // click landed on an already-built page
         htmlMs: Math.round(nav ? nav.responseEnd : 0),
         coreFetchMs: Math.round((pick('crm-core.js')[0] || {}).duration || 0),
         sbFetchMs: Math.round((pick('supabase-js.mjs')[0] || {}).duration || 0),
