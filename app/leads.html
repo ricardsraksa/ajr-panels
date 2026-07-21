@@ -81,6 +81,22 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 .more{width:100%;min-height:44px;color:var(--muted);font-weight:500;border-top:1px solid var(--hair)}
 .more:hover{color:var(--text);background:var(--panel)}
 .skel{padding:40px;text-align:center;color:var(--dim)}
+.poolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 16px;border-bottom:1px solid var(--border);color:var(--muted);font-size:13px}
+.poolbar .sp{flex:1}
+.poolbar b{color:var(--text);font-family:var(--mono)}
+.pbtn{min-height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--border-2);color:var(--muted);font-weight:500;font-size:12.5px}
+.pbtn:hover:not(:disabled){color:var(--text);border-color:#33333a}
+.pbtn.go{border-color:#3d5a3a;color:var(--money);font-weight:600}
+.pbtn.go:hover:not(:disabled){background:#141a15}
+.pbtn:disabled{opacity:.4;cursor:not-allowed}
+.poollist{max-height:62vh;overflow-y:auto}
+.poolrow{display:flex;align-items:center;gap:11px;padding:8px 16px;border-top:1px solid var(--hair);cursor:pointer}
+.poolrow:first-child{border-top:none}
+.poolrow:hover{background:var(--panel)}
+.poolrow.on{background:rgba(142,229,154,.06)}
+.poolrow input{width:16px;height:16px;flex:none;cursor:pointer}
+.poolrow .ph{font-weight:600;color:var(--text);text-decoration:none}
+.poolrow .ph:hover{text-decoration:underline;text-decoration-color:var(--faint)}
 
 /* drawer */
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .18s;z-index:40}
@@ -165,6 +181,8 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
       <option value="">Any temp</option><option>Hot Lead</option><option>Warm Lead</option><option>Cold Lead</option>
     </select>
     <button class="chip" id="scanBtn" type="button" style="min-height:38px">⊕ Scan screenshot</button>
+    <button class="chip" id="importBtn" type="button" style="min-height:38px">↧ Import IG following</button>
+    <input id="importFile" type="file" accept=".json,application/json" hidden>
     <span class="hint"><kbd>⌘K</kbd> search anywhere</span>
   </div>
 
@@ -217,18 +235,18 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260711j';
+import * as core from './crm-core.js?v=20260711k';
 const session = await core.requireAuth();
 if (session) {
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
-const STAGE_ORDER = ['Engaged 3', 'Engaged 2', 'Engaged 1', 'Booked', 'No Close', 'No Reply', '', 'Archive', 'Closed'];
+const STAGE_ORDER = ['Engaged 3', 'Engaged 2', 'Engaged 1', 'Booked', 'No Close', 'No Reply', '', 'Archive', 'Closed', 'Outreach'];
 const LEVEL_COLORS = {
   'Engaged 1': '#a9a9b1', 'Engaged 2': '#c9c9cf', 'Engaged 3': '#e9e9ec',
-  'Booked': '#8ee59a', 'No Close': '#d99a9a', 'Archive': '#6e6e78', 'No Reply': '#8a8a92', 'Closed': '#c9c9cf', '': '#6e6e78'
+  'Booked': '#8ee59a', 'No Close': '#d99a9a', 'Archive': '#6e6e78', 'No Reply': '#8a8a92', 'Closed': '#c9c9cf', 'Outreach': '#7f8fa6', '': '#6e6e78'
 };
-const state = { leads: [], filter: 'ALL', temp: '', q: '', sort: { key: 'lastContact', dir: -1 }, shown: 100, editing: null, busy: false };
+const state = { leads: [], sel: new Set(), filter: 'ALL', temp: '', q: '', sort: { key: 'lastContact', dir: -1 }, shown: 100, editing: null, busy: false };
 
 function toast(o) {
   const el = document.createElement('div');
@@ -253,7 +271,8 @@ function daysSince(dmy) {
 function renderSumbar() {
   const counts = {};
   state.leads.forEach((l) => { const k = l.level || ''; counts[k] = (counts[k] || 0) + 1; });
-  const chips = [['ALL', 'All', state.leads.length]]
+  const realCount = state.leads.length - (counts['Outreach'] || 0);
+  const chips = [['ALL', 'All', realCount]]
     .concat(STAGE_ORDER.filter((st) => counts[st]).map((st) => [st, st || 'No level', counts[st]]));
   $('sumbar').innerHTML = chips.map(([key, label, n]) =>
     `<button class="chip${state.filter === key ? ' on' : ''}" data-f="${esc(key)}">${esc(label)} <span class="n">${n}</span></button>`).join('');
@@ -277,6 +296,9 @@ function cmp(a, b, key) {
 function visible() {
   const q = state.q.toLowerCase().trim();
   let list = state.leads.filter((l) => {
+    // the outreach pool is a bucket, not part of the lead book — only visible
+    // when its own chip is picked
+    if (state.filter === 'ALL' && l.level === 'Outreach') return false;
     if (state.filter !== 'ALL' && (l.level || '') !== state.filter) return false;
     if (state.temp && l.temp !== state.temp) return false;
     if (q && !((l.h + ' ' + l.notes + ' ' + l.email + ' ' + l.status + ' ' + l.pains).toLowerCase().includes(q))) return false;
@@ -285,10 +307,43 @@ function visible() {
   list.sort((a, b) => cmp(a, b, state.sort.key) * state.sort.dir);
   return list;
 }
+/* ---------- outreach pool: work a mass-DM batch ---------- */
+function renderPool() {
+  const pool = state.leads.filter((l) => l.level === 'Outreach');
+  const todo = pool.filter((l) => !l.lastContact);
+  const sent = pool.length - todo.length;
+  const sel = state.sel;
+  const t = $('table');
+  t.innerHTML =
+    '<div class="poolbar">' +
+      '<span><b>' + todo.length + '</b> not messaged yet</span>' +
+      '<span class="opt">' + sent + ' already sent</span>' +
+      '<span class="sp"></span>' +
+      '<button class="pbtn" data-take="25">Take 25</button>' +
+      '<button class="pbtn" data-take="50">Take 50</button>' +
+      '<button class="pbtn" data-take="100">Take 100</button>' +
+      '<button class="pbtn" id="poolCopy">Copy handles</button>' +
+      '<button class="pbtn go" id="poolMark"' + (sel.size ? '' : ' disabled') + '>Mark ' + (sel.size || '') + ' as sent</button>' +
+    '</div>' +
+    (todo.length
+      ? '<div class="poollist">' + todo.slice(0, 300).map((l) =>
+          '<label class="poolrow' + (sel.has(l.id) ? ' on' : '') + '">' +
+            '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>' +
+            '<a href="' + esc(l.url || ('https://instagram.com/' + l.h)) + '" target="_blank" rel="noopener" class="ph">@' + esc(l.h) + '</a>' +
+            '<span class="opt">added ' + esc(l.dateAdded || '—') + '</span>' +
+          '</label>').join('') +
+        (todo.length > 300 ? '<div class="empty">showing first 300 of ' + todo.length + '</div>' : '') +
+        '</div>'
+      : '<div class="empty">Pool is empty — import your IG following to fill it.</div>');
+  $('count').textContent = pool.length + ' in pool';
+}
+
 function renderTable() {
+  if (state.filter === 'Outreach') { renderPool(); return; }
   const rows = visible();
-  $('count').textContent = rows.length === state.leads.length
-    ? state.leads.length + ' leads' : rows.length + ' of ' + state.leads.length;
+  const realTotal = state.leads.filter((l) => l.level !== 'Outreach').length;
+  $('count').textContent = rows.length === realTotal
+    ? realTotal + ' leads' : rows.length + ' of ' + realTotal;
   const head = '<div class="thead">' + COLS.map(([key, label]) =>
     `<button data-s="${key}">${label}${state.sort.key === key ? `<span class="arr">${state.sort.dir > 0 ? '↑' : '↓'}</span>` : ''}</button>`).join('') + '</div>';
   const t = $('table');
@@ -441,6 +496,70 @@ $('q-fu').onclick = quickFu;
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.editing) closeDrawer(); });
 
 core.installPalette({ leads: () => state.leads, onLead: (l) => openDrawer(l.id) });
+/* ---------- pool interactions ---------- */
+$('table').addEventListener('change', (e) => {
+  const cb = e.target.closest('input[type=checkbox][data-id]');
+  if (!cb) return;
+  const id = +cb.getAttribute('data-id');
+  if (cb.checked) state.sel.add(id); else state.sel.delete(id);
+  renderPool();
+});
+$('table').addEventListener('click', async (e) => {
+  const take = e.target.closest('[data-take]');
+  if (take) {
+    const n = +take.getAttribute('data-take');
+    const todo = state.leads.filter((l) => l.level === 'Outreach' && !l.lastContact);
+    state.sel = new Set(todo.slice(0, n).map((l) => l.id));
+    renderPool();
+    return;
+  }
+  if (e.target.closest('#poolCopy')) {
+    const todo = state.leads.filter((l) => l.level === 'Outreach' && !l.lastContact);
+    const pick = state.sel.size ? todo.filter((l) => state.sel.has(l.id)) : todo.slice(0, 100);
+    const txt = pick.map((l) => '@' + l.h).join('\n');
+    try { await navigator.clipboard.writeText(txt); toast({ type: 'ok', html: 'Copied ' + pick.length + ' handles.' }); }
+    catch (err) { toast({ type: 'err', html: 'Copy failed: ' + esc(err.message) }); }
+    return;
+  }
+  const mark = e.target.closest('#poolMark');
+  if (mark && !mark.disabled) {
+    const ids = Array.from(state.sel);
+    mark.disabled = true;
+    try {
+      const res = await core.markOutreachSent(ids);
+      const today = core.todayDmy();
+      state.leads.forEach((l) => { if (state.sel.has(l.id)) { l.lastContact = today; l.status = 'Follow up Sent'; } });
+      state.sel = new Set();
+      renderSumbar(); renderPool();
+      toast({ type: 'ok', html: 'Marked <b>' + res.marked + '</b> as sent today.', ttl: 10000,
+        action: res.undo ? { label: 'Undo', fn: async () => { await core.undoOutreachSent(res.undo); load(); } } : null });
+    } catch (err) {
+      mark.disabled = false;
+      toast({ type: 'err', html: 'Failed: ' + esc(err.message), sticky: true });
+    }
+  }
+});
+
+/* ---------- import the IG following export ---------- */
+$('importBtn').onclick = () => $('importFile').click();
+$('importFile').onchange = async () => {
+  const f = $('importFile').files[0];
+  if (!f) return;
+  $('importBtn').disabled = true;
+  try {
+    const text = await f.text();
+    const res = await core.importFollowing(text);
+    if (!res.total) { toast({ type: 'err', html: 'No handles found in that file — is it the following.json from your IG export?', sticky: true }); return; }
+    await load();
+    state.filter = 'Outreach'; renderSumbar(); renderTable();
+    toast({ type: 'ok', ttl: 12000,
+      html: 'Imported <b>' + res.added + '</b> into the outreach pool · ' + res.skippedExisting + ' already leads (untouched).',
+      action: res.ids && res.ids.length ? { label: 'Undo import', fn: async () => { await core.undoImport(res.ids); load(); } } : null });
+  } catch (err) {
+    toast({ type: 'err', html: 'Import failed: ' + esc(err.message), sticky: true });
+  } finally { $('importBtn').disabled = false; $('importFile').value = ''; }
+};
+
 const scanner = core.installScanner({
   statuses: core.STATUSES,
   exists: (h) => { const hit = state.leads.find((l) => l.h === h); return hit ? hit.h : null; },

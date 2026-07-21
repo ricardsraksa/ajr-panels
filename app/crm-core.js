@@ -11,7 +11,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 export const supa = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 /* canonical vocab (was Apps Script Config.gs) */
-export const STAGES = ['Engaged 1', 'Engaged 2', 'Engaged 3', 'Booked', 'No Close', 'Archive', 'No Reply', 'Closed'];
+export const STAGES = ['Engaged 1', 'Engaged 2', 'Engaged 3', 'Booked', 'No Close', 'Archive', 'No Reply', 'Closed', 'Outreach'];
 export const STATUSES = ['Follow up Sent', "Haven't read", 'End of convo', 'Mid convo',
   'Lifestyle sent', 'Left on read', 'Story reply', 'Call Pitched', 'Meme sent', 'LM Sent'];
 export const TEMPS = ['Warm Lead', 'Cold Lead', 'Hot Lead'];
@@ -532,6 +532,171 @@ export async function linkBooking(bookingId, dealRow) {
   return { ok: true, name: d.name || d.ig_link, meeting: isoToDmy(date), time,
     phone: patch.phone || d.phone || '', email: patch.email || d.email || '',
     undo: { table: 'deals', rowId: d.id, prev, actId }, bookingId: b.id };
+}
+
+/* ---------- outreach pool (mass IG follow-up) ----------
+   The whole IG following list lives here as leads staged 'Outreach': a bucket
+   kept out of the worklist and the main lead list. last_contact null = not
+   messaged yet. Replying promotes them with no special UI — the setter just
+   logs them normally and setterUpdate moves them up the ladder. */
+
+const HANDLE_RE = /^[a-z0-9._]{1,30}$/;
+function normHandle(s) {
+  let h = String(s || '').trim().toLowerCase();
+  h = h.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '');
+  h = h.split(/[/?#]/)[0].trim();
+  return HANDLE_RE.test(h) ? h : '';
+}
+
+/** Pull handles out of an Instagram "Download your information" export.
+ *  Meta has changed this shape before, so don't bind to one path: prefer
+ *  string_list_data entries found anywhere in the tree, and fall back to any
+ *  instagram.com URL / bare handle string. Accepts an object or raw JSON text. */
+export function parseFollowing(input) {
+  let data = input;
+  if (typeof input === 'string') { try { data = JSON.parse(input); } catch (e) { data = null; } }
+  const out = [];
+  const push = (v) => { const h = normHandle(v); if (h) out.push(h); };
+  const walkPreferred = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) { node.forEach(walkPreferred); return; }
+    if (Array.isArray(node.string_list_data)) {
+      for (const e of node.string_list_data) push((e && (e.value || e.href)) || '');
+    }
+    Object.keys(node).forEach((k) => walkPreferred(node[k]));
+  };
+  walkPreferred(data);
+  if (!out.length) { // fallback: any handle-ish string anywhere
+    const walkAny = (node) => {
+      if (typeof node === 'string') { push(node); return; }
+      if (!node || typeof node !== 'object') return;
+      if (Array.isArray(node)) { node.forEach(walkAny); return; }
+      Object.keys(node).forEach((k) => walkAny(node[k]));
+    };
+    walkAny(data);
+  }
+  return Array.from(new Set(out));
+}
+
+/** Import a following export into the outreach pool. Handles that are already
+ *  leads at ANY stage are skipped outright — never demote or duplicate someone
+ *  who's already a live conversation. Returns ids so the import is undoable. */
+export async function importFollowing(input) {
+  const handles = parseFollowing(input);
+  if (!handles.length) return { total: 0, added: 0, skippedExisting: 0, ids: [] };
+  if (DEMO) {
+    const have = new Set(_demo.leads.map((l) => l.h));
+    const fresh = handles.filter((h) => !have.has(h));
+    const ids = [];
+    fresh.forEach((h) => {
+      const id = Date.now() + Math.floor(Math.random() * 1e6);
+      _demo.leads.push({ id, h, url: 'https://instagram.com/' + h, level: 'Outreach',
+        status: '', temp: 'Cold Lead', qual: '', notes: '', lastContact: '', dateAdded: todayDmy() });
+      ids.push(id);
+    });
+    return { total: handles.length, added: fresh.length, skippedExisting: handles.length - fresh.length, ids };
+  }
+  const have = new Set();
+  for (let off = 0; ; off += 1000) {
+    const { data, error } = await supa.from('leads').select('handle').range(off, off + 999);
+    if (error) throw new Error(error.message);
+    data.forEach((r) => have.add(String(r.handle || '').toLowerCase()));
+    if (data.length < 1000) break;
+  }
+  const fresh = handles.filter((h) => !have.has(h));
+  const todayIso = dmyToIso(todayDmy());
+  const ids = [];
+  for (let i = 0; i < fresh.length; i += 500) {
+    const chunk = fresh.slice(i, i + 500).map((h) => ({
+      handle: h, ig_url: 'https://www.instagram.com/' + h + '/',
+      level: 'Outreach', temp: 'Cold Lead', last_contact: null, date_added: todayIso,
+    }));
+    const { data, error } = await supa.from('leads').insert(chunk).select('id');
+    if (error) throw new Error(error.message);
+    data.forEach((r) => ids.push(r.id));
+  }
+  // one summary activity row — per-row logging would flood the audit table
+  if (ids.length) {
+    await logActivity('leads', ids[0], 'import', null,
+      { imported: ids.length, skipped: handles.length - fresh.length, source: 'ig-following' });
+  }
+  return { total: handles.length, added: fresh.length, skippedExisting: handles.length - fresh.length, ids };
+}
+
+/** Undo an import: delete exactly the rows it created. */
+export async function undoImport(ids) {
+  if (!ids || !ids.length) return { ok: true, deleted: 0 };
+  if (DEMO) {
+    const s = new Set(ids);
+    _demo.leads = _demo.leads.filter((l) => !s.has(l.id));
+    return { ok: true, deleted: ids.length };
+  }
+  for (let i = 0; i < ids.length; i += 500) {
+    const { error } = await supa.from('leads').delete().in('id', ids.slice(i, i + 500));
+    if (error) throw new Error(error.message);
+  }
+  return { ok: true, deleted: ids.length };
+}
+
+/** The un-messaged part of the pool, oldest-added first. */
+export async function outreachPool(opts = {}) {
+  const limit = opts.limit || 500;
+  if (DEMO) {
+    return _demo.leads.filter((l) => l.level === 'Outreach' && !l.lastContact)
+      .slice(0, limit).map(_clone);
+  }
+  const { data, error } = await supa.from('leads')
+    .select('id,handle,ig_url,date_added')
+    .eq('level', 'Outreach').is('last_contact', null)
+    .order('date_added', { ascending: true }).limit(limit);
+  if (error) throw new Error(error.message);
+  return data.map((l) => ({ id: l.id, h: l.handle, url: l.ig_url || '', dateAdded: isoToDmy(l.date_added) }));
+}
+
+/** Mark a batch as messaged today. One bulk write (a 100-lead batch shouldn't be
+ *  100 round trips) and one summary activity row. Deliberately does NOT touch
+ *  `level`, so this can never disturb a lead's real stage. */
+export async function markOutreachSent(ids, opts = {}) {
+  const status = opts.status || 'Follow up Sent';
+  if (!ids || !ids.length) return { ok: true, marked: 0 };
+  if (DEMO) {
+    const s = new Set(ids);
+    const prev = [];
+    _demo.leads.forEach((l) => {
+      if (s.has(l.id)) { prev.push({ id: l.id, lastContact: l.lastContact, status: l.status });
+        l.lastContact = todayDmy(); l.status = status; }
+    });
+    return { ok: true, marked: prev.length, undo: { _demo: true, outreach: prev } };
+  }
+  const todayIso = dmyToIso(todayDmy());
+  for (let i = 0; i < ids.length; i += 500) {
+    const { error } = await supa.from('leads')
+      .update({ last_contact: todayIso, last_status: status })
+      .in('id', ids.slice(i, i + 500));
+    if (error) throw new Error(error.message);
+  }
+  await logActivity('leads', ids[0], 'update', { outreach_batch: ids.length },
+    { last_contact: todayIso, last_status: status, batch: ids.length });
+  return { ok: true, marked: ids.length, undo: { outreachIds: ids } };
+}
+
+/** Undo a batch mark: back to un-messaged. */
+export async function undoOutreachSent(undo) {
+  if (!undo) return { ok: true };
+  if (undo._demo) {
+    undo.outreach.forEach((p) => {
+      const l = _demo.leads.find((x) => x.id === p.id);
+      if (l) { l.lastContact = p.lastContact; l.status = p.status; }
+    });
+    return { ok: true };
+  }
+  const ids = undo.outreachIds || [];
+  for (let i = 0; i < ids.length; i += 500) {
+    const { error } = await supa.from('leads')
+      .update({ last_contact: null, last_status: null }).in('id', ids.slice(i, i + 500));
+    if (error) throw new Error(error.message);
+  }
+  return { ok: true };
 }
 
 /** Direct-set a lead's fields (leads-browser editor). Only present keys write. */
