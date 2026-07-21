@@ -67,6 +67,65 @@
 .banner .eyebrow{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#2a6a4d}
 .banner .who{font-weight:700;font-size:13.5px}
 .banner .x{color:#6d675b;display:inline-flex}
+/* ---- v2 restyle of the flow screens (classes emitted by the render fns) ---- */
+:root{--dim:#8a8375;--err:#b4543e;--money-chk:#2a6a4d;--mono:'IBM Plex Mono',ui-monospace,monospace}
+.btn{min-height:38px;padding:0 16px;border-radius:8px;border:1px solid #ddd8cd;background:#fff;
+  color:#4d4a42;font-size:13px;font-weight:600;cursor:pointer}
+.btn:hover{border-color:#8a8375;color:#211f1b}
+.btn-primary{background:#211f1b;border-color:#211f1b;color:#f9f8f5}
+.btn-primary:hover{filter:brightness(1.35);color:#f9f8f5}
+.btn-money{background:#2a6a4d;border-color:#2a6a4d;color:#fff}
+.btn-money:hover{background:#1d4d37;color:#fff}
+.btn-ghost{background:transparent}
+.btn-sm{min-height:30px;padding:0 12px;border-radius:8px;border:1px solid #ddd8cd;background:#fff;
+  color:#4d4a42;font-size:12px;font-weight:600;cursor:pointer}
+.btn-sm:hover{color:#211f1b;border-color:#8a8375}
+/* preview card rows */
+.pv-field{display:flex;align-items:baseline;gap:10px;padding:8px 0;border-top:1px solid #f0ede6;font-size:13px}
+.pv-field:first-child{border-top:none}
+.pv-field .k{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:#98917f;width:92px;flex:none}
+.pv-field .v{flex:1;color:#211f1b}
+.pv-field .v.money{font:600 14px var(--mono);color:#2a6a4d}
+.pv-field .v.mono{font-family:var(--mono);font-size:12.5px}
+.pv-name{font-weight:700;font-size:14px}
+.pv-row-num{color:#98917f;font:400 11px var(--mono);margin-left:8px}
+.pv-warn{display:flex;align-items:center;gap:8px;margin-top:9px;padding:8px 11px;border:1px solid #e0cba0;
+  border-radius:9px;background:#faf3e6;color:#a8762a;font-size:12.5px}
+.pv-hint{padding:14px 2px;color:#6d675b;font-size:13px}
+/* ambiguous: which call was this? */
+#ambig h2{font-size:14px;font-weight:700;margin-bottom:10px}
+#ambig button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 13px;
+  margin-bottom:7px;border:1px solid #e6e2da;border-radius:10px;background:#fff;cursor:pointer;font-size:13px}
+#ambig button:hover{background:#fdfcf9}
+#ambig .an{font-weight:600}
+#ambig .am{color:#8a8375;font-size:12px;margin-left:auto}
+/* deal picker rows */
+.deal-row{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px 12px;
+  border:1px solid #e6e2da;border-radius:9px;background:#fff;cursor:pointer;font-size:13px;margin-bottom:6px}
+.deal-row:hover{background:#fdfcf9}
+.deal-row .dn{font-weight:600}
+.deal-row .ds{color:#8a8375;font-size:12px;margin-left:auto}
+.rel{font:600 11px var(--mono);color:#6d675b;border:1px solid #ddd8cd;border-radius:99px;padding:1px 8px;white-space:nowrap}
+.rel.today{color:#a8762a;border-color:#e0cba0}
+.rel.late{color:#b4543e;border-color:#e8cec6}
+/* money takeover */
+.money .ctx{color:#4d4a42;font-size:13px;margin-bottom:6px}
+.money .digits{font:600 30px var(--mono);color:#211f1b;letter-spacing:.01em}
+.money .words{color:#2a6a4d;font-size:13px;font-weight:600;margin-top:4px}
+/* saved */
+.saved .badge{display:inline-flex;width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid #c9dfd2;
+  align-items:center;justify-content:center;margin-bottom:9px}
+.saved .badge svg{width:18px;height:18px}
+.saved .who{font-weight:700;color:#211f1b}
+.saved .sum{color:#4d4a42;font-size:12.5px;margin:3px 0 10px;font-weight:400}
+/* error screen */
+.errscreen .et{font-weight:700;margin-bottom:3px}
+.errscreen .es{font-size:12.5px}
+/* recent list bits */
+.recent .tag{font:600 9.5px var(--mono);letter-spacing:.08em;color:#98917f;border:1px solid #ddd8cd;
+  border-radius:99px;padding:1px 7px;flex:none}
+.recent .rx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.recent .rt{color:#98917f;font:400 11px var(--mono);flex:none}
 /* the old stylesheet sized these; without a rule inline SVGs render huge */
 .col svg{width:15px;height:15px;flex:none}
 .hero-mic svg{width:22px;height:22px}
@@ -147,7 +206,7 @@
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721a';
+import * as core from './crm-core.js?v=20260721b';
 const _session = await core.requireAuth();
 if (_session) {
 await core.installChrome({ active: 'close-call' });

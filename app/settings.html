@@ -103,14 +103,13 @@
 
 
 <script type="module">
-import * as core from './crm-core.js?v=20260721a';
+import * as core from './crm-core.js?v=20260721b';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'settings' });
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
-const FF_URL = 'https://cukjynfatkyiuzvstgcp.supabase.co/functions/v1/ffwebhook?secret=064df4cc164bcff4b95233f6a305100f8cbc6131bd3ba6aa';
 
 /* ---------- health ---------- */
 function row(state, label, value, stale) {
@@ -127,7 +126,8 @@ async function health() {
     $('health').innerHTML = [
       row('ok', 'Database', '13 leads · 42ms'),
       row('ok', 'Deals', '6'),
-      row('ok', 'Fireflies', 'polling every 45 min'),
+      row('ok', 'Fireflies poll', 'ok · 12 min ago'),
+      row('ok', 'Calendly poll', 'ok · 4 min ago'),
       row('ok', 'Last write', 'demo · just now'),
       row('off', 'Slack alerts', 'not set'),
       row('ok', 'AI feedback collected', '3'),
@@ -144,17 +144,27 @@ async function health() {
     const { count: deals } = await core.supa.from('deals').select('id', { count: 'exact', head: true });
     out.push(row('ok', 'Deals', String(deals)));
   } catch (e) { out.push(row('bad', 'Deals', e.message)); }
+  // integration heartbeats: each poll upserts health_* with {at, ok, error} —
+  // a dead API key shows up here instead of failing silently forever
+  try {
+    const { data: hb } = await core.supa.from('settings').select('key,value')
+      .in('key', ['health_fireflies', 'health_calendly']);
+    const H = {};
+    for (const r of hb || []) { try { H[r.key] = JSON.parse(r.value); } catch (e) { /* raw */ } }
+    const beatRow = (label, b, staleMins) => {
+      if (!b || !b.at) return row('warn', label, 'no heartbeat yet', true);
+      const ageMin = (Date.now() - new Date(b.at).getTime()) / 6e4;
+      if (b.ok === false) return row('warn', label, 'failing — ' + (b.error || 'unknown error'), true);
+      if (ageMin > staleMins) return row('warn', label, 'STALE — last ran ' + core.relTime(b.at), true);
+      return row('ok', label, 'ok · ' + core.relTime(b.at));
+    };
+    out.push(beatRow('Fireflies poll', H.health_fireflies, 150));  // hourly job
+    out.push(beatRow('Calendly poll', H.health_calendly, 40));     // 10-min job
+  } catch (e) { out.push(row('bad', 'Integrations', e.message)); }
   try {
     const { data } = await core.supa.from('pending_calls').select('created_at').order('created_at', { ascending: false }).limit(1);
-    if (data && data.length) {
-      const ageDays = (Date.now() - new Date(data[0].created_at).getTime()) / 864e5;
-      out.push(ageDays > 6
-        ? row('warn', 'Fireflies', 'nothing received in ' + Math.floor(ageDays) + ' days — check the webhook below', true)
-        : row('ok', 'Last Fireflies call processed', core.relTime(data[0].created_at)));
-    } else {
-      out.push(row('ok', 'Fireflies', 'polling every 45 min — no matching calls yet'));
-    }
-  } catch (e) { out.push(row('bad', 'Fireflies', e.message)); }
+    if (data && data.length) out.push(row('ok', 'Last matched call', core.relTime(data[0].created_at)));
+  } catch (e) { /* optional context row */ }
   try {
     const { data } = await core.supa.from('activity').select('created_at,actor').order('id', { ascending: false }).limit(1);
     out.push(data && data.length
@@ -173,10 +183,19 @@ async function health() {
   $('health').innerHTML = out.join('');
 }
 
-/* ---------- fireflies ---------- */
-$('ff-url').value = FF_URL;
+/* ---------- fireflies ----------
+   The webhook URL embeds a secret, so it must never live in this file (the
+   deployed repo is public). It's a settings row only signed-in users can read. */
+(async () => {
+  if (core.isDemo) { $('ff-url').value = 'https://…/functions/v1/ffwebhook?secret=demo'; return; }
+  try {
+    const { data } = await core.supa.from('settings').select('value').eq('key', 'ff_webhook_url').maybeSingle();
+    $('ff-url').value = (data && data.value) || 'unavailable — check settings.ff_webhook_url';
+  } catch (e) { $('ff-url').value = 'unavailable: ' + e.message; }
+})();
 $('ff-copy').onclick = async () => {
-  try { await navigator.clipboard.writeText(FF_URL); $('ff-copy').textContent = 'Copied'; }
+  const v = $('ff-url').value;
+  try { await navigator.clipboard.writeText(v); $('ff-copy').textContent = 'Copied'; }
   catch (e) { $('ff-url').select(); document.execCommand('copy'); $('ff-copy').textContent = 'Copied'; }
   setTimeout(() => { $('ff-copy').textContent = 'Copy'; }, 1500);
 };

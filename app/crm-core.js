@@ -632,19 +632,27 @@ export async function importFollowing(input) {
   return { total: handles.length, added: fresh.length, skippedExisting: handles.length - fresh.length, ids };
 }
 
-/** Undo an import: delete exactly the rows it created. */
+/** Undo an import: delete the rows it created — but ONLY those still untouched
+ *  (level Outreach, never messaged). A pool entry that replied and got promoted
+ *  is a real lead now; undoing the import must not take it down. */
 export async function undoImport(ids) {
-  if (!ids || !ids.length) return { ok: true, deleted: 0 };
+  if (!ids || !ids.length) return { ok: true, deleted: 0, kept: 0 };
   if (DEMO) {
     const s = new Set(ids);
-    _demo.leads = _demo.leads.filter((l) => !s.has(l.id));
-    return { ok: true, deleted: ids.length };
+    const before = _demo.leads.length;
+    _demo.leads = _demo.leads.filter((l) => !(s.has(l.id) && l.level === 'Outreach' && !l.lastContact));
+    const deleted = before - _demo.leads.length;
+    return { ok: true, deleted, kept: ids.length - deleted };
   }
+  let deleted = 0;
   for (let i = 0; i < ids.length; i += 500) {
-    const { error } = await supa.from('leads').delete().in('id', ids.slice(i, i + 500));
+    const chunk = ids.slice(i, i + 500);
+    const { data, error } = await supa.from('leads').delete()
+      .in('id', chunk).eq('level', 'Outreach').is('last_contact', null).select('id');
     if (error) throw new Error(error.message);
+    deleted += (data || []).length;
   }
-  return { ok: true, deleted: ids.length };
+  return { ok: true, deleted, kept: ids.length - deleted };
 }
 
 /** The un-messaged part of the pool, oldest-added first. */

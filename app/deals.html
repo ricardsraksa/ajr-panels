@@ -6,6 +6,7 @@
 <meta name="color-scheme" content="light">
 <title>Deals · AJR</title>
 <style>
+:root{--faint:#98917f}
 .d-thead,.d-row{grid-template-columns:124px 88px 60px 74px 62px minmax(0,1fr)}
 .d-row{cursor:pointer}
 .d-min{min-width:600px}
@@ -75,6 +76,9 @@
 .pick-list{display:flex;flex-direction:column;gap:6px;margin-top:10px;max-height:60vh;overflow-y:auto}
 .pick-list button{text-align:left;padding:9px 12px;border:1px solid #e6e2da;border-radius:9px;background:#fff;font-size:13px}
 .pick-list button:hover{background:#fdfcf9}
+.pick-list .pn{font-weight:600}
+.pick-list .ps{color:#8a8375;font-size:12px;margin-left:8px}
+
 </style>
 </head>
 <body>
@@ -175,14 +179,14 @@
 
   <div class="dfoot" id="dfoot">
     <button class="v2-btn dark" id="d-save">Save changes</button>
-    <button class="v2-btn" id="d-cancel">Undo last</button>
+    <button class="v2-btn" id="d-cancel">Close</button>
   </div>
 </aside>
 
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721a';
+import * as core from './crm-core.js?v=20260721b';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
@@ -471,6 +475,7 @@ async function saveDrawer() {
     d.notes = fields.notes;
     render();
     closeDrawer();
+    if (res.undo) { state.lastUndo = { res, d }; $('d-cancel').textContent = 'Undo last'; }
     toast({ type: 'ok', html: '<span class="mono">' + esc(displayName(d)) + '</span> saved.', ttl: 8000,
       action: res.undo ? { label: 'Undo', fn: () => undo(res, d) } : null });
   } catch (e) {
@@ -585,7 +590,15 @@ $('voiceLog').onclick = openVoiceLog;
 $('pick-search').oninput = (e) => renderPickList(e.target.value);
 $('scrim').onclick = closeDrawer;
 $('d-close').onclick = closeDrawer;
-$('d-cancel').onclick = closeDrawer;
+$('d-cancel').onclick = () => {
+  // once a save exists this session the button is a true undo; before that it just closes
+  if (state.lastUndo) {
+    const { res, d } = state.lastUndo;
+    state.lastUndo = null; $('d-cancel').textContent = 'Close';
+    undo(res, d);
+    closeDrawer();
+  } else closeDrawer();
+};
 $('d-save').onclick = saveDrawer;
 ['f-status','f-meeting','f-followup','f-notes'].forEach((id) => $(id).addEventListener('input', () => { setTag(id, false); state.cashConfirmed = false; $('d-save').textContent = 'Save changes'; checkFuNudge(); }));
 $('f-status').addEventListener('change', syncReasonRow);

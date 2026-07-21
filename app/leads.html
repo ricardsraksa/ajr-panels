@@ -91,8 +91,8 @@
   </div>
   <div class="dbody">
     <div class="meta" id="d-meta"></div>
-    <button class="v2-btn go" id="q-fu" style="width:100%;margin-bottom:14px">Log follow-up now</button>
-    <a id="q-log" href="#" hidden></a>
+    <button class="v2-btn go" id="q-fu" style="width:100%;margin-bottom:6px">Log follow-up now</button>
+    <a id="q-log" href="#" style="display:block;text-align:center;font-size:12.5px;margin-bottom:12px">Open in Log a lead →</a>
     <div class="g2">
       <div class="fld"><label>Stage</label>
         <select class="v2-in" id="f-level"><option value="">no level</option><option>Engaged 1</option><option>Engaged 2</option><option>Engaged 3</option><option>Booked</option><option>No Close</option><option>Outreach</option><option>Archive</option><option>No Reply</option><option>Closed</option></select>
@@ -114,14 +114,14 @@
   </div>
   <div class="dfoot">
     <button class="v2-btn dark" id="d-save">Save</button>
-    <button class="v2-btn" id="d-cancel">Undo last</button>
+    <button class="v2-btn" id="d-cancel">Close</button>
   </div>
 </aside>
 
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721a';
+import * as core from './crm-core.js?v=20260721b';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -324,6 +324,7 @@ async function saveDrawer() {
     l.level = fields.level; l.temp = fields.temp; l.status = fields.status; l.qual = fields.qual;
     l.notes = fields.notes; l.pains = fields.pains; l.email = fields.email; l.phone = fields.phone; l.linkedin = fields.linkedin;
     renderSumbar(); renderTable(); closeDrawer();
+    if (res.undo) { state.lastUndo = { res, l }; $('d-cancel').textContent = 'Undo last'; }
     toast({ type: 'ok', html: '<span class="mono">@' + esc(l.h) + '</span> saved.', ttl: 7000,
       action: res.undo ? { label: 'Undo', fn: () => undo(res, l) } : null });
   } catch (e) {
@@ -377,7 +378,14 @@ $('tempsel').onchange = (e) => { state.temp = e.target.value; state.shown = 100;
 $('refresh').onclick = load;
 $('scrim').onclick = closeDrawer;
 $('d-close').onclick = closeDrawer;
-$('d-cancel').onclick = closeDrawer;
+$('d-cancel').onclick = () => {
+  if (state.lastUndo) {
+    const { res, l } = state.lastUndo;
+    state.lastUndo = null; $('d-cancel').textContent = 'Close';
+    undo(res, l);
+    closeDrawer();
+  } else closeDrawer();
+};
 $('d-save').onclick = saveDrawer;
 $('q-fu').onclick = quickFu;
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.editing) closeDrawer(); });
@@ -446,7 +454,12 @@ $('importFile').onchange = async () => {
       '</b> already leads, left untouched<span class="sp"></span>';
     const ub = document.createElement('button');
     ub.className = 'v2-btn sm'; ub.textContent = 'Undo import';
-    ub.onclick = async () => { ub.disabled = true; await core.undoImport(res.ids); bar.remove(); load(); };
+    ub.onclick = async () => {
+      ub.disabled = true;
+      const u = await core.undoImport(res.ids);
+      bar.remove(); load();
+      toast({ type: 'ok', html: 'Import undone — ' + u.deleted + ' removed' + (u.kept ? ', ' + u.kept + ' kept (already worked or promoted)' : '') + '.' });
+    };
     bar.appendChild(ub);
     $('table').parentNode.insertBefore(bar, $('table'));
     toast({ type: 'ok', ttl: 12000,
