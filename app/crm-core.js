@@ -181,17 +181,32 @@ async function pagedSelect(table, cols, order = 'id') {
   return first.data;
 }
 
+/* The whole book is ~400KB of JSON and three pages fetch it on every
+   navigation — by far the biggest repeat cost in real use. Cache it for a
+   minute in sessionStorage; every write path drops the cache, so the only
+   staleness window is another person's edit, and 60s of that is fine for a
+   2-person team. */
+const BOOK_KEY = 'ajr_book_v1';
+const BOOK_TTL = 60000;
+function dropBookCache() { try { sessionStorage.removeItem(BOOK_KEY); } catch (e) { /* private mode */ } }
+
 export async function loadLeads() {
   if (DEMO) return _demo.leads.map(_clone);
+  try {
+    const c = JSON.parse(sessionStorage.getItem(BOOK_KEY) || 'null');
+    if (c && Date.now() - c.t < BOOK_TTL) return c.rows;
+  } catch (e) { /* fall through to network */ }
   const out = await pagedSelect('leads',
     'id,handle,ig_url,level,last_status,temp,qualification,notes,last_contact,date_added,pain_points,email,phone,linkedin');
-  return out.map((l) => ({
+  const mapped = out.map((l) => ({
     id: l.id, h: l.handle, url: l.ig_url || '',
     level: l.level || '', status: l.last_status || '', temp: l.temp || '',
     qual: l.qualification || '', notes: l.notes || '',
     lastContact: isoToDmy(l.last_contact), dateAdded: isoToDmy(l.date_added),
     pains: l.pain_points || '', email: l.email || '', phone: l.phone || '', linkedin: l.linkedin || '',
   }));
+  try { sessionStorage.setItem(BOOK_KEY, JSON.stringify({ t: Date.now(), rows: mapped })); } catch (e) { /* quota/private */ }
+  return mapped;
 }
 
 export async function loadDeals() {
@@ -223,6 +238,7 @@ export async function bootstrap() {
 const LEAD_FIELDS = { stage: 'level', status: 'last_status', temp: 'temp', note: 'notes' };
 
 async function logActivity(table, rowId, action, prev, next) {
+  dropBookCache(); // any write may have touched a lead — never serve it stale
   const email = await userEmail();
   const { data, error } = await supa.from('activity')
     .insert({ actor: email, table_name: table, row_id: rowId, action, prev, next })
@@ -684,6 +700,7 @@ export async function importFollowing(input) {
  *  (level Outreach, never messaged). A pool entry that replied and got promoted
  *  is a real lead now; undoing the import must not take it down. */
 export async function undoImport(ids) {
+  dropBookCache();
   if (!ids || !ids.length) return { ok: true, deleted: 0, kept: 0 };
   if (DEMO) {
     const s = new Set(ids);
@@ -789,6 +806,7 @@ export async function markOutreachSent(ids, opts = {}) {
 }
 
 export async function undoOutreachSent(undo) {
+  dropBookCache();
   if (!undo) return { ok: true };
   if (undo._demo) {
     undo.outreach.forEach((p) => {
@@ -911,6 +929,7 @@ export async function setDeal(id, fields, opts = {}) {
 
 /** Undo a write: restore prev values (activity row keeps the audit trail). */
 export async function undoWrite(undo) {
+  dropBookCache();
   if (DEMO || (undo && undo._demo)) { _demoApplyUndo(undo); return { ok: true }; }
   const { error } = await supa.from(undo.table).update(undo.prev).eq('id', undo.rowId);
   if (error) throw new Error(error.message);
@@ -1378,8 +1397,43 @@ export function installTheme() {
 }
 
 /** Render the shared sidebar and wrap the page's <main>. Badges fill in async. */
+/* TEMPORARY diagnostic: record where each real page load spent its time, so
+   slowness can be diagnosed from actual field numbers instead of guesses.
+   Kept to the last 30 views in settings.perf_log; remove once solved. */
+function perfBeacon() {
+  if (DEMO) return;
+  setTimeout(async () => {
+    try {
+      const nav = performance.getEntriesByType('navigation')[0];
+      const rs = performance.getEntriesByType('resource');
+      const pick = (m) => rs.filter((r) => r.name.includes(m));
+      const span = (list) => list.length
+        ? Math.round(Math.max(...list.map((r) => r.startTime + r.duration)) - Math.min(...list.map((r) => r.startTime)))
+        : 0;
+      const entry = {
+        page: location.pathname.split('/').pop(),
+        ts: new Date().toISOString().slice(0, 19),
+        navMs: Math.round(nav ? nav.duration : 0),
+        htmlMs: Math.round(nav ? nav.responseEnd : 0),
+        coreFetchMs: Math.round((pick('crm-core.js')[0] || {}).duration || 0),
+        sbFetchMs: Math.round((pick('supabase-js.mjs')[0] || {}).duration || 0),
+        cached: ((pick('supabase-js.mjs')[0] || {}).transferSize === 0),
+        authMs: span(pick('/auth/v1/')),
+        restCount: pick('/rest/v1/').length,
+        restSpanMs: span(pick('/rest/v1/')),
+        restStartMs: Math.round(Math.min(...pick('/rest/v1/').map((r) => r.startTime), 99999)),
+      };
+      const { data } = await supa.from('settings').select('value').eq('key', 'perf_log').maybeSingle();
+      let log = []; try { log = JSON.parse((data && data.value) || '[]'); } catch (e) { /* reset */ }
+      log.push(entry);
+      await supa.from('settings').upsert({ key: 'perf_log', value: JSON.stringify(log.slice(-30)), updated_at: new Date().toISOString() });
+    } catch (e) { /* diagnostics must never hurt the page */ }
+  }, 3000);
+}
+
 export async function installChrome(opts = {}) {
   installTheme();
+  perfBeacon();
   const active = opts.active || '';
   const side = document.createElement('nav');
   side.className = 'v2-side';
