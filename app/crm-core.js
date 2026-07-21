@@ -1410,9 +1410,9 @@ const NAV_ITEMS = [
 
 /** Inject the v2 stylesheet + fonts once. Safe to call from any page. */
 export function installTheme() {
-  if (document.getElementById('v2-theme')) return;
   try {
-    if (HTMLScriptElement.supports && HTMLScriptElement.supports('speculationrules')) {
+    if (!document.querySelector('script[type="speculationrules"]')
+        && HTMLScriptElement.supports && HTMLScriptElement.supports('speculationrules')) {
       const sr = document.createElement('script');
       sr.type = 'speculationrules';
       const others = ['worklist', 'log-lead', 'leads', 'deals', 'report', 'close-call', 'settings']
@@ -1430,6 +1430,10 @@ export function installTheme() {
       document.head.append(sr);
     }
   } catch (e) { /* an optimization, never a requirement */ }
+  if (document.getElementById('v2-theme')) { // baked into the HTML at build time
+    document.documentElement.classList.remove('v2-boot');
+    return;
+  }
   const pre1 = document.createElement('link'); pre1.rel = 'preconnect'; pre1.href = 'https://fonts.googleapis.com';
   const pre2 = document.createElement('link'); pre2.rel = 'preconnect'; pre2.href = 'https://fonts.gstatic.com'; pre2.crossOrigin = '';
   const f = document.createElement('link'); f.rel = 'stylesheet'; f.href = V2_FONTS;
@@ -1483,7 +1487,15 @@ export async function installChrome(opts = {}) {
   perfBeacon();
   try { navigator.serviceWorker && navigator.serviceWorker.register('./sw.js'); } catch (e) { /* optional */ }
   const active = opts.active || '';
-  const side = document.createElement('nav');
+  let side = document.querySelector('.v2-side');
+  if (side) {
+    // baked at build time — just make sure the highlighted item is this page
+    side.querySelectorAll('a.nav').forEach((a) => {
+      const id = a.getAttribute('data-nav');
+      a.classList.toggle('on', id ? id === active : active === 'settings');
+    });
+  } else {
+  side = document.createElement('nav');
   side.className = 'v2-side';
   side.innerHTML =
     '<div class="wm">AJR&nbsp;CRM</div>' +
@@ -1499,6 +1511,7 @@ export async function installChrome(opts = {}) {
       '<button class="out" id="v2-out" title="Sign out">↩</button></div>';
   document.body.prepend(side);
   document.body.classList.add('v2-shell');
+  }
   side.querySelector('#v2-k').onclick = () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }));
   };
