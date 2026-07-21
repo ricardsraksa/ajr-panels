@@ -1374,6 +1374,7 @@ export function installTheme() {
   const f = document.createElement('link'); f.rel = 'stylesheet'; f.href = V2_FONTS;
   const s = document.createElement('style'); s.id = 'v2-theme'; s.textContent = V2_CSS;
   document.head.append(pre1, pre2, f, s);
+  document.documentElement.classList.remove('v2-boot'); // theme is in — reveal
 }
 
 /** Render the shared sidebar and wrap the page's <main>. Badges fill in async. */

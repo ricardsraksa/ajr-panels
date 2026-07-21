@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
+<script>/* hold the raw markup off-screen until the shared theme lands; a dead
+script may never strand the user on a blank page, hence the timeout */
+document.documentElement.classList.add('v2-boot');
+setTimeout(function () { document.documentElement.classList.remove('v2-boot'); }, 4000);</script>
+<style>html{background:#f9f8f5}.v2-boot body{visibility:hidden}</style>
 <title>Settings · AJR</title>
 <style>
 .demo-banner{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;
@@ -131,7 +136,7 @@
 
 
 <script type="module">
-import * as core from './crm-core.js?v=20260721m';
+import * as core from './crm-core.js?v=20260721n';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'settings' });
