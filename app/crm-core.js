@@ -870,6 +870,302 @@ export async function bookedAlert(payload) {
 }
 
 
+/* ---------- app settings (team roles + worklist rules) ----------
+   Small JSON blobs in the `settings` table so roles and thresholds are data,
+   not constants — adding a teammate or changing the overdue window is a
+   Settings edit, not a deploy. Cached per page load. */
+
+const DEFAULT_RULES = { overdueDays: 14, autoArchiveDays: 60, snoozeDays: 7, noCloseResurfaceDays: 30 };
+const DEMO_ROLES = { 'reinis@agencyjr.com': 'closer' };
+let _settingsCache = null;
+
+export async function loadSettings(force) {
+  if (_settingsCache && !force) return _settingsCache;
+  if (DEMO) {
+    _settingsCache = { team_roles: DEMO_ROLES, worklist_rules: DEFAULT_RULES };
+    return _settingsCache;
+  }
+  const out = { team_roles: {}, worklist_rules: { ...DEFAULT_RULES } };
+  try {
+    const { data } = await supa.from('settings').select('key,value').in('key', ['team_roles', 'worklist_rules']);
+    for (const r of data || []) {
+      let v = r.value;
+      if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) { v = null; } }
+      if (!v) continue;
+      if (r.key === 'team_roles') out.team_roles = v;
+      if (r.key === 'worklist_rules') out.worklist_rules = { ...DEFAULT_RULES, ...v };
+    }
+  } catch (e) { /* defaults are fine */ }
+  _settingsCache = out;
+  return out;
+}
+export async function saveSetting(key, value) {
+  if (DEMO) { _settingsCache = null; return { ok: true }; }
+  const { error } = await supa.from('settings')
+    .upsert({ key, value: JSON.stringify(value), updated_at: new Date().toISOString() });
+  if (error) throw new Error(error.message);
+  _settingsCache = null;
+  return { ok: true };
+}
+/** 'closer' | 'setter' for an email — data-driven, falls back to setter. */
+export async function roleFor(email) {
+  const s = await loadSettings();
+  const key = String(email || '').toLowerCase();
+  return (s.team_roles && s.team_roles[key]) === 'closer' ? 'closer' : 'setter';
+}
+export async function worklistRules() { return (await loadSettings()).worklist_rules; }
+
+/* ---------- shared chrome (v2 "paper" design) ----------
+   One sidebar + one set of tokens for every page, so the app can't drift
+   screen to screen. Pages call installChrome({active}) and render into
+   <main class="v2-main">. */
+
+const V2_CSS = `
+:root{
+  --bg:#f9f8f5; --side:#f4f2ed; --card:#fff; --rowsel:#fdfcf9;
+  --line:#e6e2da; --line-2:#ddd8cd; --divider:#f0ede6;
+  --ink:#211f1b; --ink-2:#4d4a42; --ink-3:#6d675b; --muted:#8a8375; --muted-2:#98917f; --off:#ccc5b6;
+  --go:#2a6a4d; --go-hi:#1d4d37; --go-tint:#eef5f0; --go-line:#c9dfd2; --done:#f7faf7;
+  --red:#b4543e; --amber:#a8762a; --amber-tint:#faf3e6;
+  --ai:#7c56c9; --ai-line:#e2d9f4; --ai-tint:#f6f2fb;
+  --font:'Instrument Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:var(--go);text-decoration:none}
+a:hover{color:var(--go-hi)}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+input::placeholder,textarea::placeholder{color:var(--off)}
+
+/* layout */
+.v2-shell{display:flex;min-height:100vh}
+.v2-side{width:206px;flex:none;border-right:1px solid var(--line);background:var(--side);padding:20px 14px;
+  display:flex;flex-direction:column;gap:3px;position:sticky;top:0;height:100vh;
+  align-self:flex-start} /* flex would stretch it and break position:sticky */
+.v2-side .wm{font-weight:700;font-size:14px;letter-spacing:.02em;padding:2px 10px 16px}
+.v2-side .grp{font:600 10.5px var(--font);letter-spacing:.1em;color:var(--muted-2);padding:4px 10px}
+.v2-side .grp.gap{padding-top:14px}
+.v2-side a.nav{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;color:var(--ink-2);font-size:13.5px}
+.v2-side a.nav:hover{background:rgba(33,31,27,.05);color:var(--ink)}
+.v2-side a.nav.on{background:var(--ink);color:var(--bg);font-weight:600}
+.v2-side a.nav.on:hover{background:var(--ink);color:var(--bg)}
+.v2-side .badge-n{margin-left:auto;font:600 11px var(--mono);background:rgba(255,255,255,.18);border-radius:99px;padding:1px 7px}
+.v2-side a.nav:not(.on) .badge-n{background:transparent;color:var(--muted);padding:0}
+.v2-side .badge-red{margin-left:auto;font-size:11px;color:var(--red);font-weight:600}
+.v2-side .sp{flex:1}
+.v2-side .krow{display:flex;align-items:center;gap:8px;padding:8px 10px;color:var(--muted-2);font-size:12px;cursor:pointer}
+.v2-side .krow kbd{margin-left:auto;font:600 11px var(--mono);border:1px solid var(--line-2);border-radius:5px;padding:1px 6px;background:#fff;color:var(--ink-3)}
+.v2-side .me{display:flex;align-items:center;gap:9px;padding:10px 10px 2px;border-top:1px solid var(--line);margin-top:6px}
+.v2-side .me .av{width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--bg);display:inline-flex;
+  align-items:center;justify-content:center;font:600 11px var(--mono);flex:none}
+.v2-side .me .nm{display:block;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v2-side .me .rl{display:block;font-size:11px;color:var(--muted-2)}
+.v2-side .me .out{margin-left:auto;color:var(--muted-2);font-size:11px}
+.v2-main{flex:1;min-width:0;padding:26px 30px 60px}
+@media(max-width:900px){.v2-side{width:64px;padding:16px 8px}.v2-side .wm,.v2-side .grp,.v2-side .krow,.v2-side .me .nm,.v2-side .me .rl{display:none}}
+
+/* headers */
+.v2-h{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.v2-h h1{font-size:21px;font-weight:700;letter-spacing:-.01em}
+.v2-h .sub{color:var(--muted);font-size:13px}
+.v2-h .sp{flex:1}
+.v2-lab{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2)}
+
+/* chips */
+.v2-chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.v2-chip{min-height:32px;padding:0 14px;border-radius:99px;border:1px solid var(--line-2);background:#fff;
+  color:var(--ink-2);font-size:12.5px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.v2-chip:hover{border-color:var(--muted-2)}
+.v2-chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
+.v2-chip .n{font-family:var(--mono);font-size:11.5px;opacity:.75}
+.v2-chip.green{background:var(--go-tint);border-color:var(--go-line);color:var(--go)}
+.v2-chip.red{background:#fbf0ed;border-color:#e8cec6;color:var(--red)}
+
+/* buttons */
+.v2-btn{min-height:34px;padding:0 14px;border-radius:8px;border:1px solid var(--line-2);background:#fff;
+  color:var(--ink-2);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.v2-btn:hover:not(:disabled){border-color:var(--muted-2);color:var(--ink)}
+.v2-btn:disabled{opacity:.45;cursor:not-allowed}
+.v2-btn.go{background:var(--go);border-color:var(--go);color:#fff}
+.v2-btn.go:hover:not(:disabled){background:var(--go-hi);border-color:var(--go-hi);color:#fff}
+.v2-btn.goline{background:#fff;border-color:var(--go-line);color:var(--go)}
+.v2-btn.goline:hover:not(:disabled){background:var(--go-tint);color:var(--go)}
+.v2-btn.dark{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.v2-btn.dark:hover:not(:disabled){filter:brightness(1.35)}
+.v2-btn.dash{border-style:dashed;color:var(--muted);font-weight:500;background:transparent}
+.v2-btn.dash:hover{color:var(--ink-2)}
+.v2-btn.sm{min-height:28px;padding:0 10px;font-size:11.5px}
+
+/* inputs */
+.v2-in{min-height:34px;padding:7px 12px;background:#fff;border:1px solid var(--line-2);border-radius:8px;
+  color:var(--ink);font-size:13px;width:100%}
+.v2-in:focus{border-color:var(--muted-2)}
+select.v2-in{cursor:pointer}
+textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
+
+/* cards + tables */
+.v2-card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+.v2-thead{display:grid;gap:10px;padding:9px 18px;font:600 10px var(--mono);letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted-2);border-bottom:1px solid var(--divider)}
+.v2-row{display:grid;gap:10px;padding:13px 18px;align-items:center;border-top:1px solid var(--divider)}
+.v2-row:first-of-type{border-top:none}
+.v2-row:hover{background:var(--rowsel)}
+.v2-scroll{overflow-x:auto}
+.v2-empty{padding:30px 18px;text-align:center;color:var(--muted)}
+
+/* semantic bits */
+.v2-age{font-family:var(--mono);font-size:12.5px;color:var(--ink-3)}
+.v2-age.warn{color:var(--amber);font-weight:600}
+.v2-age.late{color:var(--red);font-weight:600}
+.v2-ai{display:inline-flex;align-items:center;gap:4px;font:600 10.5px var(--mono);color:var(--ai);
+  border:1px solid var(--ai-line);border-radius:99px;padding:1px 7px;white-space:nowrap}
+.v2-hot{color:var(--amber);font-weight:700}
+.v2-money{font-family:var(--mono);font-weight:600;color:var(--go)}
+
+/* toasts */
+.v2-toasts{position:fixed;z-index:80;bottom:20px;left:50%;transform:translateX(-50%);display:flex;
+  flex-direction:column;gap:9px;width:min(460px,calc(100vw - 32px))}
+.v2-toast{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);
+  border-radius:10px;padding:12px 15px;font-size:13px;box-shadow:0 8px 24px -12px rgba(33,31,27,.25)}
+.v2-toast.err{border-color:#e8cec6;background:#fbf0ed;color:var(--red)}
+.v2-toast .sp{flex:1}
+.v2-toast button{color:var(--go);font-weight:600;font-size:12.5px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+`;
+
+const V2_FONTS = 'https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap';
+
+const NAV_ITEMS = [
+  { grp: 'SETTER' },
+  { id: 'worklist', label: 'Worklist', href: 'worklist.html' },
+  { id: 'log-lead', label: 'Log a lead', href: 'log-lead.html' },
+  { id: 'leads', label: 'All leads', href: 'leads.html' },
+  { grp: 'CLOSER', gap: true },
+  { id: 'deals', label: 'Deals', href: 'deals.html' },
+  { id: 'close-call', label: 'Voice log', href: 'close-call.html' },
+];
+
+/** Inject the v2 stylesheet + fonts once. Safe to call from any page. */
+export function installTheme() {
+  if (document.getElementById('v2-theme')) return;
+  const pre1 = document.createElement('link'); pre1.rel = 'preconnect'; pre1.href = 'https://fonts.googleapis.com';
+  const pre2 = document.createElement('link'); pre2.rel = 'preconnect'; pre2.href = 'https://fonts.gstatic.com'; pre2.crossOrigin = '';
+  const f = document.createElement('link'); f.rel = 'stylesheet'; f.href = V2_FONTS;
+  const s = document.createElement('style'); s.id = 'v2-theme'; s.textContent = V2_CSS;
+  document.head.append(pre1, pre2, f, s);
+}
+
+/** Render the shared sidebar and wrap the page's <main>. Badges fill in async. */
+export async function installChrome(opts = {}) {
+  installTheme();
+  const active = opts.active || '';
+  const side = document.createElement('nav');
+  side.className = 'v2-side';
+  side.innerHTML =
+    '<div class="wm">AJR&nbsp;CRM</div>' +
+    NAV_ITEMS.map((it) => it.grp
+      ? '<div class="grp' + (it.gap ? ' gap' : '') + '">' + it.grp + '</div>'
+      : '<a class="nav' + (it.id === active ? ' on' : '') + '" href="' + it.href + '" data-nav="' + it.id + '">' +
+        it.label + '<span class="slot" data-slot="' + it.id + '"></span></a>').join('') +
+    '<div class="sp"></div>' +
+    '<a class="nav' + (active === 'settings' ? ' on' : '') + '" href="settings.html">Settings</a>' +
+    '<div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div>' +
+    '<div class="me"><span class="av" id="v2-av">·</span>' +
+      '<span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span>' +
+      '<button class="out" id="v2-out" title="Sign out">↩</button></div>';
+  document.body.prepend(side);
+  document.body.classList.add('v2-shell');
+  side.querySelector('#v2-k').onclick = () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }));
+  };
+  side.querySelector('#v2-out').onclick = () => signOut();
+
+  // who am I
+  try {
+    const email = await userEmail();
+    const role = await roleFor(email);
+    const name = String(email || '').split('@')[0];
+    side.querySelector('#v2-av').textContent = (name[0] || '·').toUpperCase();
+    side.querySelector('#v2-nm').textContent = name;
+    side.querySelector('#v2-rl').textContent = role;
+  } catch (e) { /* chrome still renders */ }
+
+  // badges: waiting leads + calls today
+  try {
+    const b = await chromeCounts();
+    const w = side.querySelector('[data-slot="worklist"]');
+    if (w && b.waiting) w.outerHTML = '<span class="badge-n">' + b.waiting + '</span>';
+    const d = side.querySelector('[data-slot="deals"]');
+    if (d && b.today) d.outerHTML = '<span class="badge-red">' + b.today + ' today</span>';
+  } catch (e) { /* badges are decorative */ }
+  return side;
+}
+
+/** Let a page correct its own sidebar badge once it knows the real number
+ *  (the worklist excludes snoozed/sweepable leads, which chrome can't see). */
+export function setChromeBadge(id, value) {
+  const a = document.querySelector('.v2-side a[data-nav="' + id + '"]');
+  if (!a) return;
+  const old = a.querySelector('.badge-n, .badge-red, .slot');
+  const cls = id === 'deals' ? 'badge-red' : 'badge-n';
+  const html = value ? '<span class="' + cls + '">' + value + '</span>' : '<span class="slot"></span>';
+  if (old) old.outerHTML = html; else a.insertAdjacentHTML('beforeend', html);
+}
+
+async function chromeCounts() {
+  if (DEMO) return { waiting: 9, today: 2 };
+  const today = dmyToIso(todayDmy());
+  const [w, t] = await Promise.all([
+    supa.from('leads').select('id', { count: 'exact', head: true }).in('level', ['Engaged 1', 'Engaged 2', 'Engaged 3']),
+    supa.from('deals').select('id', { count: 'exact', head: true }).eq('meeting', today),
+  ]);
+  return { waiting: w.count || 0, today: t.count || 0 };
+}
+
+/** Shared toast (v2). o: {type:'ok'|'err', html, ttl, sticky, action:{label,fn}} */
+export function toast(o) {
+  let host = document.querySelector('.v2-toasts');
+  if (!host) { host = document.createElement('div'); host.className = 'v2-toasts'; document.body.appendChild(host); }
+  const el = document.createElement('div');
+  el.className = 'v2-toast' + (o.type === 'err' ? ' err' : '');
+  el.innerHTML = '<span>' + (o.html || '') + '</span><span class="sp"></span>';
+  if (o.action) {
+    const b = document.createElement('button');
+    b.textContent = o.action.label;
+    b.onclick = () => { el.remove(); o.action.fn(); };
+    el.appendChild(b);
+  }
+  const x = document.createElement('button');
+  x.textContent = '×'; x.style.color = 'var(--muted)';
+  x.onclick = () => el.remove();
+  el.appendChild(x);
+  host.appendChild(el);
+  if (!o.sticky) setTimeout(() => el.remove(), o.ttl || 6000);
+  return el;
+}
+
+/** Accumulated notes in one line: original context + newest stamped update. */
+export function notesOneLine(notes) {
+  const lines = String(notes || '').split('\n').map((x) => x.trim()).filter(Boolean);
+  if (!lines.length) return '';
+  if (lines.length === 1) return lines[0];
+  return lines[0] + ' · ' + lines[lines.length - 1];
+}
+
+/** Aging class per the design rule (thresholds come from worklist rules). */
+export function ageClass(days, rules) {
+  const r = rules || DEFAULT_RULES;
+  if (days == null) return '';
+  if (days >= r.overdueDays) return 'late';
+  if (days >= 3) return 'warn';
+  return '';
+}
+
 /* ---------- ⌘K command palette ----------
    Pages call installPalette({ nav, leads?, deals?, onLead?, onDeal? }) after
    boot. Cmd/Ctrl+K opens it; type to search leads/deals or jump between pages;
@@ -887,18 +1183,20 @@ export function installPalette(opts = {}) {
   el.id = 'ck-pal';
   el.innerHTML = `
     <style>
-      #ck-pal{position:fixed;inset:0;z-index:100;display:none;align-items:flex-start;justify-content:center;background:rgba(0,0,0,.55);padding-top:14vh}
+      #ck-pal{position:fixed;inset:0;z-index:100;display:none;align-items:flex-start;justify-content:center;background:rgba(33,31,27,.45);padding-top:13vh}
       #ck-pal.on{display:flex}
-      #ck-box{width:min(560px,calc(100vw - 40px));background:#141416;border:1px solid #26262c;border-radius:14px;box-shadow:0 24px 60px -18px rgba(0,0,0,.8);overflow:hidden}
-      #ck-in{width:100%;min-height:52px;padding:0 16px;background:transparent;border:none;color:#e9e9ec;font:500 15px 'Geist',system-ui,sans-serif;outline:none;box-sizing:border-box;border-bottom:1px solid #1e1e23}
-      #ck-in::placeholder{color:#55555e}
+      #ck-box{width:min(560px,calc(100vw - 40px));background:#f9f8f5;border:1px solid #e6e2da;border-radius:14px;box-shadow:0 24px 60px -18px rgba(33,31,27,.35);overflow:hidden}
+      #ck-in{width:100%;min-height:50px;padding:0 16px;background:#fff;border:none;color:#211f1b;font:500 14.5px 'Instrument Sans',system-ui,sans-serif;outline:none;box-sizing:border-box;border-bottom:1px solid #e6e2da}
+      #ck-in::placeholder{color:#ccc5b6}
       #ck-list{list-style:none;margin:0;padding:6px;max-height:44vh;overflow-y:auto}
-      #ck-list li{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;cursor:pointer;color:#e9e9ec;font:400 14px 'Geist',system-ui,sans-serif}
-      #ck-list li.sel{background:#1c1c22}
-      #ck-list .k{color:#6e6e78;font-size:11.5px;margin-left:auto;font-family:'Geist Mono',monospace}
-      #ck-list .t{color:#6e6e78;font-size:12px}
+      #ck-list li{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;cursor:pointer;color:#211f1b;font:400 13.5px 'Instrument Sans',system-ui,sans-serif}
+      #ck-list li.sel{background:#fff;box-shadow:inset 0 0 0 1px #e6e2da}
+      #ck-list .k{color:#8a8375;font-size:11px;margin-left:auto;font-family:'IBM Plex Mono',monospace;border:1px solid #ddd8cd;border-radius:5px;padding:1px 6px;background:#fff}
+      #ck-list .t{color:#8a8375;font-size:12px}
+      #ck-foot{display:flex;gap:14px;padding:9px 14px;border-top:1px solid #e6e2da;color:#98917f;font:400 11px 'IBM Plex Mono',monospace}
     </style>
-    <div id="ck-box"><input id="ck-in" placeholder="Search leads, deals, pages… or type what happened" autocomplete="off" spellcheck="false"><ul id="ck-list"></ul></div>`;
+    <div id="ck-box"><input id="ck-in" placeholder="Search leads, deals, pages… or type what happened" autocomplete="off" spellcheck="false"><ul id="ck-list"></ul>
+      <div id="ck-foot"><span>↑↓ move</span><span>↵ select</span><span>type a sentence to log it</span><span style="margin-left:auto">esc</span></div></div>`;
   document.body.appendChild(el);
   const input = el.querySelector('#ck-in'), list = el.querySelector('#ck-list');
   let items = [], sel = 0;
@@ -925,7 +1223,7 @@ export function installPalette(opts = {}) {
     sel = 0;
     list.innerHTML = items.map((it, i) =>
       `<li class="${i === sel ? 'sel' : ''}" data-i="${i}">${escH(it.label)}<span class="t">${escH(it.tag)}</span>${i === sel ? '<span class="k">↵</span>' : ''}</li>`).join('') ||
-      '<li style="color:#55555e;cursor:default">Nothing matches.</li>';
+      '<li style="color:#8a8375;cursor:default">Nothing matches.</li>';
     Array.prototype.forEach.call(list.querySelectorAll('li[data-i]'), (li) => {
       li.onclick = () => items[+li.getAttribute('data-i')].run();
     });
@@ -970,30 +1268,31 @@ export function installScanner(opts = {}) {
   const el = document.createElement('div');
   el.innerHTML = `
     <style>
-      #sc2-drop{position:fixed;inset:0;z-index:90;background:rgba(14,14,16,.86);display:none;align-items:center;justify-content:center}
+      #sc2-drop{position:fixed;inset:0;z-index:90;background:rgba(33,31,27,.55);display:none;align-items:center;justify-content:center}
       #sc2-drop.on{display:flex}
-      #sc2-drop .b{border:2px dashed #8ee59a;border-radius:18px;padding:40px 56px;color:#e9e9ec;font:600 15px 'Geist',system-ui,sans-serif}
-      #sc2-modal{position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;padding:8vh 16px;overflow-y:auto}
+      #sc2-drop .b{border:2px dashed #f9f8f5;border-radius:16px;padding:36px 52px;color:#f9f8f5;font:600 15px 'Instrument Sans',system-ui,sans-serif}
+      #sc2-modal{position:fixed;inset:0;z-index:95;background:rgba(33,31,27,.45);display:none;align-items:flex-start;justify-content:center;padding:7vh 16px;overflow-y:auto}
       #sc2-modal.on{display:flex}
-      #sc2-modal .c{width:min(560px,100%);background:#141416;border:1px solid #26262c;border-radius:16px;overflow:hidden;font-family:'Geist',system-ui,sans-serif}
-      #sc2-modal .h{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid #1e1e23;color:#e9e9ec}
-      #sc2-modal .h b{font-size:15px;font-weight:600;flex:1}
-      #sc2-modal .bd{padding:10px 14px;max-height:52vh;overflow-y:auto}
-      #sc2-modal .think{padding:34px;text-align:center;color:#a9a9b1;font-size:14px}
-      .sc2-card{border:1px solid #202024;border-radius:12px;padding:12px;margin:8px 4px;background:#17171b}
-      .sc2-card .t{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-      .sc2-card .hh{flex:1;min-height:36px;padding:0 11px;background:#0e0e10;border:1px solid #202024;border-radius:9px;color:#e9e9ec;font-weight:600;font-size:14px}
-      .sc2-card .x{width:32px;height:32px;border-radius:8px;color:#55555e;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;background:none;border:none}
-      .sc2-card .x:hover{color:#f4a3a3}
+      #sc2-modal .c{width:min(680px,100%);background:#f9f8f5;border:1px solid #e6e2da;border-radius:14px;overflow:hidden;font-family:'Instrument Sans',system-ui,sans-serif}
+      #sc2-modal .h{display:flex;align-items:flex-start;gap:10px;padding:17px 20px;border-bottom:1px solid #e6e2da;color:#211f1b}
+      #sc2-modal .h b{font-size:16px;font-weight:700;flex:1}
+      #sc2-modal .bd{padding:12px 16px;max-height:56vh;overflow-y:auto}
+      #sc2-modal .think{padding:34px;text-align:center;color:#8a8375;font-size:13px}
+      .sc2-card{border:1px solid #e6e2da;border-radius:12px;padding:13px 15px;margin:9px 4px;background:#fff}
+      .sc2-card.low{border-color:#e0cba0}
+      .sc2-card.dupe{opacity:.6}
+      .sc2-card .t{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+      .sc2-card .hh{flex:1;min-height:34px;padding:0 11px;background:#fff;border:1px solid #ddd8cd;border-radius:8px;color:#211f1b;font-weight:600;font-size:13.5px}
+      .sc2-card .x{width:30px;height:30px;border-radius:8px;color:#8a8375;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;background:none;border:none}
+      .sc2-card .x:hover{color:#b4543e}
       .sc2-card .g{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
-      .sc2-card select,.sc2-card .nn{width:100%;min-height:34px;padding:5px 10px;background:#0e0e10;border:1px solid #202024;border-radius:9px;color:#e9e9ec;font-size:13px}
-      .sc2-card .low{font-size:11px;color:#d9b96a;margin-top:6px}
-      .sc2-card .ex{font-size:11px;color:#d9b96a;margin-top:6px}
-      #sc2-modal .f{padding:12px 18px;border-top:1px solid #1e1e23;display:flex;gap:10px}
-      #sc2-modal .f button{flex:1;min-height:44px;border-radius:11px;font-weight:600;font-size:14px;border:none;cursor:pointer}
-      #sc2-modal .add{background:#8ee59a;color:#0b1f10}
-      #sc2-modal .add:disabled{opacity:.5}
-      #sc2-modal .cancel{background:none;border:1px solid #26262c;color:#a9a9b1}
+      .sc2-card select,.sc2-card .nn{width:100%;min-height:32px;padding:5px 10px;background:#fff;border:1px solid #ddd8cd;border-radius:8px;color:#211f1b;font-size:12.5px}
+      .sc2-card .low{font-size:11px;color:#a8762a;margin-top:6px}
+      .sc2-card .ex{font-size:11px;color:#2a6a4d;margin-top:6px}
+      #sc2-modal .f{padding:14px 20px;border-top:1px solid #e6e2da;display:flex;gap:10px;align-items:center}
+      #sc2-modal .f button{min-height:36px;padding:0 16px;border-radius:8px;font-weight:600;font-size:12.5px;border:1px solid #ddd8cd;background:#fff;color:#4d4a42;cursor:pointer}
+      #sc2-modal .add{background:#2a6a4d;border-color:#2a6a4d;color:#fff;margin-left:auto}
+      #sc2-modal .add:disabled{opacity:.45}
     </style>
     <div id="sc2-drop"><div class="b">Drop the screenshot to read it</div></div>
     <div id="sc2-modal"><div class="c">

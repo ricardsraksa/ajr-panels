@@ -3,125 +3,124 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="light">
 <title>Settings · AJR</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg:#0e0e10; --panel:#17171b; --card:#141416;
-  --border:#202024; --border-2:#26262c; --hair:#1a1a1e;
-  --text:#e9e9ec; --text-2:#c9c9cf; --muted:#a9a9b1; --dim:#6e6e78; --faint:#55555e;
-  --primary:#e9e9ec; --primary-ink:#101013;
-  --money:#8ee59a; --amber:#d9b96a; --err:#f4a3a3;
-  --font:'Geist',system-ui,sans-serif; --mono:'Geist Mono',ui-monospace,monospace;
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-[hidden]{display:none!important}
-body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased}
-button,input{font:inherit;color:inherit}
-button{cursor:pointer;border:none;background:none}
-a{color:var(--money);text-decoration:none}
-:focus{outline:none}
-:focus-visible{outline:2px solid var(--muted);outline-offset:2px;border-radius:6px}
-.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-input::placeholder{color:var(--faint)}
-.wrap{max-width:720px;margin:0 auto;padding:22px 24px 60px}
-.hdr{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px}
-.hdr .title{font-size:1.18rem;font-weight:600;letter-spacing:-.02em}
-.hdr .sp{flex:1}
-.hdr a.nav{color:var(--money);font-size:12.5px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:16px}
-.card h2{font-size:15px;font-weight:600;margin-bottom:4px}
-.card .sub{color:var(--dim);font-size:12.5px;margin-bottom:14px}
-.rows{list-style:none}
-.rows li{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--hair);font-size:13px}
+.colw{max-width:640px}
+.card{background:#fff;border:1px solid #e6e2da;border-radius:12px;margin-bottom:16px}
+.card h2{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#98917f;
+  padding:14px 18px 0}
+.card .sub{color:#8a8375;font-size:12.5px;padding:5px 18px 0}
+.rows{list-style:none;padding:10px 0 4px}
+.rows li{display:flex;align-items:center;gap:11px;padding:9px 18px;border-top:1px solid #f0ede6;font-size:13px}
 .rows li:first-child{border-top:none}
-.rows .k{color:var(--muted);flex:1}
-.rows .v{font-family:var(--mono);font-size:12px;color:var(--text-2)}
+.rows .k{color:#4d4a42;flex:1}
+.rows .v{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d675b}
 .st{width:8px;height:8px;border-radius:50%;flex:none}
-.st.ok{background:var(--money)}
-.st.warn{background:var(--amber)}
-.st.bad{background:var(--err)}
-.st.off{background:var(--faint)}
-.urlbox{display:flex;gap:8px;margin-top:10px}
-.urlbox input{flex:1;min-height:42px;padding:0 12px;background:var(--panel);border:1px solid var(--border-2);border-radius:10px;color:var(--text-2);font:400 12px var(--mono)}
-.btn{min-height:42px;padding:0 16px;border-radius:10px;font-weight:600;font-size:13px}
-.btn-primary{background:var(--primary);color:var(--primary-ink)}
-.btn-primary:hover:not(:disabled){filter:brightness(.94)}
-.btn-primary:disabled{opacity:.5;cursor:not-allowed}
-.btn-ghost{border:1px solid var(--border-2);color:var(--muted)}
-.btn-ghost:hover{color:var(--text);border-color:#33333a}
-.note{color:var(--faint);font-size:12px;line-height:1.6;margin-top:10px}
-.note ol{margin:6px 0 0 18px}
-.msg{font-size:12.5px;margin-top:10px;min-height:18px}
-.msg.ok{color:var(--money)}
-.msg.err{color:var(--err)}
-.toasts{position:fixed;z-index:60;bottom:18px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:9px;width:min(420px,calc(100vw - 32px))}
-.toast{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--border-2);border-radius:12px;padding:13px 16px;font-size:13.5px}
-@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.st.ok{background:#2a6a4d}.st.warn{background:#a8762a}.st.bad{background:#b4543e}.st.off{background:#ccc5b6}
+.rows li.stale{background:#faf3e6;box-shadow:inset 3px 0 0 #a8762a}
+.rows li.stale .k{color:#a8762a}
+.blk{padding:12px 18px 16px;border-top:1px solid #f0ede6}
+.blk:first-of-type{border-top:none}
+.blk .nm{font-size:13px;font-weight:600;margin-bottom:3px}
+.blk .hint{color:#8a8375;font-size:12px;margin-bottom:9px}
+.urlbox{display:flex;gap:8px;flex-wrap:wrap}
+.urlbox input{flex:1;min-width:180px;font-family:'IBM Plex Mono',monospace;font-size:11.5px}
+.msg{font-size:12.5px;margin-top:9px;min-height:16px}
+.msg.ok{color:#2a6a4d}.msg.err{color:#b4543e}
+.team-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid #f0ede6}
+.team-row:first-child{border-top:none}
+.team-row .em{flex:1;font-size:13px}
+.team-row select{width:auto;min-width:110px}
+.rule-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid #f0ede6}
+.rule-row:first-child{border-top:none}
+.rule-row .k{flex:1;font-size:13px;color:#4d4a42}
+.rule-row input{width:74px;text-align:center;font-family:'IBM Plex Mono',monospace}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="hdr">
-    <span class="title">Settings</span>
-    <span class="sp"></span>
-    <a class="nav" href="worklist.html">Worklist →</a>
-    <a class="nav" href="leads.html">All leads →</a>
-    <a class="nav" href="deals.html">Closing →</a>
+<main class="v2-main colw">
+  <header class="v2-h">
+    <h1>Settings</h1>
+    <span class="sub" id="whoami"></span>
   </header>
 
   <div class="card">
     <h2>Health</h2>
-    <div class="sub">Live checks against the system.</div>
     <ul class="rows" id="health"><li><span class="st off"></span><span class="k">Checking…</span></li></ul>
   </div>
 
   <div class="card">
-    <h2>Call transcripts (Fireflies)</h2>
-    <div class="sub" id="ff-sub">Calls are pulled from Fireflies automatically every 45 minutes. For instant processing, Reinis can additionally save this webhook.</div>
-    <div class="urlbox">
-      <input id="ff-url" readonly value="">
-      <button class="btn btn-ghost" id="ff-copy">Copy</button>
+    <h2>Connections</h2>
+    <div class="blk">
+      <div class="nm">Call transcripts (Fireflies)</div>
+      <div class="hint" id="ff-sub">Calls are pulled every 45 minutes. For instant processing, save this webhook in Fireflies.</div>
+      <div class="urlbox">
+        <input class="v2-in" id="ff-url" readonly value="">
+        <button class="v2-btn" id="ff-copy">Copy</button>
+      </div>
     </div>
-    <div class="note">Send the URL to Reinis: <strong>app.fireflies.ai → Settings → Developer settings → Webhook</strong>, paste, save. Done once.</div>
+    <div class="blk">
+      <div class="nm">Team alerts (Slack)</div>
+      <div class="hint">Booked-lead pings + the morning call sheet.</div>
+      <div class="urlbox">
+        <input class="v2-in" id="slack-url" placeholder="https://hooks.slack.com/services/…" spellcheck="false">
+        <button class="v2-btn dark" id="slack-save">Save</button>
+        <button class="v2-btn" id="slack-test">Send test</button>
+      </div>
+      <div class="msg" id="slack-msg"></div>
+    </div>
+    <div class="blk">
+      <div class="nm">Calendly</div>
+      <div class="hint" id="cal-sub">Bookings are polled every 10 minutes and attached to deals automatically.</div>
+    </div>
   </div>
 
   <div class="card">
-    <h2>Team alerts (Slack)</h2>
-    <div class="sub">Booked-lead pings + the morning call sheet. Paste a Slack incoming-webhook URL.</div>
-    <div class="urlbox">
-      <input id="slack-url" placeholder="https://hooks.slack.com/services/…" spellcheck="false">
-      <button class="btn btn-primary" id="slack-save">Save</button>
-      <button class="btn btn-ghost" id="slack-test">Test</button>
-    </div>
-    <div class="msg" id="slack-msg"></div>
-    <div class="note">To create one:
-      <ol>
-        <li>api.slack.com/apps → Create App → From scratch → pick your workspace</li>
-        <li>Incoming Webhooks → activate → Add New Webhook → choose the channel</li>
-        <li>Copy the URL here, Save, then Test</li>
-      </ol>
+    <h2>Team</h2>
+    <div class="sub">Sign-in sends each person to their own tool.</div>
+    <div class="blk" id="team"></div>
+    <div class="blk" style="padding-top:0">
+      <div class="urlbox">
+        <input class="v2-in" id="team-email" type="email" placeholder="add teammate email" spellcheck="false">
+        <select class="v2-in" id="team-role" style="width:auto"><option value="setter">Setter</option><option value="closer">Closer</option></select>
+        <button class="v2-btn" id="team-add">Add</button>
+      </div>
+      <div class="msg" id="team-msg"></div>
     </div>
   </div>
-</div>
-<div class="toasts" id="toasts"></div>
+
+  <div class="card">
+    <h2>Worklist rules</h2>
+    <div class="sub">The queue reads these directly.</div>
+    <div class="blk" id="rules"></div>
+    <div class="blk" style="padding-top:0">
+      <button class="v2-btn dark" id="rules-save">Save rules</button>
+      <span class="msg" id="rules-msg" style="margin-left:10px"></span>
+    </div>
+  </div>
+</main>
+
 
 <script type="module">
-import * as core from './crm-core.js?v=20260711l';
+import * as core from './crm-core.js?v=20260721a';
 const session = await core.requireAuth();
 if (session) {
+await core.installChrome({ active: 'settings' });
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
 const FF_URL = 'https://cukjynfatkyiuzvstgcp.supabase.co/functions/v1/ffwebhook?secret=064df4cc164bcff4b95233f6a305100f8cbc6131bd3ba6aa';
 
 /* ---------- health ---------- */
-function row(state, label, value) {
-  return `<li><span class="st ${state}"></span><span class="k">${esc(label)}</span><span class="v">${esc(value)}</span></li>`;
+function row(state, label, value, stale) {
+  return `<li class="${stale ? 'stale' : ''}"><span class="st ${state}"></span>` +
+    `<span class="k">${esc(label)}</span><span class="v">${esc(value)}</span></li>`;
 }
+(async () => {
+  const email = await core.userEmail();
+  $('whoami').textContent = email ? email + ' · ' + (await core.roleFor(email)) : '';
+})();
 async function health() {
   const out = [];
   if (core.isDemo) {
@@ -147,9 +146,14 @@ async function health() {
   } catch (e) { out.push(row('bad', 'Deals', e.message)); }
   try {
     const { data } = await core.supa.from('pending_calls').select('created_at').order('created_at', { ascending: false }).limit(1);
-    out.push(data && data.length
-      ? row('ok', 'Last Fireflies call processed', core.relTime(data[0].created_at))
-      : row('ok', 'Fireflies', 'polling every 45 min — no matching calls yet'));
+    if (data && data.length) {
+      const ageDays = (Date.now() - new Date(data[0].created_at).getTime()) / 864e5;
+      out.push(ageDays > 6
+        ? row('warn', 'Fireflies', 'nothing received in ' + Math.floor(ageDays) + ' days — check the webhook below', true)
+        : row('ok', 'Last Fireflies call processed', core.relTime(data[0].created_at)));
+    } else {
+      out.push(row('ok', 'Fireflies', 'polling every 45 min — no matching calls yet'));
+    }
   } catch (e) { out.push(row('bad', 'Fireflies', e.message)); }
   try {
     const { data } = await core.supa.from('activity').select('created_at,actor').order('id', { ascending: false }).limit(1);
@@ -197,6 +201,84 @@ $('slack-test').onclick = async () => {
     else msg((data && data.error) || 'Test failed.', false);
   } catch (e) { msg('Test failed: ' + e.message, false); }
 };
+
+/* ---------- team roles ---------- */
+let teamRoles = {};
+function renderTeam() {
+  const emails = Object.keys(teamRoles).sort();
+  $('team').innerHTML = emails.length ? emails.map((em) =>
+    `<div class="team-row"><span class="em">${esc(em)}</span>` +
+    `<select class="v2-in" data-em="${esc(em)}">` +
+      `<option value="setter"${teamRoles[em] === 'setter' ? ' selected' : ''}>Setter</option>` +
+      `<option value="closer"${teamRoles[em] === 'closer' ? ' selected' : ''}>Closer</option>` +
+    `</select>` +
+    `<button class="v2-btn sm" data-rm="${esc(em)}">Remove</button></div>`).join('')
+    : '<div class="hint">No roles set — everyone lands on the Worklist.</div>';
+}
+async function saveTeam(msg) {
+  try {
+    await core.saveSetting('team_roles', teamRoles);
+    await core.loadSettings(true);
+    $('team-msg').className = 'msg ok'; $('team-msg').textContent = msg || 'Saved.';
+    renderTeam();
+  } catch (e) { $('team-msg').className = 'msg err'; $('team-msg').textContent = e.message; }
+}
+$('team').addEventListener('change', (e) => {
+  const sel = e.target.closest('[data-em]'); if (!sel) return;
+  teamRoles[sel.getAttribute('data-em')] = sel.value;
+  saveTeam('Role updated — takes effect at next sign-in.');
+});
+$('team').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-rm]'); if (!b) return;
+  delete teamRoles[b.getAttribute('data-rm')];
+  saveTeam('Removed.');
+});
+$('team-add').onclick = () => {
+  const em = $('team-email').value.trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) {
+    $('team-msg').className = 'msg err'; $('team-msg').textContent = 'That doesn’t look like an email.'; return;
+  }
+  teamRoles[em] = $('team-role').value;
+  $('team-email').value = '';
+  saveTeam('Added.');
+};
+
+/* ---------- worklist rules ---------- */
+const RULE_DEFS = [
+  ['overdueDays', 'Overdue after', 'days since last contact turns red'],
+  ['autoArchiveDays', 'Archive sweep after', 'days of silence flags a lead as dead'],
+  ['snoozeDays', 'Default snooze', 'days a snoozed lead stays hidden'],
+  ['noCloseResurfaceDays', 'No-close resurfaces after', 'days before it returns to the queue'],
+];
+let rules = {};
+function renderRules() {
+  $('rules').innerHTML = RULE_DEFS.map(([k, label, hint]) =>
+    `<div class="rule-row"><span class="k">${esc(label)}<br><span style="color:#98917f;font-size:11.5px">${esc(hint)}</span></span>` +
+    `<input class="v2-in" type="number" min="1" max="365" data-r="${k}" value="${Number(rules[k]) || ''}"></div>`).join('');
+}
+$('rules-save').onclick = async () => {
+  const next = {};
+  let bad = '';
+  $('rules').querySelectorAll('[data-r]').forEach((i) => {
+    const n = parseInt(i.value, 10);
+    if (!Number.isFinite(n) || n < 1 || n > 365) bad = 'Values must be between 1 and 365.';
+    next[i.getAttribute('data-r')] = n;
+  });
+  if (bad) { $('rules-msg').className = 'msg err'; $('rules-msg').textContent = bad; return; }
+  try {
+    await core.saveSetting('worklist_rules', next);
+    await core.loadSettings(true);
+    rules = next;
+    $('rules-msg').className = 'msg ok'; $('rules-msg').textContent = 'Saved — the Worklist uses these now.';
+  } catch (e) { $('rules-msg').className = 'msg err'; $('rules-msg').textContent = e.message; }
+};
+
+(async () => {
+  const st = await core.loadSettings(true);
+  teamRoles = Object.assign({}, st.team_roles);
+  rules = Object.assign({}, st.worklist_rules);
+  renderTeam(); renderRules();
+})();
 
 health();
 }

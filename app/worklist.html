@@ -3,206 +3,82 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="light">
 <title>Worklist · AJR</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg:#0e0e10; --surface:#141416; --surface2:#17171b; --border:#202024; --border-2:#26262c;
-  --text:#e9e9ec; --muted:#a9a9b1; --faint:#55555e; --dim:#6e6e78;
-  --accent:#8ee59a; --accent-dim:rgba(233,233,236,.07);
-  --go:#8ee59a; --go-ink:#0b1f10; --amber:#d9b96a; --red:#f4a3a3;
-  --r:12px; --r-lg:16px;
-  --font:'Geist',system-ui,sans-serif; --mono-font:'Geist Mono',ui-monospace,monospace;
-  --shadow:0 20px 50px -12px rgba(0,0,0,.7);
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{-webkit-text-size-adjust:100%}
-body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased;letter-spacing:-.01em}
-button,input,select{font:inherit;color:inherit;letter-spacing:inherit}
-button{cursor:pointer;touch-action:manipulation;border:none;background:none}
-a{color:var(--accent);cursor:pointer;text-decoration:none}
-:focus{outline:none}
-:focus-visible{outline:2px solid var(--muted);outline-offset:2px;border-radius:6px}
-.mono{font-family:var(--mono-font);font-variant-numeric:tabular-nums;letter-spacing:0}
-[hidden]{display:none!important}
-.opt{color:var(--muted);font-weight:400;font-size:.85em}
-.demo-banner{font:600 11px var(--mono-font);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-align:center;padding:6px 12px;border-bottom:1px solid #1a1a1e;background:var(--surface)}
-.wrap{max-width:900px;margin:0 auto;padding:20px 18px 60px}
-@media(min-width:640px){.wrap{padding:26px 24px 72px}}
-
-.hdr{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;padding:2px 0 18px}
-.hdr h1{font-size:1.18rem;font-weight:600;letter-spacing:-.02em;color:var(--text)}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--faint);flex:none;transition:background-color .25s}
-.dot.ok{background:var(--dim)}
-.dot.err{background:var(--red)}
-.hdr-spacer{flex:1}
-.done-chip{display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:999px;background:#1b2019;border:1px solid #3d5a3a;
-  color:var(--go);font-size:.82rem;font-weight:600;font-variant-numeric:tabular-nums}
-.done-chip svg{width:14px;height:14px}
-.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:11px;border:1px solid var(--border);background:transparent;color:var(--muted);transition:.18s}
-.icon-btn:hover:not(:disabled){color:var(--text);background:var(--surface2);border-color:var(--border-2)}
-.icon-btn:disabled{opacity:.4;cursor:not-allowed}
-.icon-btn svg{width:18px;height:18px}
-.icon-btn.spinning svg{animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;margin-bottom:18px}
-@media(min-width:640px){.card{padding:22px 24px}}
-.setup-card{max-width:520px;margin:44px auto}
-.setup-card p{color:var(--muted);font-size:.88rem;margin-bottom:16px}
-.setup-field{display:block;margin-bottom:14px;font-size:.8rem;font-weight:500;color:var(--muted)}
-.setup-field input{display:block;width:100%;margin-top:7px;min-height:48px;padding:11px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;color:var(--text);font-size:16px}
-.setup-field input:focus{border-color:var(--border-2)}
-.btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 22px;border-radius:var(--r);background:#e9e9ec;color:#101013;font-weight:600;transition:.16s}
-.btn-primary:hover:not(:disabled){filter:brightness(1.06)}
-.load-error{text-align:center}
-.load-error p{color:var(--muted);margin-bottom:14px}
-.skel-row{height:16px;border-radius:7px;margin-bottom:14px;background:linear-gradient(90deg,var(--surface2) 25%,#26262e 45%,var(--surface2) 65%);background-size:400% 100%;animation:shimmer 1.4s ease infinite}
-@keyframes shimmer{from{background-position:100% 0}to{background-position:0 0}}
-.skel-row.w60{width:60%}.skel-row.w40{width:40%}.skel-row.big{height:52px}
-
-.kbd-hints{display:flex;gap:16px;flex-wrap:wrap;color:var(--faint);font-size:.78rem;margin-bottom:12px}
-.kbd-hints kbd{font-family:inherit;font-size:.72rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:1px 7px;color:var(--muted)}
-.q-filters{display:flex;gap:12px;align-items:center;margin-bottom:6px;flex-wrap:wrap;color:var(--muted);font-size:.85rem}
-.q-filters label{display:inline-flex;align-items:center;gap:6px;min-height:40px;cursor:pointer}
-
-.q-list{list-style:none}
-.q-row{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:11px 10px;border-top:1px solid var(--border);align-items:center;
-  border-radius:11px;border-left:3px solid transparent;transition:background .12s}
-.q-row:first-child{border-top:none}
-.q-row.cursor{background:rgba(233,233,236,.05);border-left-color:#57575f}
-.q-row.done{opacity:.5}
-.q-row.done .q-handle{text-decoration:line-through;text-decoration-color:var(--faint)}
-.q-main{display:flex;align-items:center;gap:9px;flex-wrap:wrap;min-width:0}
-.q-handle{font-weight:600;cursor:pointer;background:none;border:none;color:var(--text);padding:3px 2px;min-height:36px;display:inline-flex;align-items:center;font-size:.95rem}
-.q-handle:hover{color:var(--text);text-decoration:underline;text-decoration-color:var(--faint)}
-.badge{display:inline-block;padding:2px 10px;border-radius:999px;border:1px solid;font-size:.7rem;font-weight:600;white-space:nowrap}
-.days{font-variant-numeric:tabular-nums;font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid}
-.days.fresh{color:var(--go);border-color:#3d5a3a}
-.days.warn{color:var(--amber);border-color:#5a4d2a}
-.days.late{color:var(--red);border-color:#5a3232}
-.qual-tag{font-size:.68rem;font-weight:600;color:var(--muted);border:1px solid #2c2c32;border-radius:999px;padding:1px 8px;white-space:nowrap}
-.dup-tag{font-size:.68rem;font-weight:600;color:var(--muted);border:1px dashed var(--border-2);border-radius:999px;padding:1px 8px;white-space:nowrap}
-.temp-hot{color:var(--amber);font-size:.72rem;font-weight:600}
-.q-sub{grid-column:1;color:var(--muted);font-size:.78rem;display:flex;gap:10px;flex-wrap:wrap;min-width:0}
-.q-sub span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:420px}
-.q-actions{grid-column:2;grid-row:1 / span 2;display:flex;gap:8px;align-items:center}
-.q-done-at{color:var(--go);font-size:.76rem;font-variant-numeric:tabular-nums;white-space:nowrap}
-.q-undo{color:var(--muted);font-size:.76rem;min-height:36px;padding:0 8px;border-radius:8px}
-.q-undo:hover{color:var(--text)}
-.q-log{min-height:40px;padding:0 14px;border-radius:9px;border:1px solid #3d5a3a;color:var(--go);font-weight:600;font-size:.82rem;white-space:nowrap;transition:.15s}
-.q-log:hover:not(:disabled){background:#1b2019}
-.q-log:disabled{opacity:.4;cursor:not-allowed}
-.q-snz{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;color:var(--faint);border-radius:9px;border:1px solid var(--border);transition:.15s}
-.q-snz:hover{color:var(--text);border-color:var(--border-2)}
-.q-snz svg{width:16px;height:16px}
-.q-ig{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);border-radius:9px;border:1px solid var(--border);transition:.15s}
-.q-ig:hover{color:var(--text);border-color:var(--border-2)}
-.q-ig svg{width:16px;height:16px}
-.empty{color:var(--faint);font-size:.88rem;padding:12px 4px}
-
-.sweep{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface2);border:1px solid var(--border);
-  border-radius:var(--r);padding:12px 16px;margin-top:6px}
-.sweep p{flex:1 1 260px;color:var(--muted);font-size:.85rem}
-.sweep .btn-sweep{min-height:42px;padding:0 16px;border-radius:10px;border:1px solid var(--border-2);color:var(--text);font-weight:600;font-size:.84rem}
-.sweep .btn-sweep:hover{border-color:#57575f}
-.sweep-list{margin-top:8px}
-.q-archive{min-height:40px;padding:0 14px;border-radius:9px;border:1px solid var(--border-2);color:var(--muted);font-weight:600;font-size:.82rem;white-space:nowrap;transition:.15s}
-.q-archive:hover:not(:disabled){color:var(--text);border-color:var(--red);background:rgba(248,113,113,.08)}
-
-.toasts{position:fixed;z-index:60;bottom:18px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:9px;width:min(460px,calc(100vw - 32px))}
-.toast{display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border-2);border-radius:var(--r);padding:13px 16px;font-size:.88rem;box-shadow:var(--shadow);animation:rise .24s cubic-bezier(.2,.8,.2,1)}
-.toast.ok{border-left:3px solid var(--go)}
-.toast.err{border-left:3px solid var(--red)}
-.toast .msg{flex:1}
-.toast .mono{font-weight:600}
-.toast-act{min-height:38px;padding:0 14px;border-radius:9px;border:1px solid var(--border-2);color:var(--text);font-weight:600;font-size:.84rem;flex:none;transition:.15s}
-.toast-act:hover{background:var(--accent-dim)}
-.toast-x{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;color:var(--faint);flex:none;border-radius:8px}
-.toast-x:hover{color:var(--text)}
-.toast-x svg{width:15px;height:15px}
-@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+/* page-specific only — tokens, sidebar and shared components come from crm-core */
+.demo-banner{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;
+  color:#8a8375;text-align:center;padding:6px 12px;border-bottom:1px solid #e6e2da;background:#f4f2ed}
+.q-thead,.q-row{grid-template-columns:132px 74px 56px minmax(0,1fr) auto}
+.q-row{cursor:default}
+.q-row.cursor{background:#fdfcf9;box-shadow:inset 3px 0 0 #2a6a4d}
+.q-row.done{background:#f7faf7}
+.q-row.done .q-handle{text-decoration:line-through;color:#8a8375}
+.q-handle{font-weight:600;font-size:13.5px;color:#211f1b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.q-handle:hover{color:#211f1b;text-decoration:underline;text-decoration-color:#ccc5b6}
+.q-stage{font-size:12.5px;color:#4d4a42;white-space:nowrap}
+.q-note{color:#4d4a42;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:7px;min-width:0}
+.q-note .dot{color:#ccc5b6}
+.q-acts{display:flex;gap:7px;justify-content:flex-end;align-items:center}
+.q-done-at{color:#2a6a4d;font-size:12.5px;font-weight:600;white-space:nowrap}
+.nudge{display:flex;align-items:center;gap:12px;margin-top:16px;padding:14px 18px;border:1px solid #e6e2da;
+  border-radius:12px;background:#f4f2ed;color:#4d4a42;font-size:13px}
+.nudge b{font-family:'IBM Plex Mono',monospace}
+.nudge .sp{flex:1}
+.sweep-list{margin-top:12px}
+.skel{padding:34px;text-align:center;color:#8a8375}
+.hints{display:flex;gap:15px;flex-wrap:wrap;color:#98917f;font-size:11.5px;margin:-4px 0 12px}
+.hints kbd{font:600 10.5px 'IBM Plex Mono',monospace;background:#fff;border:1px solid #ddd8cd;
+  border-radius:5px;padding:1px 6px;color:#6d675b}
 </style>
 </head>
 <body>
-<div class="demo-banner" id="demoBanner" hidden>DEMO — writes go nowhere</div>
+<main class="v2-main">
+  <div class="demo-banner" id="demoBanner" hidden>DEMO — writes go nowhere</div>
 
-<div class="wrap">
-  <header class="hdr">
-    <span class="dot" id="connDot" role="status" aria-label="Connecting"></span>
+  <header class="v2-h">
     <h1>Worklist</h1>
-    <span class="hdr-spacer"></span>
-    <span class="done-chip" id="doneChip" hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4.5 12.75 6 6 9-13.5"/></svg>
-      <span id="doneCount">0</span> logged today
-    </span>
-    <a class="opt" href="leads.html" style="color:var(--accent)">All leads →</a>
-    <a class="opt" href="log-lead.html" style="color:var(--accent)">Log a lead →</a>
-    <a class="opt" href="settings.html" style="color:var(--accent)">Settings →</a>
-    <a class="opt" href="deals.html" style="color:var(--accent)">Closing →</a>
-    <button class="icon-btn" id="gearBtn" aria-label="Sign out">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 0 1 0 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.281Z"/><path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
-    </button>
-    <button class="icon-btn" id="refreshBtn" aria-label="Refresh leads from the sheet" disabled>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
-    </button>
+    <span class="sub"><span id="qTotal">—</span> waiting</span>
+    <span class="sp"></span>
+    <span class="v2-money" id="doneChip" hidden style="font-size:13px">● <span id="doneCount">0</span> logged today</span>
+    <button class="v2-btn sm" id="refreshBtn" disabled>Refresh</button>
   </header>
 
-  <section class="card" id="skeleton" hidden aria-label="Loading leads">
-    <div class="skel-row big"></div>
-    <div class="skel-row w60"></div>
-    <div class="skel-row"></div>
-    <div class="skel-row w40"></div>
+  <section id="skeleton" class="v2-card skel" hidden>Loading leads…</section>
+  <section id="loadError" class="v2-card skel" hidden>
+    <p id="loadErrorMsg" style="margin-bottom:12px">Couldn’t load leads.</p>
+    <button class="v2-btn" id="loadRetry">Retry</button>
   </section>
 
-  <section class="card load-error" id="loadError" hidden>
-    <p id="loadErrorMsg">Couldn't load leads.</p>
-    <button class="btn-primary" id="loadRetry">Retry</button>
-  </section>
+  <div id="app" hidden>
+    <div class="v2-chips" id="queueFilters"></div>
+    <div class="hints" aria-hidden="true">
+      <span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>L</kbd> log</span>
+      <span><kbd>O</kbd> profile</span><span><kbd>S</kbd> snooze</span><span><kbd>↵</kbd> open</span>
+    </div>
 
-  <main id="app" hidden>
-    <section class="card">
-      <h2 style="font-size:1rem;margin-bottom:10px">Follow up next <span class="opt">best leads first · <span id="qTotal">—</span> waiting</span></h2>
-      <div class="kbd-hints" aria-hidden="true">
-        <span><kbd>↑</kbd><kbd>↓</kbd> move</span>
-        <span><kbd>L</kbd> log follow-up</span>
-        <span><kbd>O</kbd> open profile</span>
-        <span><kbd>S</kbd> snooze 7d</span>
-        <span><kbd>Enter</kbd> open in Log a lead</span>
-      </div>
-      <div class="q-filters" id="queueFilters">
-        <label><input type="checkbox" data-lvl="Engaged 1" checked> Engaged 1</label>
-        <label><input type="checkbox" data-lvl="Engaged 2" checked> Engaged 2</label>
-        <label><input type="checkbox" data-lvl="Engaged 3" checked> Engaged 3</label>
-        <label><input type="checkbox" data-lvl="No Close"> No Close</label>
-        <label><input type="checkbox" data-lvl="No Reply"> No Reply</label>
-        <label><input type="checkbox" data-lvl=""> No level <span class="opt" id="noLevelCount"></span></label>
-      </div>
-      <ul class="q-list" id="queueList"></ul>
+    <section class="v2-card">
+      <div class="v2-thead q-thead"><span>Lead</span><span>Stage</span><span>Since</span><span>Temp · Note</span><span></span></div>
+      <div id="queueList"></div>
     </section>
 
-    <section class="card" id="sweepCard" hidden>
-      <div class="sweep">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5m8.25 3v6.75m-4.5-6.75v6.75m9-6.75v6.75M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/></svg>
-        <p><strong id="sweepCount">0</strong> Engaged-1 leads, no contact in 60+ days.</p>
-        <button class="btn-sweep" id="sweepToggle">Review</button>
-      </div>
-      <ul class="q-list sweep-list" id="sweepList" hidden></ul>
+    <section class="nudge" id="sweepCard" hidden>
+      <b id="sweepCount">0</b><span>leads inactive 60d+</span>
+      <span class="sp"></span>
+      <button class="v2-btn" id="sweepToggle">Review &amp; archive</button>
     </section>
-  </main>
-</div>
+    <section class="v2-card sweep-list" id="sweepListCard" hidden><div id="sweepList"></div></section>
+  </div>
+</main>
 
-<div class="toasts" id="toasts" aria-live="polite"></div>
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260711l';
+import * as core from './crm-core.js?v=20260721a';
 const session = await core.requireAuth();
 if (session) {
+await core.installChrome({ active: 'worklist' });
+var RULES = await core.worklistRules();
 var $ = function (id) { return document.getElementById(id); };
 var LS_DONE = 'ajr_worklist_done', LS_FILTERS = 'ajr_worklist_filters', LS_SNOOZE = 'ajr_worklist_snooze';
 var LEVEL_COLORS = {
@@ -234,26 +110,12 @@ function daysSince(dmy) {
 }
 function daysBadge(dmy) {
   var n = daysSince(dmy);
-  if (n === null) return '<span class="days late">never</span>';
-  var cls = n <= 7 ? 'fresh' : n <= 14 ? 'warn' : 'late';
-  return '<span class="days ' + cls + '">' + (n <= 0 ? 'today' : n + 'd ago') + '</span>';
+  if (n === null) return '<span class="v2-age late">never</span>';
+  return '<span class="v2-age ' + core.ageClass(n, RULES) + '">' + (n <= 0 ? 'today' : n + 'd') + '</span>';
 }
 
-/* ---------- toasts ---------- */
-function toast(o) {
-  var el = document.createElement('div');
-  el.className = 'toast ' + (o.type || '');
-  var m = document.createElement('span'); m.className = 'msg'; m.innerHTML = o.html; el.appendChild(m);
-  if (o.action) {
-    var a = document.createElement('button'); a.className = 'toast-act'; a.textContent = o.action.label;
-    a.addEventListener('click', function () { el.remove(); o.action.fn(); }); el.appendChild(a);
-  }
-  var x = document.createElement('button'); x.className = 'toast-x'; x.setAttribute('aria-label', 'Dismiss');
-  x.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 18 18 6M6 6l12 12"/></svg>';
-  x.addEventListener('click', function () { el.remove(); }); el.appendChild(x);
-  $('toasts').appendChild(el);
-  if (!o.sticky) setTimeout(function () { el.remove(); }, o.ttl || 4500);
-}
+/* ---------- toasts (shared v2) ---------- */
+var toast = core.toast;
 
 /* ---------- snooze (hide a lead from the queue until a date) ---------- */
 function snoozes() {
@@ -311,11 +173,7 @@ function api(action, payload) {
   }
   throw new Error('unknown action ' + action);
 }
-function setDot(s) {
-  var dot = $('connDot');
-  dot.className = 'dot' + (s ? ' ' + s : '');
-  dot.setAttribute('aria-label', s === 'ok' ? 'Connected' : s === 'err' ? 'Connection error' : 'Connecting');
-}
+function setDot() { /* v2 chrome has no status dot; errors show in the error card */ }
 
 /* ---------- bootstrap ---------- */
 function runBootstrap(firstLoad) {
@@ -328,7 +186,10 @@ function runBootstrap(firstLoad) {
     buildIndex();
     loadDone();
     $('skeleton').hidden = true; $('loadError').hidden = true; $('app').hidden = false;
+    renderFilters();
     renderQueue();
+    // start on the first row so the primary actions are one keystroke away
+    if (state.cursor < 0 && state.rows.length) setCursor(0, true);
     renderSweep();
   }).catch(function (err) {
     if (firstLoad || $('app').hidden) {
@@ -370,21 +231,42 @@ function isSweepable(l) {
   var d = daysSince(l.lastContact);
   return l.level === 'Engaged 1' && !l.qual && l.temp !== 'Hot Lead' && (d === null || d > 60);
 }
+// Filters are chips now. 'engaged' is one chip covering Engaged 1-3 (that's how
+// the setter thinks about the queue); the rest are opt-in buckets.
+var FILTER_DEFS = [
+  { id: 'engaged', label: 'Engaged 1–3', levels: ['Engaged 1', 'Engaged 2', 'Engaged 3'] },
+  { id: 'No Close', label: 'No Close', levels: ['No Close'] },
+  { id: 'No Reply', label: 'No Reply', levels: ['No Reply'] },
+  { id: '', label: 'No level', levels: [''] }
+];
+var filterOn = new Set(['engaged']);
+
 function activeFilters() {
   var f = {};
-  document.querySelectorAll('#queueFilters input:checked').forEach(function (cb) { f[cb.dataset.lvl] = true; });
+  FILTER_DEFS.forEach(function (d) {
+    if (filterOn.has(d.id)) d.levels.forEach(function (lv) { f[lv] = true; });
+  });
+  // levels never shown in the queue still need a defined key so the No-Close
+  // resurfacing branch can tell "off" from "unknown"
+  if (!filterOn.has('No Close')) f['No Close'] = false;
   return f;
 }
-function saveFilters() {
-  var on = [];
-  document.querySelectorAll('#queueFilters input').forEach(function (cb) { if (cb.checked) on.push(cb.dataset.lvl); });
-  localStorage.setItem(LS_FILTERS, JSON.stringify(on));
+function countFor(d) {
+  return state.unique.filter(function (l) {
+    return d.levels.indexOf(l.level || '') !== -1 && !isSweepable(l) && !isSnoozed(l.h);
+  }).length;
 }
+function renderFilters() {
+  $('queueFilters').innerHTML = FILTER_DEFS.map(function (d) {
+    return '<button class="v2-chip' + (filterOn.has(d.id) ? ' on' : '') + '" data-f="' + esc(d.id) + '">' +
+      esc(d.label) + '<span class="n">' + countFor(d) + '</span></button>';
+  }).join('');
+}
+function saveFilters() { localStorage.setItem(LS_FILTERS, JSON.stringify(Array.from(filterOn))); }
 function restoreFilters() {
   try {
     var on = JSON.parse(localStorage.getItem(LS_FILTERS) || 'null');
-    if (!on) return;
-    document.querySelectorAll('#queueFilters input').forEach(function (cb) { cb.checked = on.indexOf(cb.dataset.lvl) !== -1; });
+    if (on && on.length) filterOn = new Set(on);
   } catch (e) { /* defaults stand */ }
 }
 
@@ -412,46 +294,46 @@ function queueLeads() {
 }
 
 function rowHtml(l, i, sweep) {
-  var c = LEVEL_COLORS[l.level] || '#8a8a92';
   var done = state.done[l.h];
+  var focused = (i === state.cursor && !sweep);
   var dups = state.dupCount.get(l.h) || 1;
-  return '<li class="q-row' + (done ? ' done' : '') + (i === state.cursor && !sweep ? ' cursor' : '') + '" data-h="' + esc(l.h) + '">' +
-    '<span class="q-main">' +
-      '<a class="q-handle" href="' + esc(l.url || ('https://instagram.com/' + l.h)) + '" target="_blank" rel="noopener" title="Open Instagram profile">@' + esc(l.h) + '</a>' +
-      '<span class="badge" style="color:' + c + ';border-color:' + c + '55;background:' + c + '1A">' + esc(l.level || 'no level') + '</span>' +
-      (l.temp === 'Hot Lead' ? '<span class="temp-hot">HOT</span>' : '') +
-      daysBadge(l.lastContact) +
-      (l.qual ? '<span class="qual-tag">' + esc(l.qual) + '</span>' : '') +
-      (dups > 1 ? '<span class="dup-tag">' + dups + ' rows in sheet</span>' : '') +
+  var note = [l.status, l.notes].filter(Boolean).join(' · ');
+  var acts;
+  if (done) {
+    acts = '<span class="q-done-at">✓ logged ' + esc(done) + '</span>' +
+           '<button class="v2-btn sm" data-undone="' + esc(l.h) + '">Undo</button>';
+  } else if (sweep) {
+    acts = '<button class="v2-btn sm" data-arch="' + esc(l.h) + '">Archive</button>';
+  } else if (focused) {
+    acts = '<button class="v2-btn go sm" data-log="' + esc(l.h) + '">Log follow-up</button>' +
+           '<button class="v2-btn sm" data-snz="' + esc(l.h) + '">Snooze 7d</button>';
+  } else {
+    acts = '<button class="v2-btn goline sm" data-log="' + esc(l.h) + '">Log</button>';
+  }
+  return '<div class="v2-row q-row' + (done ? ' done' : '') + (focused ? ' cursor' : '') + '" data-h="' + esc(l.h) + '">' +
+    '<a class="q-handle" href="' + esc(l.url || ('https://instagram.com/' + l.h)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
+    '<span class="q-stage">' + esc(l.level || 'no level') + '</span>' +
+    daysBadge(l.lastContact) +
+    '<span class="q-note" title="' + esc(note) + '">' +
+      (l.temp === 'Hot Lead' ? '<span class="v2-hot">Hot</span><span class="dot">·</span>' : '') +
+      (l.qual ? '<span class="v2-ai" style="color:#6d675b;border-color:#ddd8cd">' + esc(l.qual) + '</span>' : '') +
+      '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(note) + '</span>' +
+      (dups > 1 ? '<span class="dot">·</span><span style="color:#98917f;white-space:nowrap">' + dups + ' rows</span>' : '') +
     '</span>' +
-    '<span class="q-sub">' +
-      (l.status ? '<span>' + esc(l.status) + '</span>' : '') +
-      (l.notes ? '<span title="' + esc(l.notes) + '">' + esc(l.notes.slice(0, 70)) + (l.notes.length > 70 ? '…' : '') + '</span>' : '') +
-    '</span>' +
-    '<span class="q-actions">' +
-      (done
-        ? '<span class="q-done-at">logged ' + esc(done) + '</span><button class="q-undo" data-undone="' + esc(l.h) + '">undo</button>'
-        : ('<button class="q-ig" data-open="' + esc(l.h) + '" title="Open in Log a lead" aria-label="Open in Log a lead">' +
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.86 4.49a1.87 1.87 0 1 1 2.65 2.65L7.5 19.15l-3.5 1 1-3.5L16.86 4.49Z"/></svg></button>') +
-          (sweep
-            ? '<button class="q-archive" data-arch="' + esc(l.h) + '">Archive</button>'
-            : '<button class="q-snz" data-snz="' + esc(l.h) + '" title="Snooze 7 days" aria-label="Snooze 7 days">' +
-                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg></button>' +
-              '<button class="q-log" data-log="' + esc(l.h) + '">Log FU</button>')) +
-    '</span>' +
-  '</li>';
+    '<span class="q-acts">' + acts + '</span>' +
+  '</div>';
 }
 
 function renderQueue() {
   state.rows = queueLeads();
   if (state.cursor >= state.rows.length) state.cursor = state.rows.length - 1;
   var el = $('queueList');
-  $('qTotal').textContent = String(state.rows.filter(function (l) { return !state.done[l.h]; }).length);
-  var noLvl = state.unique.filter(function (l) { return !l.level && !isSweepable(l); }).length;
-  $('noLevelCount').textContent = noLvl ? '(' + noLvl + ')' : '';
-  if (!state.rows.length) { el.innerHTML = '<li class="empty">All caught up.</li>'; return; }
+  var waiting = state.rows.filter(function (l) { return !state.done[l.h]; }).length;
+  $('qTotal').textContent = String(waiting);
+  core.setChromeBadge('worklist', waiting); // keep the sidebar honest
+  if (!state.rows.length) { el.innerHTML = '<div class="v2-empty">All caught up.</div>'; return; }
   el.innerHTML = state.rows.slice(0, 120).map(function (l, i) { return rowHtml(l, i, false); }).join('') +
-    (state.rows.length > 120 ? '<li class="empty">…and ' + (state.rows.length - 120) + ' more</li>' : '');
+    (state.rows.length > 120 ? '<div class="v2-empty">…and ' + (state.rows.length - 120) + ' more</div>' : '');
 }
 
 /* ---------- sweep (dead-lead review) ---------- */
@@ -465,11 +347,11 @@ function renderSweep() {
   $('sweepCard').hidden = rows.length === 0;
   $('sweepCount').textContent = String(rows.length);
   var list = $('sweepList');
-  list.hidden = !state.sweepOpen;
-  $('sweepToggle').textContent = state.sweepOpen ? 'Hide' : 'Review';
+  $('sweepListCard').hidden = !state.sweepOpen || rows.length === 0;
+  $('sweepToggle').textContent = state.sweepOpen ? 'Hide' : 'Review & archive';
   if (state.sweepOpen) {
     list.innerHTML = rows.slice(0, 40).map(function (l) { return rowHtml(l, -1, true); }).join('') +
-      (rows.length > 40 ? '<li class="empty">…and ' + (rows.length - 40) + ' more (archive some to see the rest)</li>' : '');
+      (rows.length > 40 ? '<div class="v2-empty">…and ' + (rows.length - 40) + ' more (archive some to see the rest)</div>' : '');
   } else {
     list.innerHTML = '';
   }
@@ -505,7 +387,7 @@ function archiveLead(handle) {
   api('setterUpdate', { handle: handle, stage: 'Archive' }).then(function (res) {
     lead.level = 'Archive';
     lead.lastContact = state.serverDate;
-    renderQueue(); renderSweep();
+    renderFilters(); renderQueue(); renderSweep();
     toast({ type: 'ok', html: '<span class="mono">@' + esc(handle) + '</span> archived.', ttl: 5000,
       action: res.prev ? { label: 'Undo', fn: function () { undoWrite(res, handle); } } : null });
   }).catch(function (err) {
@@ -518,15 +400,16 @@ function undoWrite(res, handle) {
     if (l) { l.level = res.prev.level; l.status = res.prev.last_status; l.temp = res.prev.temp;
       l.lastContact = core.isoToDmy(res.prev.last_contact); }
     unmarkDone(handle);
-    renderQueue(); renderSweep();
+    renderFilters(); renderQueue(); renderSweep();
     toast({ type: 'ok', html: 'Undone — <span class="mono">@' + esc(handle) + '</span> restored.' });
   }).catch(function (err) { toast({ type: 'err', html: 'Undo failed: ' + esc(err.message), sticky: true }); });
 }
 
 /* ---------- keyboard grinding ---------- */
-function setCursor(i) {
+function setCursor(i, noScroll) {
   state.cursor = Math.max(0, Math.min(i, Math.min(state.rows.length, 120) - 1));
   renderQueue();
+  if (noScroll) return;
   var row = document.querySelector('#queueList .q-row.cursor');
   if (row) row.scrollIntoView({ block: 'nearest' });
 }
@@ -563,10 +446,14 @@ function bindEvents() {
     else if ((t = e.target.closest('[data-open]'))) location.href = 'log-lead.html?lead=' + encodeURIComponent(t.getAttribute('data-open'));
   });
   $('sweepToggle').addEventListener('click', function () { state.sweepOpen = !state.sweepOpen; renderSweep(); });
-  $('queueFilters').addEventListener('change', function () { saveFilters(); state.cursor = -1; renderQueue(); });
+  $('queueFilters').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-f]'); if (!b) return;
+    var id = b.getAttribute('data-f');
+    if (filterOn.has(id)) filterOn.delete(id); else filterOn.add(id);
+    saveFilters(); state.cursor = -1; renderFilters(); renderQueue();
+  });
   $('refreshBtn').addEventListener('click', function () { runBootstrap(false); });
   $('loadRetry').addEventListener('click', function () { runBootstrap(true); });
-  $('gearBtn').addEventListener('click', function () { core.signOut(); });
 
   document.addEventListener('keydown', function (e) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -606,8 +493,8 @@ function bindEvents() {
 function start() { runBootstrap(true); }
 function boot() {
   if (typeof window.CRMParse === 'undefined') {
-    document.querySelector('.wrap').insertAdjacentHTML('beforeend',
-      '<section class="card load-error"><p>parser.js failed to load — keep it next to worklist.html.</p></section>');
+    document.querySelector('.v2-main').insertAdjacentHTML('beforeend',
+      '<section class="v2-card" style="padding:20px;color:#b4543e">parser.js failed to load — keep it next to worklist.html.</section>');
     return;
   }
   restoreFilters();

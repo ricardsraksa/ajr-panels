@@ -3,241 +3,129 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="light">
 <title>All leads · AJR</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg:#0e0e10; --panel:#17171b; --card:#141416;
-  --border:#202024; --border-2:#26262c; --hair:#1a1a1e; --divider:#1e1e23;
-  --text:#e9e9ec; --text-2:#c9c9cf; --muted:#a9a9b1; --dim:#6e6e78; --faint:#55555e;
-  --primary:#e9e9ec; --primary-ink:#101013;
-  --money:#8ee59a; --amber:#d9b96a; --err:#f4a3a3;
-  --font:'Geist',system-ui,sans-serif; --mono:'Geist Mono',ui-monospace,monospace;
-  --shadow:0 24px 60px -18px rgba(0,0,0,.75);
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-[hidden]{display:none!important}
-body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased}
-button,input,select,textarea{font:inherit;color:inherit}
-button{cursor:pointer;border:none;background:none}
-a{color:var(--money);text-decoration:none}
-:focus{outline:none}
-:focus-visible{outline:2px solid var(--muted);outline-offset:2px;border-radius:6px}
-.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-input::placeholder,textarea::placeholder{color:var(--faint)}
-
-.wrap{max-width:1240px;margin:0 auto;padding:22px 26px 60px}
-.hdr{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-.dot{width:6px;height:6px;border-radius:50%;background:var(--dim)}
-.dot.err{background:var(--err)}
-.hdr .title{font-size:1.18rem;font-weight:600;letter-spacing:-.02em}
-.hdr .count{color:var(--faint);font:500 12px var(--mono)}
-.hdr .sp{flex:1}
-.hdr a.nav{color:var(--money);font-size:12.5px}
-.icon-btn{width:36px;height:36px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;color:var(--faint);transition:.16s}
-.icon-btn:hover{color:var(--text-2);background:var(--panel)}
-.icon-btn svg{width:16px;height:16px}
-.icon-btn.spin svg{animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-.sumbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-.chip{min-height:36px;padding:0 13px;border-radius:9px;border:1px solid var(--border-2);color:var(--muted);font-weight:500;font-size:13px;background:transparent;transition:.15s}
-.chip:hover{color:var(--text)}
-.chip.on{color:var(--text);background:var(--panel);border-color:#33333a}
-.chip .n{color:var(--faint);font-family:var(--mono);margin-left:6px;font-size:11.5px}
-.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
-.search{flex:1;min-width:200px;max-width:360px}
-.search input{width:100%;min-height:38px;padding:0 13px;background:var(--panel);border:1px solid var(--border-2);border-radius:10px;color:var(--text);font-size:14px}
-.search input:focus{border-color:#33333a}
-.tempsel{min-height:38px;padding:0 10px;background:var(--panel);border:1px solid var(--border-2);border-radius:10px;color:var(--muted);font-size:13px}
-.hint{color:var(--faint);font-size:12px;margin-left:auto}
-.hint kbd{font-family:var(--mono);font-size:11px;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:var(--muted)}
-
-.table{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--card)}
-.thead,.trow{display:grid;grid-template-columns:1.5fr .9fr .6fr 1fr .8fr .75fr .75fr 1.7fr;gap:12px;align-items:center;padding:9px 16px}
-.thead{color:var(--dim);font:600 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);z-index:5}
-.thead button{color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;display:inline-flex;align-items:center;gap:4px;padding:4px 0}
-.thead button:hover{color:var(--text-2)}
-.thead .arr{font-size:10px}
-.trow{border-top:1px solid var(--hair);cursor:pointer;transition:background .12s}
-.trow:first-of-type{border-top:none}
-.trow:hover{background:var(--panel)}
-.lh{font-weight:600;color:var(--text);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
-.lh:hover{text-decoration:underline;text-decoration-color:var(--faint)}
-.badge{display:inline-block;padding:1px 9px;border-radius:999px;border:1px solid;font-size:11px;font-weight:600;white-space:nowrap}
-.temp{font-size:11px;font-weight:600}
-.temp.hot{color:var(--amber)}
-.temp.warm{color:var(--text-2)}
-.temp.cold{color:var(--dim)}
-.cell{color:var(--text-2);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cell.dt{font-family:var(--mono);color:var(--muted)}
-.cell.dt.old{color:var(--err)}
-.cell.notes{color:var(--dim)}
-.qual{font-size:11.5px;color:var(--muted)}
-.empty{padding:26px 16px;color:var(--faint);text-align:center}
-.more{width:100%;min-height:44px;color:var(--muted);font-weight:500;border-top:1px solid var(--hair)}
-.more:hover{color:var(--text);background:var(--panel)}
-.skel{padding:40px;text-align:center;color:var(--dim)}
-.poolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 16px;border-bottom:1px solid var(--border);color:var(--muted);font-size:13px}
-.poolbar .sp{flex:1}
-.poolbar b{color:var(--text);font-family:var(--mono)}
-.pbtn{min-height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--border-2);color:var(--muted);font-weight:500;font-size:12.5px}
-.pbtn:hover:not(:disabled){color:var(--text);border-color:#33333a}
-.pbtn.go{border-color:#3d5a3a;color:var(--money);font-weight:600}
-.pbtn.go:hover:not(:disabled){background:#141a15}
-.pbtn:disabled{opacity:.4;cursor:not-allowed}
-.poollist{max-height:62vh;overflow-y:auto}
-.poolrow{display:flex;align-items:center;gap:11px;padding:8px 16px;border-top:1px solid var(--hair);cursor:pointer}
-.poolrow:first-child{border-top:none}
-.poolrow:hover{background:var(--panel)}
-.poolrow.on{background:rgba(142,229,154,.06)}
-.poolrow input{width:16px;height:16px;flex:none;cursor:pointer}
-.poolrow .ph{font-weight:600;color:var(--text);text-decoration:none}
-.poolrow .ph:hover{text-decoration:underline;text-decoration-color:var(--faint)}
-
+.l-thead,.l-row{grid-template-columns:118px 74px 44px 100px 60px 52px minmax(0,1fr)}
+.l-row{cursor:pointer}
+.lh{font-weight:600;font-size:13.5px;color:#211f1b;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lh:hover{color:#211f1b;text-decoration:underline;text-decoration-color:#ccc5b6}
+.l-cell{font-size:12.5px;color:#4d4a42;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.l-cell.dim{color:#8a8375}
+.l-mono{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d675b}
+.l-min{min-width:600px}
+.pager{display:flex;align-items:center;gap:10px;padding:11px 18px;border-top:1px solid #f0ede6;color:#8a8375;font-size:12.5px}
+.pager .sp{flex:1}
 /* drawer */
-.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .18s;z-index:40}
+.scrim{position:fixed;inset:0;background:rgba(33,31,27,.45);opacity:0;pointer-events:none;transition:opacity .18s;z-index:60}
 .scrim.on{opacity:1;pointer-events:auto}
-.drawer{position:fixed;top:0;right:0;height:100vh;width:min(460px,100vw);background:var(--bg);border-left:1px solid var(--border);
-  box-shadow:var(--shadow);transform:translateX(100%);transition:transform .2s cubic-bezier(.2,.8,.2,1);z-index:50;display:flex;flex-direction:column}
+.drawer{position:fixed;top:0;right:0;height:100vh;width:min(300px,100vw);background:#fdfcf9;
+  border-left:1px solid #e6e2da;transform:translateX(100%);transition:transform .2s cubic-bezier(.2,.8,.2,1);
+  z-index:70;display:flex;flex-direction:column}
 .drawer.on{transform:none}
-.dhead{display:flex;align-items:center;gap:10px;padding:18px 20px;border-bottom:1px solid var(--hair);flex:none}
-.dhead h2{font-size:17px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dhead a.ig{font-size:12.5px;white-space:nowrap}
-.dbody{flex:1;overflow-y:auto;padding:18px 20px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
-.field{margin-bottom:14px}
-.field label{display:block;font-size:12px;color:var(--muted);font-weight:500;margin-bottom:6px}
-.field input,.field select,.field textarea{width:100%;min-height:40px;padding:8px 12px;background:var(--panel);border:1px solid var(--border-2);border-radius:10px;color:var(--text);font-size:14px}
-.field textarea{min-height:70px;resize:vertical;line-height:1.5}
-.field input:focus,.field select:focus,.field textarea:focus{border-color:#33333a}
-.meta{color:var(--faint);font-size:11.5px;font-family:var(--mono);margin-bottom:14px}
-.hist{margin-top:6px;border-top:1px solid var(--hair);padding-top:14px}
-.hist h3{font:600 10.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.dhead{padding:18px 20px 12px;border-bottom:1px solid #f0ede6;flex:none}
+.dhead .lab{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#98917f;display:block;margin-bottom:6px}
+.dhead h2{font-size:16px;font-weight:700;display:inline-block;margin-right:8px}
+.dbody{flex:1;overflow-y:auto;padding:16px 20px}
+.dbody .meta{color:#8a8375;font-size:12px;font-family:'IBM Plex Mono',monospace;margin-bottom:14px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.fld{margin-bottom:13px}
+.fld label{display:block;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#98917f;margin-bottom:5px}
+.hist{margin-top:4px;border-top:1px solid #f0ede6;padding-top:13px}
+.hist h3{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#98917f;margin-bottom:8px}
 .hist ul{list-style:none}
-.hist li{display:flex;gap:8px;padding:6px 0;font-size:12.5px;color:var(--muted);border-top:1px solid var(--hair)}
-.hist li:first-child{border-top:none}
-.hist .who{color:var(--text-2);font-weight:500;flex:none}
+.hist li{display:flex;gap:8px;padding:5px 0;font-size:12px;color:#4d4a42}
+.hist .who{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d675b;flex:none}
+.hist .who.ai{color:#7c56c9}
 .hist .what{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hist .when{color:var(--faint);font:400 11px var(--mono);flex:none}
-.dfoot{padding:14px 20px;border-top:1px solid var(--hair);flex:none;display:flex;flex-direction:column;gap:9px}
-.btn{width:100%;min-height:46px;border-radius:12px;font:600 14px var(--font)}
-.btn-primary{background:var(--primary);color:var(--primary-ink)}
-.btn-primary:hover:not(:disabled){filter:brightness(.94)}
-.btn-primary:disabled{opacity:.5;cursor:not-allowed}
-.btn-ghost{min-height:38px;border:1px solid var(--border-2);color:var(--muted);font-weight:500;font-size:13px}
-.btn-ghost:hover{color:var(--text);border-color:#33333a}
-.quick{display:flex;gap:8px;margin-bottom:16px}
-.quick button,.quick a{flex:1;min-height:38px;border:1px solid var(--border-2);border-radius:10px;color:var(--muted);
-  font-weight:500;font-size:12.5px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
-.quick button:hover,.quick a:hover{color:var(--text);border-color:#33333a}
-
-/* toasts */
-.toasts{position:fixed;z-index:60;bottom:18px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:9px;width:min(440px,calc(100vw - 32px))}
-.toast{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--border-2);border-radius:12px;padding:13px 16px;font-size:13.5px;box-shadow:var(--shadow);animation:rise .24s cubic-bezier(.2,.8,.2,1)}
-.toast.ok{border-left:3px solid var(--money)}
-.toast.err{border-left:3px solid var(--err)}
-.toast .msg{flex:1}
-.toast .mono{font-weight:600}
-.toast-act{min-height:34px;padding:0 12px;border-radius:9px;border:1px solid var(--border-2);color:var(--text);font-weight:600;font-size:12.5px;flex:none}
-.toast-x{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;color:var(--faint);flex:none}
-.toast-x svg{width:14px;height:14px}
-@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-@media(max-width:900px){
-  .thead{display:none}
-  .trow{grid-template-columns:1fr auto;gap:4px 12px;padding:12px 16px}
-  .trow>*:nth-child(n+3){display:none}
-}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+.hist .when{color:#98917f;font-size:11px;flex:none}
+.dfoot{padding:13px 20px;border-top:1px solid #f0ede6;flex:none;display:flex;flex-direction:column;gap:8px}
+.dfoot .v2-btn{width:100%}
+/* outreach pool */
+.poolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid #f0ede6;font-size:13px;color:#4d4a42}
+.poolbar .sp{flex:1}
+.poolbar b{font-family:'IBM Plex Mono',monospace;color:#211f1b}
+.poolgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.poolcell{display:flex;align-items:center;gap:9px;padding:10px 18px;border-top:1px solid #f0ede6;min-width:0}
+.poolcell input{width:15px;height:15px;flex:none;cursor:pointer;accent-color:#2a6a4d}
+.poolcell a{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.impbar{display:flex;align-items:center;gap:12px;padding:13px 18px;margin-bottom:14px;border:1px solid #c9dfd2;
+  border-radius:12px;background:#eef5f0;color:#4d4a42;font-size:13px}
+.impbar b{font-family:'IBM Plex Mono',monospace;color:#211f1b}
+.impbar .sp{flex:1}
+.pooldash{border:1px dashed #ddd8cd;border-radius:12px;padding:34px;text-align:center;color:#8a8375}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="hdr">
-    <span class="dot" id="dot"></span>
-    <span class="title">All leads</span>
-    <span class="count" id="count">—</span>
+<main class="v2-main">
+  <header class="v2-h">
+    <h1>All leads</h1>
+    <span class="sub" id="count">—</span>
     <span class="sp"></span>
-    <a class="nav" href="worklist.html">Worklist →</a>
-    <a class="nav" href="log-lead.html">Log a lead →</a>
-    <a class="nav" href="deals.html">Closing →</a>
-    <a class="nav" href="settings.html">Settings →</a>
-    <button class="icon-btn" id="signout" aria-label="Sign out">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/></svg>
-    </button>
-    <button class="icon-btn" id="refresh" aria-label="Refresh">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
-    </button>
+    <button class="v2-btn dash" id="scanBtn" type="button">Paste screenshot ⌘V</button>
+    <button class="v2-btn dash" id="importBtn" type="button">Import IG following…</button>
+    <input id="importFile" type="file" accept=".json,application/json" hidden>
+    <button class="v2-btn sm" id="refresh">Refresh</button>
   </header>
 
-  <div class="sumbar" id="sumbar"></div>
+  <div class="v2-chips" id="sumbar"></div>
 
-  <div class="toolbar">
-    <div class="search"><input id="search" type="text" placeholder="Search handle, notes, email…" autocomplete="off" spellcheck="false"></div>
-    <select class="tempsel" id="tempsel">
+  <div class="v2-chips" style="margin-bottom:14px">
+    <input class="v2-in" id="search" type="text" placeholder="Search handle, notes, email…"
+           autocomplete="off" spellcheck="false" style="flex:1;min-width:140px;max-width:260px">
+    <select class="v2-in" id="tempsel" style="width:auto">
       <option value="">Any temp</option><option>Hot Lead</option><option>Warm Lead</option><option>Cold Lead</option>
     </select>
-    <button class="chip" id="scanBtn" type="button" style="min-height:38px">⊕ Scan screenshot</button>
-    <button class="chip" id="importBtn" type="button" style="min-height:38px">↧ Import IG following</button>
-    <input id="importFile" type="file" accept=".json,application/json" hidden>
-    <span class="hint"><kbd>⌘K</kbd> search anywhere</span>
   </div>
 
-  <div class="table" id="table"><div class="skel" id="skel">Loading leads…</div></div>
-</div>
+  <div class="v2-card" id="table"><div class="v2-empty" id="skel">Loading leads…</div></div>
+</main>
 
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" aria-label="Lead editor">
   <div class="dhead">
+    <span class="lab">Selected lead</span>
     <h2 id="d-name">Lead</h2>
-    <a class="ig" id="d-ig" target="_blank" rel="noopener" hidden>Instagram ↗</a>
-    <button class="icon-btn" id="d-close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18 18 6M6 6l12 12"/></svg></button>
+    <a id="d-ig" target="_blank" rel="noopener" hidden style="font-size:12.5px">open profile ↗</a>
+    <button class="v2-btn sm" id="d-close" style="float:right;min-height:24px;padding:0 8px">×</button>
   </div>
   <div class="dbody">
     <div class="meta" id="d-meta"></div>
-    <div class="quick">
-      <button id="q-fu">Log follow-up</button>
-      <a id="q-log" href="#">Open in Log a lead</a>
+    <button class="v2-btn go" id="q-fu" style="width:100%;margin-bottom:14px">Log follow-up now</button>
+    <a id="q-log" href="#" hidden></a>
+    <div class="g2">
+      <div class="fld"><label>Stage</label>
+        <select class="v2-in" id="f-level"><option value="">no level</option><option>Engaged 1</option><option>Engaged 2</option><option>Engaged 3</option><option>Booked</option><option>No Close</option><option>Outreach</option><option>Archive</option><option>No Reply</option><option>Closed</option></select>
+      </div>
+      <div class="fld"><label>Temp</label>
+        <select class="v2-in" id="f-temp"><option value="">—</option><option>Hot Lead</option><option>Warm Lead</option><option>Cold Lead</option></select>
+      </div>
+      <div class="fld"><label>Status</label><select class="v2-in" id="f-status"><option value="">—</option></select></div>
+      <div class="fld"><label>Qualification</label>
+        <select class="v2-in" id="f-qual"><option value="">—</option><option>Qualified 1</option><option>Qualified 2</option><option>Qualified 3</option><option>Unqualified</option></select>
+      </div>
+      <div class="fld"><label>Email</label><input class="v2-in" id="f-email" type="email"></div>
+      <div class="fld"><label>Phone</label><input class="v2-in" id="f-phone" type="text"></div>
     </div>
-    <div class="grid2">
-      <div class="field"><label>Stage</label>
-        <select id="f-level"><option value="">no level</option><option>Engaged 1</option><option>Engaged 2</option><option>Engaged 3</option><option>Booked</option><option>No Close</option><option>Archive</option><option>No Reply</option><option>Closed</option></select>
-      </div>
-      <div class="field"><label>Temp</label>
-        <select id="f-temp"><option value="">—</option><option>Hot Lead</option><option>Warm Lead</option><option>Cold Lead</option></select>
-      </div>
-      <div class="field"><label>Last status</label>
-        <select id="f-status"><option value="">—</option></select>
-      </div>
-      <div class="field"><label>Qualification</label>
-        <select id="f-qual"><option value="">—</option><option>Qualified 1</option><option>Qualified 2</option><option>Qualified 3</option><option>Unqualified</option></select>
-      </div>
-    </div>
-    <div class="field"><label>Notes</label><textarea id="f-notes"></textarea></div>
-    <div class="field"><label>Pain points</label><textarea id="f-pains"></textarea></div>
-    <div class="grid2">
-      <div class="field"><label>Email</label><input id="f-email" type="email"></div>
-      <div class="field"><label>Phone</label><input id="f-phone" type="text"></div>
-    </div>
-    <div class="field"><label>LinkedIn</label><input id="f-linkedin" type="text"></div>
+    <div class="fld"><label>Pain points</label><textarea class="v2-in" id="f-pains"></textarea></div>
+    <div class="fld"><label>Notes</label><textarea class="v2-in mono" id="f-notes" style="font-size:12px"></textarea></div>
+    <div class="fld"><label>LinkedIn</label><input class="v2-in" id="f-linkedin" type="text"></div>
     <div class="hist" id="hist" hidden><h3>History</h3><ul id="hist-list"></ul></div>
   </div>
   <div class="dfoot">
-    <button class="btn btn-primary" id="d-save">Save</button>
-    <button class="btn btn-ghost" id="d-cancel">Cancel</button>
+    <button class="v2-btn dark" id="d-save">Save</button>
+    <button class="v2-btn" id="d-cancel">Undo last</button>
   </div>
 </aside>
 
-<div class="toasts" id="toasts" aria-live="polite"></div>
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260711l';
+import * as core from './crm-core.js?v=20260721a';
 const session = await core.requireAuth();
 if (session) {
+await core.installChrome({ active: 'leads' });
+const RULES = await core.worklistRules();
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
@@ -248,18 +136,7 @@ const LEVEL_COLORS = {
 };
 const state = { leads: [], sel: new Set(), filter: 'ALL', temp: '', q: '', sort: { key: 'lastContact', dir: -1 }, shown: 100, editing: null, busy: false };
 
-function toast(o) {
-  const el = document.createElement('div');
-  el.className = 'toast ' + (o.type || '');
-  const m = document.createElement('span'); m.className = 'msg'; m.innerHTML = o.html; el.appendChild(m);
-  if (o.action) { const a = document.createElement('button'); a.className = 'toast-act'; a.textContent = o.action.label;
-    a.onclick = () => { el.remove(); o.action.fn(); }; el.appendChild(a); }
-  const x = document.createElement('button'); x.className = 'toast-x';
-  x.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18 18 6M6 6l12 12"/></svg>';
-  x.onclick = () => el.remove(); el.appendChild(x);
-  $('toasts').appendChild(el);
-  if (!o.sticky) setTimeout(() => el.remove(), o.ttl || 5000);
-}
+const toast = core.toast;
 
 function daysSince(dmy) {
   const d = CRMParse.parseDMY(dmy);
@@ -274,8 +151,10 @@ function renderSumbar() {
   const realCount = state.leads.length - (counts['Outreach'] || 0);
   const chips = [['ALL', 'All', realCount]]
     .concat(STAGE_ORDER.filter((st) => counts[st]).map((st) => [st, st || 'No level', counts[st]]));
-  $('sumbar').innerHTML = chips.map(([key, label, n]) =>
-    `<button class="chip${state.filter === key ? ' on' : ''}" data-f="${esc(key)}">${esc(label)} <span class="n">${n}</span></button>`).join('');
+  $('sumbar').innerHTML = chips.map(([key, label, n]) => {
+    const extra = key === 'Booked' ? ' green' : key === 'No Close' ? ' red' : '';
+    return `<button class="v2-chip${state.filter === key ? ' on' : extra}" data-f="${esc(key)}">${esc(label)}<span class="n">${n}</span></button>`;
+  }).join('');
   Array.prototype.forEach.call($('sumbar').children, (b) => {
     b.onclick = () => { state.filter = b.getAttribute('data-f'); state.shown = 100; renderSumbar(); renderTable(); };
   });
@@ -284,7 +163,7 @@ function renderSumbar() {
 /* ---------- table ---------- */
 const COLS = [
   ['h', 'Handle'], ['level', 'Stage'], ['temp', 'Temp'], ['status', 'Last status'],
-  ['qual', 'Qual'], ['lastContact', 'Last contact'], ['dateAdded', 'Added'], ['notes', 'Notes'],
+  ['lastContact', 'Since'], ['dateAdded', 'Added'], ['notes', 'Notes'],
 ];
 function cmp(a, b, key) {
   if (key === 'lastContact' || key === 'dateAdded') {
@@ -314,28 +193,36 @@ function renderPool() {
   const sent = pool.length - todo.length;
   const sel = state.sel;
   const t = $('table');
+  if (!pool.length) {
+    t.innerHTML = '<div class="pooldash" style="margin:18px">' +
+      '<div style="font-weight:600;color:#211f1b;margin-bottom:6px">Nothing imported yet</div>' +
+      '<div style="margin-bottom:14px">Pool entries stay out of the lead book and the Worklist.</div>' +
+      '<button class="v2-btn dark" id="poolImport">Import IG following…</button></div>';
+    $('count').textContent = '0 in pool';
+    return;
+  }
   t.innerHTML =
     '<div class="poolbar">' +
-      '<span><b>' + todo.length + '</b> not messaged yet</span>' +
-      '<span class="opt">' + sent + ' already sent</span>' +
+      '<b>' + todo.length.toLocaleString() + '</b><span>not yet messaged</span>' +
+      '<span style="color:#98917f">·</span><span>' + sent.toLocaleString() + ' sent</span>' +
       '<span class="sp"></span>' +
-      '<button class="pbtn" data-take="25">Take 25</button>' +
-      '<button class="pbtn" data-take="50">Take 50</button>' +
-      '<button class="pbtn" data-take="100">Take 100</button>' +
-      '<button class="pbtn" id="poolCopy">Copy handles</button>' +
-      '<button class="pbtn go" id="poolMark"' + (sel.size ? '' : ' disabled') + '>Mark ' + (sel.size || '') + ' as sent</button>' +
+      '<button class="v2-btn sm' + (sel.size ? '' : ' dark') + '" data-take="25">Next 25</button>' +
+      '<button class="v2-btn sm" data-take="50">50</button>' +
+      '<button class="v2-btn sm" data-take="100">100</button>' +
     '</div>' +
-    (todo.length
-      ? '<div class="poollist">' + todo.slice(0, 300).map((l) =>
-          '<label class="poolrow' + (sel.has(l.id) ? ' on' : '') + '">' +
-            '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>' +
-            '<a href="' + esc(l.url || ('https://instagram.com/' + l.h)) + '" target="_blank" rel="noopener" class="ph">@' + esc(l.h) + '</a>' +
-            '<span class="opt">added ' + esc(l.dateAdded || '—') + '</span>' +
-          '</label>').join('') +
-        (todo.length > 300 ? '<div class="empty">showing first 300 of ' + todo.length + '</div>' : '') +
-        '</div>'
-      : '<div class="empty">Pool is empty — import your IG following to fill it.</div>');
-  $('count').textContent = pool.length + ' in pool';
+    '<div class="poolbar">' +
+      '<b>' + (sel.size || 0) + '</b><span>selected</span>' +
+      '<button class="v2-btn sm" id="poolCopy">Copy handles</button>' +
+      '<span class="sp"></span>' +
+      '<button class="v2-btn go sm" id="poolMark"' + (sel.size ? '' : ' disabled') + '>Mark batch sent today</button>' +
+    '</div>' +
+    '<div class="poolgrid">' + todo.slice(0, 300).map((l) =>
+      '<label class="poolcell">' +
+        '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>' +
+        '<a href="' + esc(l.url || ('https://instagram.com/' + l.h)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
+      '</label>').join('') + '</div>' +
+    (todo.length > 300 ? '<div class="v2-empty">+ ' + (todo.length - 300).toLocaleString() + ' more…</div>' : '');
+  $('count').textContent = pool.length.toLocaleString() + ' in pool';
 }
 
 function renderTable() {
@@ -344,34 +231,37 @@ function renderTable() {
   const realTotal = state.leads.filter((l) => l.level !== 'Outreach').length;
   $('count').textContent = rows.length === realTotal
     ? realTotal + ' leads' : rows.length + ' of ' + realTotal;
-  const head = '<div class="thead">' + COLS.map(([key, label]) =>
-    `<button data-s="${key}">${label}${state.sort.key === key ? `<span class="arr">${state.sort.dir > 0 ? '↑' : '↓'}</span>` : ''}</button>`).join('') + '</div>';
+  const head = '<div class="v2-thead l-thead l-min">' + COLS.map(([key, label]) =>
+    `<button data-s="${key}" style="text-align:left;font:inherit;letter-spacing:inherit;text-transform:uppercase;color:inherit">${label}${state.sort.key === key ? `<span class="arr"> ${state.sort.dir > 0 ? '↑' : '↓'}</span>` : ''}</button>`).join('') + '</div>';
   const t = $('table');
-  if (!rows.length) { t.innerHTML = head + '<div class="empty">No leads match.</div>'; bindHead(); return; }
+  if (!rows.length) { t.innerHTML = '<div class="v2-scroll">' + head + '</div><div class="v2-empty">No leads match.</div>'; bindHead(); return; }
   const page = rows.slice(0, state.shown);
-  t.innerHTML = head + page.map((l) => {
-    const c = LEVEL_COLORS[l.level] || '#8a8a92';
+  t.innerHTML = '<div class="v2-scroll"><div class="l-min">' + head + page.map((l) => {
     const ds = daysSince(l.lastContact);
-    return `<div class="trow" data-id="${l.id}">
-      <a class="lh" href="${esc(l.url || 'https://instagram.com/' + l.h)}" target="_blank" rel="noopener" title="Open Instagram profile">@${esc(l.h)}</a>
-      <span><span class="badge" style="color:${c};border-color:${c}55;background:${c}1A">${esc(l.level || 'no level')}</span></span>
-      <span class="temp ${l.temp === 'Hot Lead' ? 'hot' : l.temp === 'Warm Lead' ? 'warm' : 'cold'}">${l.temp ? esc(l.temp.split(' ')[0].toUpperCase()) : ''}</span>
-      <span class="cell">${esc(l.status || '')}</span>
-      <span class="qual">${esc(l.qual || '')}</span>
-      <span class="cell dt${ds !== null && ds > 30 ? ' old' : ''}">${esc(l.lastContact || '—')}</span>
-      <span class="cell dt">${esc(l.dateAdded || '—')}</span>
-      <span class="cell notes" title="${esc(l.notes)}">${esc(l.notes || '')}</span>
+    const stageCls = l.level === 'Booked' ? 'color:#2a6a4d;font-weight:600'
+      : l.level === 'No Close' ? 'color:#b4543e' : '';
+    return `<div class="v2-row l-row" data-id="${l.id}">
+      <a class="lh" href="${esc(l.url || 'https://instagram.com/' + l.h)}" target="_blank" rel="noopener">@${esc(l.h)}</a>
+      <span class="l-cell" style="${stageCls}">${esc(l.level || 'no level')}</span>
+      <span class="l-cell ${l.temp === 'Hot Lead' ? 'v2-hot' : 'dim'}">${l.temp ? esc(l.temp.split(' ')[0]) : ''}</span>
+      <span class="l-cell">${esc(l.status || '')}</span>
+      <span class="v2-age ${core.ageClass(ds, RULES)}">${l.lastContact ? (ds <= 0 ? 'today' : ds + 'd') : '—'}</span>
+      <span class="l-mono">${esc((l.dateAdded || '').slice(0, 5))}</span>
+      <span class="l-cell dim" title="${esc(l.notes)}">${esc(l.notes || '')}</span>
     </div>`;
-  }).join('') + (rows.length > state.shown ? `<button class="more" id="more">Show 100 more · ${rows.length - state.shown} left</button>` : '');
+  }).join('') + '</div></div>' +
+    (rows.length > state.shown
+      ? `<div class="pager"><span>1–${Math.min(state.shown, rows.length)} of ${rows.length.toLocaleString()}</span><span class="sp"></span><button class="v2-btn sm" id="more">Show 100 more</button></div>`
+      : `<div class="pager"><span>${rows.length.toLocaleString()} shown</span></div>`);
   bindHead();
-  Array.prototype.forEach.call(t.querySelectorAll('.trow'), (r) => {
+  Array.prototype.forEach.call(t.querySelectorAll('.l-row'), (r) => {
     r.onclick = () => openDrawer(+r.getAttribute('data-id'));
     const a = r.querySelector('.lh'); if (a) a.addEventListener('click', (e) => e.stopPropagation()); // @ opens IG, not the drawer
   });
   const more = $('more'); if (more) more.onclick = () => { state.shown += 100; renderTable(); };
 }
 function bindHead() {
-  Array.prototype.forEach.call($('table').querySelectorAll('.thead button'), (b) => {
+  Array.prototype.forEach.call($('table').querySelectorAll('.v2-thead button'), (b) => {
     b.onclick = () => {
       const k = b.getAttribute('data-s');
       if (state.sort.key === k) state.sort.dir *= -1; else state.sort = { key: k, dir: k.includes('Contact') || k.includes('Added') ? -1 : 1 };
@@ -470,14 +360,12 @@ async function load() {
   try {
     const leads = await core.loadLeads();
     state.leads = leads;
-    $('dot').className = 'dot';
     renderSumbar(); renderTable();
     // ?lead=<handle> deep link (palette / cross-page)
     const dl = new URLSearchParams(location.search).get('lead');
     if (dl) { const hit = leads.find((l) => l.h === dl.toLowerCase()); if (hit) openDrawer(hit.id); }
   } catch (e) {
-    $('dot').className = 'dot err';
-    $('table').innerHTML = '<div class="empty">Couldn’t load: ' + esc(e.message) + '</div>';
+    $('table').innerHTML = '<div class="v2-empty">Couldn’t load: ' + esc(e.message) + '</div>';
   } finally { $('refresh').classList.remove('spin'); }
 }
 
@@ -487,7 +375,6 @@ core.STATUSES.forEach((st) => { const o = document.createElement('option'); o.te
 $('search').oninput = (e) => { state.q = e.target.value; state.shown = 100; renderTable(); };
 $('tempsel').onchange = (e) => { state.temp = e.target.value; state.shown = 100; renderTable(); };
 $('refresh').onclick = load;
-$('signout').onclick = () => core.signOut();
 $('scrim').onclick = closeDrawer;
 $('d-close').onclick = closeDrawer;
 $('d-cancel').onclick = closeDrawer;
@@ -542,6 +429,7 @@ $('table').addEventListener('click', async (e) => {
 
 /* ---------- import the IG following export ---------- */
 $('importBtn').onclick = () => $('importFile').click();
+$('table').addEventListener('click', (e) => { if (e.target.closest('#poolImport')) $('importFile').click(); });
 $('importFile').onchange = async () => {
   const f = $('importFile').files[0];
   if (!f) return;
@@ -552,6 +440,15 @@ $('importFile').onchange = async () => {
     if (!res.total) { toast({ type: 'err', html: 'No handles found in that file — is it the following.json from your IG export?', sticky: true }); return; }
     await load();
     state.filter = 'Outreach'; renderSumbar(); renderTable();
+    const bar = document.createElement('div');
+    bar.className = 'impbar';
+    bar.innerHTML = 'Imported <b>' + res.added.toLocaleString() + '</b> · <b>' + res.skippedExisting.toLocaleString() +
+      '</b> already leads, left untouched<span class="sp"></span>';
+    const ub = document.createElement('button');
+    ub.className = 'v2-btn sm'; ub.textContent = 'Undo import';
+    ub.onclick = async () => { ub.disabled = true; await core.undoImport(res.ids); bar.remove(); load(); };
+    bar.appendChild(ub);
+    $('table').parentNode.insertBefore(bar, $('table'));
     toast({ type: 'ok', ttl: 12000,
       html: 'Imported <b>' + res.added + '</b> into the outreach pool · ' + res.skippedExisting + ' already leads (untouched).',
       action: res.ids && res.ids.length ? { label: 'Undo import', fn: async () => { await core.undoImport(res.ids); load(); } } : null });

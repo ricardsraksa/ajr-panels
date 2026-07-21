@@ -3,279 +3,196 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark">
-<title>Closing · AJR</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<meta name="color-scheme" content="light">
+<title>Deals · AJR</title>
 <style>
-:root{
-  --bg:#0e0e10; --panel:#17171b; --card:#141416;
-  --border:#202024; --border-2:#26262c; --hair:#1a1a1e; --divider:#1e1e23;
-  --text:#e9e9ec; --text-2:#c9c9cf; --muted:#a9a9b1; --dim:#6e6e78; --faint:#55555e;
-  --primary:#e9e9ec; --primary-ink:#101013;
-  --money:#8ee59a; --money-ink:#0b1f10; --amber:#d9b96a; --err:#f4a3a3;
-  --font:'Geist',system-ui,sans-serif; --mono:'Geist Mono',ui-monospace,monospace;
-  --shadow:0 24px 60px -18px rgba(0,0,0,.75);
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-[hidden]{display:none!important}
-body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased}
-button,input,select,textarea{font:inherit;color:inherit}
-button{cursor:pointer;border:none;background:none}
-a{color:var(--money);text-decoration:none}
-:focus{outline:none}
-:focus-visible{outline:2px solid var(--muted);outline-offset:2px;border-radius:6px}
-.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-input::placeholder,textarea::placeholder{color:var(--faint)}
-
-.wrap{max-width:1200px;margin:0 auto;padding:22px 26px 60px}
-.hdr{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
-.dot{width:6px;height:6px;border-radius:50%;background:var(--dim)}
-.dot.err{background:var(--err)}
-.hdr .eyebrow{font-size:1.18rem;font-weight:600;letter-spacing:-.02em;color:var(--text)}
-.hdr .count{color:var(--faint);font:500 12px var(--mono)}
-.hdr .sp{flex:1}
-.hdr a.nav{color:var(--money);font-size:12.5px}
-.navbtn{min-height:34px;padding:0 14px;border-radius:9px;border:1px solid #3d5a3a;color:var(--money);font-weight:600;font-size:12.5px;background:#141a15}
-.navbtn:hover{background:#1b2019}
-.icon-btn{width:36px;height:36px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;color:var(--faint);transition:.16s}
-.icon-btn:hover{color:var(--text-2);background:var(--panel)}
-.icon-btn svg{width:16px;height:16px}
-.icon-btn.spin svg{animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-.today{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:-4px 0 14px;padding:10px 14px;border:1px solid var(--border);border-radius:11px;background:var(--card);color:var(--muted);font-size:13px}
-.calstrip{display:flex;flex-direction:column;gap:8px;margin:-4px 0 14px;padding:10px 14px;border:1px solid #4a4430;border-radius:11px;background:#17150f;color:var(--muted);font-size:13px}
-.calstrip .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.calstrip svg{width:14px;height:14px;color:var(--amber);flex:none}
-.calstrip .who{font-weight:600;color:var(--text)}
-.calstrip .slot{font-family:var(--mono);color:var(--amber)}
-.calstrip select{min-height:34px;padding:0 8px;background:var(--panel);border:1px solid var(--border-2);border-radius:8px;color:var(--text);font-size:12.5px;max-width:220px}
-.calstrip .lnk{min-height:34px;padding:0 12px;border-radius:8px;border:1px solid #5a4d2a;color:var(--amber);font-weight:600;font-size:12.5px}
-.calstrip .lnk:hover{background:#1f1b12}
-.today .n{font-family:var(--mono);font-weight:600;color:var(--text)}
-.today .warn .n{color:var(--amber)}
-.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
-.filters{display:flex;gap:6px}
-.fbtn{min-height:36px;padding:0 14px;border-radius:9px;border:1px solid var(--border-2);color:var(--muted);font-weight:500;font-size:13px;background:transparent;transition:.15s}
-.fbtn:hover{color:var(--text)}
-.fbtn.on{color:var(--text);background:var(--panel);border-color:#33333a}
-.fbtn .n{color:var(--faint);font-family:var(--mono);margin-left:6px;font-size:11.5px}
-.search{flex:1;min-width:180px;max-width:340px;position:relative}
-.search input{width:100%;min-height:38px;padding:0 13px;background:var(--panel);border:1px solid var(--border-2);border-radius:10px;color:var(--text);font-size:14px}
-.search input:focus{border-color:#33333a}
-
-.table{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--card)}
-.thead,.trow{display:grid;grid-template-columns:1.6fr .9fr .8fr .8fr .7fr .8fr 2fr;gap:14px;align-items:center;padding:11px 16px}
-.thead{color:var(--dim);font:600 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--border)}
-.trow{border-top:1px solid var(--hair);cursor:pointer;transition:background .12s}
-.trow:first-child{border-top:none}
-.trow:hover{background:var(--panel)}
-.trow.done{opacity:.55}
-.dname{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:8px}
-.dname .ff{color:var(--money);flex:none;display:inline-flex}
-.dname .ff svg{width:13px;height:13px}
-.badge{display:inline-block;padding:2px 9px;border-radius:999px;border:1px solid var(--border-2);font-size:11.5px;font-weight:600;white-space:nowrap;color:var(--muted)}
-.badge.closed{color:var(--money);border-color:#3d5a3a}
-.badge.noclose{color:var(--err);border-color:#5a3232}
-.badge.call{color:var(--text);border-color:#57575f}
-.dt{font-family:var(--mono);font-size:12.5px;color:var(--text-2);white-space:nowrap}
-.dt.soon{color:var(--amber)}
-.dt.today{color:var(--money)}
-.dt.past{color:var(--dim)}
-.cash{font-family:var(--mono);font-weight:600;color:var(--money)}
-.qual{font-size:11.5px;color:var(--muted)}
-.notes{color:var(--dim);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.empty{padding:26px 16px;color:var(--faint);text-align:center}
-
+.d-thead,.d-row{grid-template-columns:124px 88px 60px 74px 62px minmax(0,1fr)}
+.d-row{cursor:pointer}
+.d-min{min-width:600px}
+.dname{font-weight:600;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:7px}
+.d-cell{font-size:12.5px;color:#4d4a42;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.d-cell.dim{color:#8a8375}
+.st-amber{color:#a8762a}
+.st-red{color:#b4543e}
+.st-green{color:#2a6a4d;font-weight:600}
+.row-won{background:#f7faf7}
+.d-mono{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d675b}
+.d-mono.today{color:#a8762a;font-weight:600}
+.d-mono.late{color:#b4543e;font-weight:600}
+.d-cash{font-family:'IBM Plex Mono',monospace;font-weight:600;color:#2a6a4d;text-align:right}
+/* unlinked calendly booking */
+.calstrip{display:flex;flex-direction:column;gap:9px;margin-bottom:14px}
+.calrow{display:flex;align-items:center;gap:11px;flex-wrap:wrap;padding:13px 16px;border:1px solid #e2d9f4;
+  border-radius:12px;background:#f6f2fb;font-size:13px;color:#4d4a42}
+.calrow .lab{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7c56c9}
+.calrow .who{font-weight:700;color:#211f1b}
+.calrow .sp{flex:1}
+.calrow select{min-height:32px;padding:0 9px;border:1px solid #ddd8cd;border-radius:8px;background:#fff;font-size:12.5px;max-width:190px}
+.calrow .lnk{min-height:32px;padding:0 13px;border-radius:8px;border:1px solid #d5c8ef;background:#fff;color:#7c56c9;font-weight:600;font-size:12.5px}
+.calrow .lnk:hover{background:#f0eafb}
 /* drawer */
-.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .18s;z-index:40}
+.scrim{position:fixed;inset:0;background:rgba(33,31,27,.45);opacity:0;pointer-events:none;transition:opacity .18s;z-index:60}
 .scrim.on{opacity:1;pointer-events:auto}
-.drawer{position:fixed;top:0;right:0;height:100vh;width:min(440px,100vw);background:var(--bg);border-left:1px solid var(--border);
-  box-shadow:var(--shadow);transform:translateX(100%);transition:transform .2s cubic-bezier(.2,.8,.2,1);z-index:50;display:flex;flex-direction:column}
+.drawer{position:fixed;top:0;right:0;height:100vh;width:min(320px,100vw);background:#fdfcf9;
+  border-left:1px solid #e6e2da;transform:translateX(100%);transition:transform .2s cubic-bezier(.2,.8,.2,1);
+  z-index:70;display:flex;flex-direction:column}
 .drawer.on{transform:none}
-.dhead{display:flex;align-items:center;gap:10px;padding:18px 20px;border-bottom:1px solid var(--hair);flex:none}
-.dhead h2{font-size:17px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dbody{flex:1;overflow-y:auto;padding:18px 20px}
-.ai{background:var(--card);border:1px solid var(--border-2);border-radius:12px;padding:12px;margin-bottom:20px}
-.ai .lbl{font:600 10.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-bottom:8px;display:flex;align-items:center;gap:6px}
-.ai-row{display:flex;gap:8px}
-.ai input{flex:1;min-height:42px;padding:0 12px;background:var(--panel);border:1px solid var(--border-2);border-radius:10px;color:var(--text);font-size:14px}
-.ai input:focus{border-color:#33333a}
-.mic{width:42px;height:42px;flex:none;border-radius:50%;background:var(--primary);color:var(--primary-ink);display:inline-flex;align-items:center;justify-content:center}
-.mic.on{background:var(--err);color:#1a0d0d;animation:pulse 1.3s ease infinite}
-.mic svg{width:17px;height:17px}
-@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(244,163,163,.4)}50%{box-shadow:0 0 0 10px rgba(244,163,163,0)}}
-.field{margin-bottom:16px}
-.field label{display:block;font-size:12px;color:var(--muted);font-weight:500;margin-bottom:6px}
-.field input,.field select,.field textarea{width:100%;min-height:42px;padding:9px 12px;background:var(--panel);border:1px solid var(--border-2);border-radius:10px;color:var(--text);font-size:14px}
-.field textarea{min-height:88px;resize:vertical;line-height:1.5}
-.field input:focus,.field select:focus,.field textarea:focus{border-color:#33333a}
-.field .ff-link{font-size:12.5px}
-.aitag{color:var(--money);font:600 9.5px var(--mono);letter-spacing:.04em;margin-left:7px;text-transform:uppercase}
-.hist{margin-top:6px;border-top:1px solid var(--hair);padding-top:14px}
-.hist h3{font:600 10.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.dhead{padding:18px 20px 12px;border-bottom:1px solid #f0ede6;flex:none}
+.dhead .lab{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#98917f;display:block;margin-bottom:6px}
+.dhead h2{font-size:16px;font-weight:700;display:inline-block;margin-right:8px}
+.dbody{flex:1;overflow-y:auto;padding:16px 20px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.fld{margin-bottom:13px}
+.fld label{display:flex;align-items:center;gap:6px;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;
+  text-transform:uppercase;color:#98917f;margin-bottom:5px}
+.ai-box{border:1px dashed #ddd8cd;border-radius:12px;padding:13px;margin-bottom:16px}
+.ai-box .lab{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#98917f;display:block;margin-bottom:9px}
+.ai-row{display:flex;gap:8px;align-items:center}
+.ai-row input{flex:1}
+.mic{width:32px;height:32px;flex:none;border-radius:50%;background:#2a6a4d;color:#fff;display:inline-flex;
+  align-items:center;justify-content:center;font-size:10px}
+.mic.on{background:#b4543e;animation:pul 1.3s ease infinite}
+@keyframes pul{0%,100%{box-shadow:0 0 0 0 rgba(180,84,62,.4)}50%{box-shadow:0 0 0 9px rgba(180,84,62,0)}}
+.cash-card{border:1px solid #c9dfd2;border-radius:12px;background:#eef5f0;padding:13px 15px;margin-bottom:14px}
+.cash-card .lab{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#2a6a4d;display:block;margin-bottom:7px}
+.cash-card .row{display:flex;align-items:center;gap:10px}
+.cash-card input{flex:1;font:600 16px 'IBM Plex Mono',monospace;background:transparent;border:none;color:#211f1b;padding:0}
+.cash-card input:focus{outline:none}
+.cash-warn{color:#4d4a42;font-size:12px;margin-top:8px}
+.fu-nudge{display:flex;align-items:center;gap:6px;margin:-6px 0 13px;font-size:12px;color:#8a8375}
+.fu-nudge button{min-height:26px;padding:0 9px;border-radius:8px;border:1px solid #ddd8cd;background:#fff;font-size:11.5px;color:#4d4a42}
+.hist{margin-top:4px;border-top:1px solid #f0ede6;padding-top:13px}
+.hist h3{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#98917f;margin-bottom:8px}
 .hist ul{list-style:none}
-.hist li{display:flex;gap:8px;padding:6px 0;font-size:12.5px;color:var(--muted);border-top:1px solid var(--hair)}
-.hist li:first-child{border-top:none}
-.hist .who{color:var(--text-2);font-weight:500;flex:none}
+.hist li{display:flex;gap:8px;padding:5px 0;font-size:12px;color:#4d4a42}
+.hist .who{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d675b;flex:none}
+.hist .who.ai{color:#7c56c9}
 .hist .what{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hist .when{color:var(--faint);font:400 11px var(--mono);flex:none}
-.dfoot{padding:14px 20px;border-top:1px solid var(--hair);flex:none;display:flex;flex-direction:column;gap:9px}
-.fu-nudge{display:flex;align-items:center;gap:8px;margin:-6px 0 14px;font-size:12px;color:var(--amber)}
-.fu-nudge button{min-height:30px;padding:0 12px;border-radius:8px;border:1px solid #5a4d2a;color:var(--amber);font-weight:600;font-size:12px}
-.fu-nudge button:hover{background:#241f10}
-.cash-warn{font-size:12px;color:var(--amber);line-height:1.5}
-.btn{width:100%;min-height:48px;border-radius:12px;font:600 14px var(--font)}
-.btn-primary{background:var(--primary);color:var(--primary-ink)}
-.btn-primary:hover:not(:disabled){filter:brightness(.94)}
-.btn-primary:disabled{opacity:.5;cursor:not-allowed}
-.btn-money{background:var(--money);color:var(--money-ink)}
-.btn-money:hover{filter:brightness(1.05)}
-.btn-ghost{min-height:40px;border:1px solid var(--border-2);color:var(--muted);font-weight:500;font-size:13px}
-.btn-ghost:hover{color:var(--text);border-color:#33333a}
-
-.pick{flex:1;display:flex;flex-direction:column;min-height:0;padding:16px 20px}
-.pick input{width:100%;min-height:44px;padding:0 13px;background:var(--panel);border:1px solid var(--border-2);border-radius:10px;color:var(--text);font-size:15px;flex:none}
-.pick input:focus{border-color:#33333a}
-.pick ul{list-style:none;overflow-y:auto;margin-top:8px;flex:1}
-.pick li{display:flex;align-items:center;gap:10px;padding:11px 12px;min-height:48px;border-radius:10px;cursor:pointer;transition:background .12s}
-.pick li:hover{background:var(--panel)}
-.pick .pn{font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pick .ps{color:var(--dim);font-size:12px;white-space:nowrap}
-/* toasts */
-.toasts{position:fixed;z-index:60;bottom:18px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:9px;width:min(440px,calc(100vw - 32px))}
-.toast{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--border-2);border-radius:12px;padding:13px 16px;font-size:13.5px;box-shadow:var(--shadow);animation:rise .24s cubic-bezier(.2,.8,.2,1)}
-.toast.ok{border-left:3px solid var(--money)}
-.toast.err{border-left:3px solid var(--err)}
-.toast .msg{flex:1}
-.toast .mono{font-weight:600}
-.toast-act{min-height:34px;padding:0 12px;border-radius:9px;border:1px solid var(--border-2);color:var(--text);font-weight:600;font-size:12.5px;flex:none}
-.toast-x{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;color:var(--faint);flex:none}
-.toast-x svg{width:14px;height:14px}
-@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-
-.skel{padding:40px;text-align:center;color:var(--dim)}
-@media(max-width:760px){
-  .thead{display:none}
-  .trow{grid-template-columns:1fr auto;gap:6px 12px;padding:14px 16px}
-  .trow>.dt,.trow>.qual{display:none}
-  .trow>.notes{grid-column:1/-1}
-}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+.hist .when{color:#98917f;font-size:11px;flex:none}
+.dfoot{padding:13px 20px;border-top:1px solid #f0ede6;flex:none;display:flex;flex-direction:column;gap:8px}
+.dfoot .v2-btn{width:100%}
+.pick{padding:16px 20px}
+.pick-list{display:flex;flex-direction:column;gap:6px;margin-top:10px;max-height:60vh;overflow-y:auto}
+.pick-list button{text-align:left;padding:9px 12px;border:1px solid #e6e2da;border-radius:9px;background:#fff;font-size:13px}
+.pick-list button:hover{background:#fdfcf9}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="hdr">
-    <span class="dot" id="dot"></span>
-    <span class="eyebrow">Closing</span>
-    <span class="count" id="count">—</span>
+<main class="v2-main">
+  <header class="v2-h">
+    <h1>Deals</h1>
+    <span class="sub" id="today"></span>
     <span class="sp"></span>
-    <a class="nav" href="worklist.html" style="margin-right:2px">Worklist →</a>
-    <a class="nav" href="leads.html" style="margin-right:2px">All leads →</a>
-    <a class="nav" href="settings.html" style="margin-right:2px">Settings →</a>
-    <button class="navbtn" id="voiceLog">＋ Log a call</button>
-    <button class="icon-btn" id="signout" aria-label="Sign out">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/></svg>
-    </button>
-    <button class="icon-btn" id="refresh" aria-label="Refresh">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
-    </button>
+    <button class="v2-btn go" id="voiceLog">Log a call</button>
+    <button class="v2-btn sm" id="refresh">Refresh</button>
+    <span id="count" hidden></span>
   </header>
 
-  <div class="today" id="today" hidden></div>
   <div class="calstrip" id="calstrip" hidden></div>
 
-  <div class="toolbar">
-    <div class="filters" id="filters">
-      <button class="fbtn on" data-f="open">Open <span class="n" id="n-open"></span></button>
-      <button class="fbtn" data-f="today">Today <span class="n" id="n-today"></span></button>
-      <button class="fbtn" data-f="closed">Closed <span class="n" id="n-closed"></span></button>
-      <button class="fbtn" data-f="all">All <span class="n" id="n-all"></span></button>
-    </div>
-    <div class="search"><input id="search" type="text" placeholder="Search deals…" autocomplete="off" spellcheck="false"></div>
+  <div class="v2-chips" id="filters">
+    <button class="v2-chip on" data-f="open">Open<span class="n" id="n-open"></span></button>
+    <button class="v2-chip" data-f="today">Today<span class="n" id="n-today"></span></button>
+    <button class="v2-chip" data-f="closed">Closed<span class="n" id="n-closed"></span></button>
+    <button class="v2-chip" data-f="all">All<span class="n" id="n-all"></span></button>
+    <input class="v2-in" id="search" type="text" placeholder="Search deals…" style="flex:1;min-width:140px;max-width:240px;margin-left:auto">
   </div>
 
-  <div class="table" id="table">
-    <div class="skel" id="skel">Loading deals…</div>
-  </div>
-</div>
+  <div class="v2-card" id="table"><div class="v2-empty" id="skel">Loading deals…</div></div>
+</main>
 
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" aria-label="Deal editor">
   <div class="dhead">
+    <span class="lab">Selected deal</span>
     <h2 id="d-name">Deal</h2>
-    <button class="icon-btn" id="d-close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18 18 6M6 6l12 12"/></svg></button>
+    <button class="v2-btn sm" id="d-close" style="float:right;min-height:24px;padding:0 8px">×</button>
+    <div id="f-ff-wrap" hidden style="margin-top:4px"><a id="f-ff" target="_blank" rel="noopener" style="font-size:12.5px">View call transcript ↗</a></div>
   </div>
+
   <div class="pick" id="pick" hidden>
-    <input id="pick-search" type="text" placeholder="Which deal did you talk to?" autocomplete="off" spellcheck="false">
-    <ul id="pick-list"></ul>
+    <span class="v2-lab">Which deal did you talk to?</span>
+    <input class="v2-in" id="pick-search" type="text" placeholder="Search…" style="margin-top:9px">
+    <div class="pick-list" id="pick-list"></div>
   </div>
+
   <div class="dbody" id="dbody">
-    <div class="ai">
-      <div class="lbl"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.8 15.9 9 18.75l-.8-2.85a4.5 4.5 0 0 0-3.1-3.1L2.25 12l2.85-.8a4.5 4.5 0 0 0 3.1-3.1L9 5.25l.8 2.85a4.5 4.5 0 0 0 3.1 3.1L15.75 12l-2.85.8a4.5 4.5 0 0 0-3.1 3.1Z"/></svg> Log the call</div>
+    <div class="ai-box">
+      <span class="lab">Log the call</span>
       <div class="ai-row">
-        <input id="ai-in" type="text" placeholder="closed for 3k, follow up next tuesday, wants the revamp">
-        <button class="mic" id="ai-mic" hidden aria-label="Dictate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/></svg></button>
+        <input class="v2-in" id="ai-in" type="text" placeholder="closed for 3k, follow up next tuesday">
+        <button class="mic" id="ai-mic" hidden aria-label="Record">●</button>
       </div>
     </div>
-    <div class="field"><label>Status<span class="aitag" id="tag-f-status" hidden>✦ Claude</span></label>
-      <select id="f-status">
-        <option value="">— no change —</option>
-        <option>Discovery Call</option><option>Closing call</option><option>Followup</option><option>Closed</option><option>No Close</option>
-      </select>
+
+    <div class="g2">
+      <div class="fld"><label>Status<span class="v2-ai" id="tag-f-status" hidden>AI</span></label>
+        <select class="v2-in" id="f-status">
+          <option value="">— no change —</option>
+          <option>Discovery Call</option><option>Closing call</option><option>Followup</option><option>Closed</option><option>No Close</option>
+        </select>
+      </div>
+      <div class="fld"><label>Qualification</label>
+        <select class="v2-in" id="f-qual"><option value="">—</option><option>Qualified 1</option><option>Qualified 2</option><option>Qualified 3</option><option>Unqualified</option></select>
+      </div>
     </div>
-    <div class="field" id="f-reason-wrap" hidden><label>Why no close?<span class="aitag" id="tag-f-reason" hidden>✦ Claude</span></label>
-      <input id="f-reason" type="text" placeholder="price · timing · went with competitor · ghosted"></div>
-    <div class="field"><label>Meeting date<span class="aitag" id="tag-f-meeting" hidden>✦ Claude</span></label><input id="f-meeting" type="date"></div>
-    <div class="field"><label>Meeting time</label><input id="f-mtime" type="time"></div>
-    <div class="field"><label>Follow-up date<span class="aitag" id="tag-f-followup" hidden>✦ Claude</span></label><input id="f-followup" type="date"></div>
-    <div class="fu-nudge" id="fu-nudge" hidden>No follow-up set <button data-d="3">+3d</button><button data-d="7">+1w</button><button data-d="14">+2w</button></div>
-    <div class="field"><label>Cash collected<span class="aitag" id="tag-f-cash" hidden>✦ Claude</span></label><input id="f-cash" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
-    <div class="field"><label>Qualification</label>
-      <select id="f-qual"><option value="">—</option><option>Qualified 1</option><option>Qualified 2</option><option>Qualified 3</option><option>Unqualified</option></select>
+
+    <div class="fld" id="f-reason-wrap" hidden><label>Why no close?<span class="v2-ai" id="tag-f-reason" hidden>AI</span></label>
+      <input class="v2-in" id="f-reason" type="text" placeholder="price · timing · went with competitor"></div>
+
+    <div class="g2">
+      <div class="fld"><label>Meeting<span class="v2-ai" id="tag-f-meeting" hidden>AI</span></label>
+        <input class="v2-in" id="f-meeting" type="date"></div>
+      <div class="fld"><label>Time</label><input class="v2-in" id="f-mtime" type="time"></div>
     </div>
-    <div class="field"><label>Phone</label><input id="f-phone" type="tel" placeholder="+371 …"></div>
-    <div class="field"><label>Email</label><input id="f-email" type="email" placeholder="—" spellcheck="false"></div>
-    <div class="field"><label>Service</label><input id="f-service" type="text" placeholder="what they want"></div>
-    <div class="field"><label>Notes<span class="aitag" id="tag-f-notes" hidden>✦ Claude</span></label><textarea id="f-notes" placeholder="—"></textarea></div>
-    <div class="field" id="f-ff-wrap" hidden><label>Fireflies</label><a class="ff-link" id="f-ff" target="_blank" rel="noopener">Open transcript ↗</a></div>
+
+    <div class="fld"><label>Follow-up<span class="v2-ai" id="tag-f-followup" hidden>AI</span></label>
+      <input class="v2-in" id="f-followup" type="date"></div>
+    <div class="fu-nudge" id="fu-nudge" hidden>No follow-up set
+      <button data-d="3">+3d</button><button data-d="7">+1w</button><button data-d="14">+2w</button></div>
+
+    <div class="cash-card">
+      <span class="lab">Cash collected<span class="v2-ai" id="tag-f-cash" hidden style="margin-left:6px">AI</span></span>
+      <div class="row">
+        <span style="font:600 16px 'IBM Plex Mono',monospace;color:#2a6a4d">$</span>
+        <input id="f-cash" type="number" min="0" step="1" inputmode="numeric" placeholder="0">
+      </div>
+      <div class="cash-warn" id="cash-warn" hidden></div>
+      <button class="v2-btn go sm" id="cash-confirm" hidden style="width:100%;margin-top:9px">Confirm amount</button>
+    </div>
+
+    <div class="g2">
+      <div class="fld"><label>Phone</label><input class="v2-in" id="f-phone" type="tel"></div>
+      <div class="fld"><label>Email</label><input class="v2-in" id="f-email" type="email" spellcheck="false"></div>
+    </div>
+    <div class="fld"><label>Service</label><input class="v2-in" id="f-service" type="text" placeholder="what they want"></div>
+
+    <div class="fld"><label>Notes<span class="v2-ai" id="tag-f-notes" hidden>AI</span></label>
+      <textarea class="v2-in mono" id="f-notes" style="font-size:12px"></textarea></div>
+
     <div class="hist" id="hist" hidden><h3>History</h3><ul id="hist-list"></ul></div>
   </div>
+
   <div class="dfoot" id="dfoot">
-    <div class="cash-warn" id="cash-warn" hidden></div>
-    <button class="btn btn-primary" id="d-save">Save</button>
-    <button class="btn btn-ghost" id="d-cancel">Cancel</button>
+    <button class="v2-btn dark" id="d-save">Save changes</button>
+    <button class="v2-btn" id="d-cancel">Undo last</button>
   </div>
 </aside>
 
-<div class="toasts" id="toasts" aria-live="polite"></div>
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260711l';
+import * as core from './crm-core.js?v=20260721a';
 const session = await core.requireAuth();
 if (session) {
+await core.installChrome({ active: 'deals' });
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
 const state = { deals: [], leads: [], serverDate: '', filter: 'open', q: '', editing: null, cashConfirmed: false, busy: false };
 
-function toast(o) {
-  const el = document.createElement('div');
-  el.className = 'toast ' + (o.type || '');
-  const m = document.createElement('span'); m.className = 'msg'; m.innerHTML = o.html; el.appendChild(m);
-  if (o.action) { const a = document.createElement('button'); a.className = 'toast-act'; a.textContent = o.action.label;
-    a.onclick = () => { el.remove(); o.action.fn(); }; el.appendChild(a); }
-  const x = document.createElement('button'); x.className = 'toast-x';
-  x.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18 18 6M6 6l12 12"/></svg>';
-  x.onclick = () => el.remove(); el.appendChild(x);
-  $('toasts').appendChild(el);
-  if (!o.sticky) setTimeout(() => el.remove(), o.ttl || 5000);
-}
-function setDot(err) { $('dot').className = 'dot' + (err ? ' err' : ''); }
+const toast = core.toast;
+function setDot() { return; }
 
 function daysUntil(dmy) {
   const d = CRMParse.parseDMY(dmy), ref = CRMParse.parseDMY(state.serverDate) || new Date();
@@ -289,15 +206,18 @@ function displayName(d) {
 }
 const isDone = (d) => d.status === 'Closed' || d.status === 'No Close';
 function statusBadge(s) {
-  const cls = s === 'Closed' ? 'closed' : s === 'No Close' ? 'noclose' : (s === 'Closing call' || s === 'Discovery Call') ? 'call' : '';
-  return s ? `<span class="badge ${cls}">${esc(s)}</span>` : '';
+  if (!s) return '';
+  const cls = s === 'Closed' ? 'st-green' : s === 'No Close' ? 'st-red'
+    : (s === 'Closing call' || s === 'Discovery Call') ? 'st-amber' : '';
+  const label = s === 'Closed' ? 'Closed ✓' : s === 'Discovery Call' ? 'Discovery' : s;
+  return `<span class="d-cell ${cls}">${esc(label)}</span>`;
 }
-function dateCell(dmy, label) {
-  if (!dmy) return '<span class="dt past">—</span>';
+function dateCell(dmy, isFollowup) {
+  if (!dmy) return '<span class="d-cell dim">—</span>';
   const n = daysUntil(dmy);
-  const cls = n === null ? '' : n === 0 ? 'today' : n < 0 ? 'past' : n <= 7 ? 'soon' : '';
-  const rel = n === null ? '' : n === 0 ? ' · today' : n < 0 ? ` · ${-n}d ago` : ` · ${n}d`;
-  return `<span class="dt ${cls}">${esc(dmy)}<span style="color:var(--faint)">${label && n !== null ? '' : ''}</span></span>`;
+  if (n === 0) return '<span class="d-mono today">today</span>';
+  if (isFollowup && n !== null && n < 0) return `<span class="d-mono late">${-n}d late</span>`;
+  return `<span class="d-mono${n !== null && n < 0 ? ' dim' : ''}">${esc(dmy.slice(0, 5))}</span>`;
 }
 
 function sortDeals(list) {
@@ -334,27 +254,25 @@ function render() {
   const meetsToday = state.deals.filter((d) => daysUntil(d.meeting) === 0 && !isDone(d)).length;
   const fuOver = state.deals.filter((d) => { const n = daysUntil(d.followup); return n !== null && n < 0 && !isDone(d); }).length;
   const strip = $('today');
-  if (meetsToday || fuOver) {
-    strip.hidden = false;
-    strip.innerHTML = '<span>Today</span>' +
-      (meetsToday ? '<span><span class="n">' + meetsToday + '</span> call' + (meetsToday === 1 ? '' : 's') + '</span>' : '') +
-      (fuOver ? '<span class="warn"><span class="n">' + fuOver + '</span> follow-up' + (fuOver === 1 ? '' : 's') + ' overdue</span>' : '');
-  } else strip.hidden = true;
+  const bits = [];
+  if (meetsToday) bits.push('<span class="st-amber" style="font-weight:600">' + meetsToday + ' call' + (meetsToday === 1 ? '' : 's') + ' today</span>');
+  if (fuOver) bits.push('<span class="st-red" style="font-weight:600">' + fuOver + ' follow-up' + (fuOver === 1 ? '' : 's') + ' overdue</span>');
+  strip.innerHTML = bits.join('&nbsp;&nbsp;');
   const rows = visibleDeals();
   const t = $('table');
-  const head = '<div class="thead"><span>Deal</span><span>Status</span><span>Meeting</span><span>Follow-up</span><span>Cash</span><span>Qual</span><span>Notes</span></div>';
-  if (!rows.length) { t.innerHTML = head + '<div class="empty">No deals here.</div>'; return; }
-  t.innerHTML = head + rows.map((d) => `
-    <div class="trow${isDone(d) ? ' done' : ''}" data-id="${d.row}">
-      <span class="dname">${esc(displayName(d))}${d.hasFF ? '<span class="ff" title="Fireflies transcript"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg></span>' : ''}</span>
+  const head = '<div class="v2-thead d-thead d-min"><span>Name</span><span>Status</span><span>Meeting</span>' +
+    '<span>Follow-up</span><span style="text-align:right">Cash</span><span>Notes</span></div>';
+  if (!rows.length) { t.innerHTML = '<div class="v2-scroll">' + head + '</div><div class="v2-empty">No deals here.</div>'; return; }
+  t.innerHTML = '<div class="v2-scroll"><div class="d-min">' + head + rows.map((d) => `
+    <div class="v2-row d-row${d.status === 'Closed' ? ' row-won' : ''}" data-id="${d.row}">
+      <span class="dname">${esc(displayName(d))}${d.hasFF ? '<span title="Call transcript attached" style="color:#2a6a4d">◆</span>' : ''}</span>
       <span>${statusBadge(d.status)}</span>
       ${dateCell(d.meeting)}
-      ${dateCell(d.followup)}
-      <span>${d.cash !== '' && d.cash != null ? '<span class="cash">$' + Number(d.cash).toLocaleString('en-US') + '</span>' : '<span class="dt past">—</span>'}</span>
-      <span class="qual">${esc(d.qual || '')}</span>
-      <span class="notes" title="${esc(d.notes)}">${esc(d.notes || '')}</span>
-    </div>`).join('');
-  Array.prototype.forEach.call(t.querySelectorAll('.trow'), (r) => {
+      ${dateCell(d.followup, true)}
+      <span class="d-cash">${d.cash !== '' && d.cash != null ? '$' + Number(d.cash).toLocaleString('en-US') : '<span class="d-cell dim">—</span>'}</span>
+      <span class="d-cell dim" title="${esc(d.notes)}">${esc(core.notesOneLine ? core.notesOneLine(d.notes) : (d.notes || ''))}</span>
+    </div>`).join('') + '</div></div>';
+  Array.prototype.forEach.call(t.querySelectorAll('.d-row'), (r) => {
     r.onclick = () => openDrawer(+r.getAttribute('data-id'));
   });
 }
@@ -386,6 +304,7 @@ function openDrawer(id) {
   syncReasonRow();
   $('ai-in').value = '';
   $('cash-warn').hidden = true;
+  $('cash-confirm').hidden = true;
   const ffWrap = $('f-ff-wrap');
   if (d.hasFF && d.fireflies_link) { ffWrap.hidden = false; $('f-ff').href = d.fireflies_link; }
   else ffWrap.hidden = true;
@@ -482,13 +401,19 @@ Array.prototype.forEach.call(document.querySelectorAll('#fu-nudge button'), (b) 
     $('fu-nudge').hidden = true;
   };
 });
+function syncCashConfirm() {
+  const d = dealById(state.editing);
+  const cash = $('f-cash').value.trim();
+  const changed = d && cash !== '' && Number(cash) !== (d.cash === '' || d.cash == null ? null : Number(d.cash));
+  $('cash-confirm').hidden = !(changed && !state.cashConfirmed);
+}
 function checkCashWarn() {
   const d = dealById(state.editing); if (!d) return false;
   const cash = $('f-cash').value.trim();
   const changed = cash !== '' && Number(cash) !== (d.cash === '' || d.cash == null ? null : Number(d.cash));
   if (changed && !state.cashConfirmed) {
     $('cash-warn').hidden = false;
-    $('cash-warn').textContent = '$' + Number(cash).toLocaleString('en-US') + ' · ' + CRMParse.moneyToWords(Number(cash)) + '.';
+    $('cash-warn').textContent = 'Save $' + Number(cash).toLocaleString('en-US') + ' — ' + CRMParse.moneyToWords(Number(cash)) + '?';
     return true;
   }
   $('cash-warn').hidden = true;
@@ -505,7 +430,7 @@ async function saveDrawer() {
   // cash gate: first Save with a changed cash just shows the words; second Save writes
   const cash = $('f-cash').value.trim();
   const cashChanged = cash !== '' && Number(cash) !== (d.cash === '' || d.cash == null ? null : Number(d.cash));
-  if (cashChanged && !state.cashConfirmed) { checkCashWarn(); state.cashConfirmed = true; $('d-save').textContent = 'Confirm & save'; return; }
+  if (cashChanged && !state.cashConfirmed) { checkCashWarn(); syncCashConfirm(); state.cashConfirmed = true; $('d-save').textContent = 'Confirm & save'; return; }
 
   const fields = {
     status: $('f-status').value || undefined,
@@ -551,7 +476,7 @@ async function saveDrawer() {
   } catch (e) {
     toast({ type: 'err', html: 'Save failed: ' + esc(e.message), sticky: true });
   } finally {
-    state.busy = false; $('d-save').disabled = false; $('d-save').textContent = 'Save'; state.cashConfirmed = false;
+    state.busy = false; $('d-save').disabled = false; $('d-save').textContent = 'Save changes'; state.cashConfirmed = false;
   }
 }
 async function undo(res, d) {
@@ -601,11 +526,12 @@ async function loadStrip() {
     const open = state.deals.filter((d) => d.status !== 'Closed' && d.status !== 'No Close');
     el.innerHTML = loose.map((b) => {
       const opts = open.map((d) => '<option value="' + d.row + '">' + esc(displayName(d)) + '</option>').join('');
-      return '<div class="row" data-b="' + esc(b.id) + '">' + CAL_SVG +
+      return '<div class="calrow" data-b="' + esc(b.id) + '">' +
+        '<span class="lab">UNLINKED BOOKING</span>' +
         '<span class="who">' + esc(b.name || b.email || 'Booking') + '</span>' +
-        '<span class="slot">' + esc(slotLabel(b.start_iso)) + '</span>' +
-        '<span>not linked to a deal</span>' +
-        '<select><option value="">link to…</option>' + opts + '</select>' +
+        '<span>· ' + esc(slotLabel(b.start_iso)) + (b.email ? ' · ' + esc(b.email) : '') + '</span>' +
+        '<span class="sp"></span>' +
+        '<select><option value="">Pick a deal ▾</option>' + opts + '</select>' +
         '<button class="lnk">Link</button></div>';
     }).join('');
     el.hidden = false;
@@ -613,7 +539,7 @@ async function loadStrip() {
 }
 $('calstrip').addEventListener('click', async (e) => {
   const btn = e.target.closest('.lnk'); if (!btn) return;
-  const rowEl = btn.closest('.row');
+  const rowEl = btn.closest('.calrow');
   const dealRow = Number(rowEl.querySelector('select').value);
   if (!dealRow) { toast({ type: 'err', html: 'Pick a deal first.' }); return; }
   btn.disabled = true;
@@ -648,23 +574,23 @@ async function load() {
 }
 
 $('filters').onclick = (e) => {
-  const b = e.target.closest('.fbtn'); if (!b) return;
+  const b = e.target.closest('.v2-chip'); if (!b) return;
   state.filter = b.getAttribute('data-f');
-  Array.prototype.forEach.call($('filters').children, (c) => c.classList.toggle('on', c === b));
+  Array.prototype.forEach.call($('filters').querySelectorAll('.v2-chip'), (c) => c.classList.toggle('on', c === b));
   render();
 };
 $('search').oninput = (e) => { state.q = e.target.value; render(); };
 $('refresh').onclick = load;
-$('signout').onclick = () => core.signOut();
 $('voiceLog').onclick = openVoiceLog;
 $('pick-search').oninput = (e) => renderPickList(e.target.value);
 $('scrim').onclick = closeDrawer;
 $('d-close').onclick = closeDrawer;
 $('d-cancel').onclick = closeDrawer;
 $('d-save').onclick = saveDrawer;
-['f-status','f-meeting','f-followup','f-notes'].forEach((id) => $(id).addEventListener('input', () => { setTag(id, false); state.cashConfirmed = false; $('d-save').textContent = 'Save'; checkFuNudge(); }));
+['f-status','f-meeting','f-followup','f-notes'].forEach((id) => $(id).addEventListener('input', () => { setTag(id, false); state.cashConfirmed = false; $('d-save').textContent = 'Save changes'; checkFuNudge(); }));
 $('f-status').addEventListener('change', syncReasonRow);
-$('f-cash').addEventListener('input', () => { setTag('f-cash', false); state.cashConfirmed = false; $('d-save').textContent = 'Save'; checkCashWarn(); });
+$('f-cash').addEventListener('input', () => { setTag('f-cash', false); state.cashConfirmed = false; $('d-save').textContent = 'Save changes'; checkCashWarn(); syncCashConfirm(); });
+$('cash-confirm').onclick = () => { state.cashConfirmed = true; syncCashConfirm(); checkCashWarn(); toast({ html: 'Amount confirmed — hit Save changes.' }); };
 $('ai-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); runAI(); } });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.editing) closeDrawer(); });
 

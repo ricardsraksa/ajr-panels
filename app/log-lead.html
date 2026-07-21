@@ -3,381 +3,178 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="light">
 <title>Log a lead · AJR</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{
-  --bg:#0e0e10; --surface:#141416; --surface2:#17171b; --border:#202024; --border-2:#26262c;
-  --text:#e9e9ec; --muted:#a9a9b1; --faint:#55555e; --dim:#6e6e78;
-  --accent:#8ee59a; --accent-dim:rgba(233,233,236,.07);
-  --go:#8ee59a; --go-ink:#0b1f10; --amber:#d9b96a; --red:#f4a3a3;
-  --r:12px; --r-lg:16px;
-  --font:'Geist',system-ui,sans-serif; --mono-font:'Geist Mono',ui-monospace,monospace;
-  --shadow:0 20px 50px -12px rgba(0,0,0,.7);
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-[hidden]{display:none!important}
-html{-webkit-text-size-adjust:100%}
-body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased;letter-spacing:-.01em}
-button,input,select,textarea{font:inherit;color:inherit;letter-spacing:inherit}
-button{cursor:pointer;touch-action:manipulation;border:none;background:none}
-a{color:var(--accent);cursor:pointer;text-decoration:none}
-:focus{outline:none}
-:focus-visible{outline:2px solid var(--muted);outline-offset:2px;border-radius:6px}
-.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-.mono{font-family:var(--mono-font);font-variant-numeric:tabular-nums;letter-spacing:0}
-.opt{color:var(--muted);font-weight:400;font-size:.85em}
-.small{font-size:.8rem}
-.demo-banner{font:600 11px var(--mono-font);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-align:center;padding:6px 12px;border-bottom:1px solid #1a1a1e;background:var(--surface)}
-
-.wrap{max-width:900px;margin:0 auto;padding:20px 18px 60px}
-@media(min-width:640px){.wrap{padding:26px 24px 72px}}
-
-/* header */
-.hdr{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;padding:2px 0 20px}
-.hdr h1{font-size:1.18rem;font-weight:600;letter-spacing:-.02em;color:var(--text)}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--faint);flex:none;transition:background-color .25s}
-.dot.ok{background:var(--dim)}
-.dot.err{background:var(--red)}
-.hdr-spacer{flex:1}
-.hdr-meta{color:var(--faint);font-size:.8rem;font-variant-numeric:tabular-nums;white-space:nowrap}
-.hdr-meta strong{color:var(--muted);font-weight:600}
-.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:11px;border:1px solid var(--border);background:transparent;color:var(--muted);transition:.18s}
-.icon-btn:hover:not(:disabled){color:var(--text);background:var(--surface2);border-color:var(--border-2)}
-.icon-btn:disabled{opacity:.4;cursor:not-allowed}
-.icon-btn svg{width:18px;height:18px}
-.icon-btn.spinning svg{animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* tabs */
-.tabs{display:flex;gap:6px;margin-bottom:18px}
-.tab{min-height:44px;padding:0 20px;border-radius:11px;border:1px solid transparent;color:var(--muted);font-weight:600;transition:.16s}
-.tab:hover{color:var(--text)}
-.tab.active{color:var(--text);background:var(--surface2);border-color:var(--border)}
-.tab .cnt{font-variant-numeric:tabular-nums;font-size:.78rem;margin-left:6px;color:var(--amber)}
-
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px;margin-bottom:18px}
-@media(min-width:640px){.card{padding:24px}}
-
-/* setup / skeleton / error */
-.setup-card{max-width:520px;margin:44px auto}
-.setup-card p{color:var(--muted);font-size:.88rem;margin-bottom:16px}
-.setup-field{display:block;margin-bottom:14px;font-size:.8rem;font-weight:500;color:var(--muted)}
-.setup-field input{display:block;width:100%;margin-top:7px;min-height:48px;padding:11px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;color:var(--text);font-size:16px}
-.setup-field input:focus{border-color:var(--border-2)}
-.btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 22px;border-radius:var(--r);background:#e9e9ec;color:#101013;font-weight:600;transition:.16s}
-.btn-primary:hover:not(:disabled){filter:brightness(1.06)}
-.btn-primary:disabled{opacity:.4;cursor:not-allowed}
-.skel-row{height:16px;border-radius:7px;margin-bottom:14px;background:linear-gradient(90deg,var(--surface2) 25%,#26262e 45%,var(--surface2) 65%);background-size:400% 100%;animation:shimmer 1.4s ease infinite}
-@keyframes shimmer{from{background-position:100% 0}to{background-position:0 0}}
-.skel-row.w60{width:60%}.skel-row.w40{width:40%}.skel-row.big{height:52px}
-.load-error{text-align:center}
-.load-error p{color:var(--muted);margin-bottom:14px}
-
-/* search + autocomplete */
-.search-wrap{position:relative}
-.search-icon{position:absolute;left:17px;top:50%;transform:translateY(-50%);width:20px;height:20px;color:var(--faint);pointer-events:none}
-.search-input{width:100%;min-height:56px;padding:12px 16px 12px 48px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:1.05rem;font-weight:500;transition:border-color .18s}
-.search-input::placeholder{color:var(--faint);font-weight:400}
-.search-input:focus{border-color:var(--border-2)}
-.ac-list{position:absolute;z-index:30;top:calc(100% + 6px);left:0;right:0;list-style:none;background:var(--surface2);border:1px solid var(--border-2);border-radius:var(--r);overflow:hidden;overflow-y:auto;max-height:336px;box-shadow:var(--shadow)}
-.ac-item{display:grid;grid-template-columns:1fr auto auto;gap:3px 12px;align-items:center;padding:11px 15px;min-height:46px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .13s}
-.ac-item:last-child{border-bottom:none}
-.ac-item:hover,.ac-item.active{background:rgba(233,233,236,.05)}
-.ac-handle{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ac-meta{grid-column:1;color:var(--muted);font-size:.75rem;display:flex;gap:10px}
-.ac-date{grid-column:3;grid-row:1 / span 2;font-variant-numeric:tabular-nums;font-size:.75rem;color:var(--faint);text-align:right}
-.badge{display:inline-block;grid-column:2;grid-row:1 / span 2;padding:2px 10px;border-radius:999px;border:1px solid;font-size:.7rem;font-weight:600;white-space:nowrap}
-.temp-hot{color:var(--amber)}
-
-/* armed chip */
-.arm-chip{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding:11px 15px;min-height:46px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);font-size:.9rem}
-.arm-chip.is-new{border-color:#3d5a3a}
-.arm-chip.is-new .tag-new{color:var(--go-ink);background:var(--go);padding:2px 9px;border-radius:999px;font-size:.68rem;font-weight:700;letter-spacing:.04em}
-.arm-chip.is-hint{border-style:dashed;color:var(--muted)}
-.arm-chip .chip-meta{color:var(--muted)}
-.tag-new{color:var(--go-ink);background:var(--go);padding:2px 9px;border-radius:999px;font-size:.68rem;font-weight:700}
-.ig-mini{color:var(--accent);font-size:.8rem;white-space:nowrap}
-
-/* stage buttons */
-.stage-row{display:flex;flex-wrap:wrap;gap:9px;margin-top:18px}
-.stage-btn{flex:1 1 118px;min-height:50px;padding:8px 14px;border-radius:var(--r);border:1px solid;font-weight:600;font-size:.94rem;background:transparent;transition:.16s;display:inline-flex;align-items:center;justify-content:center;gap:6px}
-.stage-btn:active:not(:disabled){transform:scale(.98)}
-.stage-btn:disabled{opacity:.4;cursor:not-allowed}
-.stage-btn kbd{font-family:inherit;font-size:.66rem;opacity:.6;font-weight:500}
-.stage-e1,.stage-e2,.stage-e3{color:var(--text);border-color:var(--border-2);background:var(--surface2)}
-.stage-e1:hover:not(:disabled),.stage-e2:hover:not(:disabled),.stage-e3:hover:not(:disabled){border-color:#33333a}
-.stage-booked{color:var(--go-ink);border-color:var(--go);background:var(--go)}
-.stage-booked:hover:not(:disabled){filter:brightness(1.05)}
-.stage-archive{color:var(--muted);border-color:var(--border);background:transparent}
-.stage-archive:hover:not(:disabled){color:var(--text);border-color:var(--border-2)}
-.stage-row-secondary{margin-top:9px}
-.stage-sec{flex:0 1 auto;min-height:44px;font-size:.85rem;font-weight:500;color:var(--muted);border-color:var(--border);background:transparent}
-.stage-sec:hover:not(:disabled){color:var(--text);border-color:var(--border-2)}
-.stage-btn.preselect{outline:2px solid #57575f;outline-offset:2px}
-
-/* status chips + temp + note */
-.chips-set{border:none;margin-top:20px}
-.chips-set legend{font-size:.8rem;font-weight:500;color:var(--muted);margin-bottom:9px}
-.chips{display:flex;flex-wrap:wrap;gap:7px}
-.chip{min-height:42px;padding:6px 15px;border-radius:999px;border:1px solid var(--border);color:var(--muted);font-size:.85rem;font-weight:500;background:transparent;transition:.16s}
-.chip:hover:not(:disabled){color:var(--text);border-color:var(--border-2)}
-.chip[aria-pressed="true"]{color:var(--text);border-color:#57575f;background:var(--surface2)}
-.temp-row{display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap}
-.temp-row label{font-size:.8rem;font-weight:500;color:var(--muted)}
-.temp-row select{min-height:44px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;color:var(--text);font-size:.9rem;cursor:pointer}
-.temp-row select:focus{border-color:var(--border-2)}
-.note-input{flex:1 1 200px;min-height:44px;padding:9px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;color:var(--text);font-size:.9rem}
-.note-input:focus{border-color:var(--border-2)}
-
-/* log button */
-.log-row{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;align-items:center}
-.btn-log{flex:1 1 260px;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 20px;border-radius:var(--r);background:var(--accent);color:#04121C;font-weight:700;font-size:.96rem;transition:.16s}
-.btn-log:hover:not(:disabled){filter:brightness(1.06)}
-.btn-log:disabled{opacity:.35;cursor:not-allowed}
-.btn-log svg{width:19px;height:19px}
-.btn-log kbd{font-family:inherit;font-size:.68rem;opacity:.6}
-
-/* voice */
-.scan-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
-.scan-btn{display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:0 16px;border-radius:11px;border:1px solid var(--border-2);color:var(--text);font-weight:600;font-size:.9rem;background:var(--surface2)}
-.scan-btn:hover{border-color:var(--accent);color:var(--accent)}
-.scan-btn svg{width:17px;height:17px}
-.scan-hint{color:var(--faint);font-size:.8rem}
-.scan-hint kbd{font-family:inherit;font-size:.72rem;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:var(--muted)}
-.drop-over{position:fixed;inset:0;z-index:70;background:rgba(14,14,16,.86);display:none;align-items:center;justify-content:center;text-align:center}
-.drop-over.on{display:flex}
-.drop-over .box{border:2px dashed var(--accent);border-radius:18px;padding:44px 60px;color:var(--text);font-weight:600}
-.modal{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;padding:8vh 16px 16px;overflow-y:auto}
-.modal.on{display:flex}
-.modal .card2{width:min(560px,100%);background:var(--surface);border:1px solid var(--border-2);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
-.modal .mhead{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border)}
-.modal .mhead h2{font-size:1rem;font-weight:600;flex:1}
-.modal .mbody{padding:10px 14px;max-height:52vh;overflow-y:auto}
-.modal .thinking{padding:34px;text-align:center;color:var(--muted);font-size:.9rem}
-.lead-card{border:1px solid var(--border);border-radius:12px;padding:12px;margin:8px 4px;background:var(--surface2)}
-.lead-card .lc-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.lead-card .lc-h{flex:1;min-height:38px;padding:0 11px;background:var(--bg);border:1px solid var(--border);border-radius:9px;color:var(--text);font-weight:600;font-size:.92rem}
-.lead-card .lc-x{width:34px;height:34px;border-radius:8px;color:var(--faint);display:inline-flex;align-items:center;justify-content:center}
-.lead-card .lc-x:hover{color:var(--red)}
-.lead-card .lc-x svg{width:14px;height:14px}
-.lead-card .lc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
-.lead-card select,.lead-card .lc-note{width:100%;min-height:36px;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:.85rem}
-.lead-card .exists{font-size:.72rem;color:var(--amber);margin-top:4px}
-.modal .mfoot{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:10px}
-.modal .mfoot button{flex:1;min-height:46px;border-radius:11px;font-weight:600;font-size:.92rem}
-.modal .m-add{background:var(--go);color:var(--go-ink)}
-.modal .m-add:hover:not(:disabled){filter:brightness(1.05)}
-.modal .m-add:disabled{opacity:.5;cursor:not-allowed}
-.modal .m-cancel{border:1px solid var(--border-2);color:var(--muted)}
-.modal .m-cancel:hover{color:var(--text)}
-.voice-row{display:flex;align-items:center;gap:14px;margin-bottom:18px}
-.mic-btn{display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;flex:none;border-radius:50%;background:#e9e9ec;color:#101013;border:none;transition:.18s}
-.mic-btn svg{width:24px;height:24px}
-.mic-btn:hover{filter:brightness(1.06)}
-.mic-btn.listening{background:var(--red);color:#1a0d0d;box-shadow:none;animation:pulse 1.3s ease infinite}
-@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(244,163,163,.4)}50%{box-shadow:0 0 0 12px rgba(244,163,163,0)}}
-.voice-hint{color:var(--faint);font-size:.84rem}
-
-/* confirm bar */
-.confirm-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--surface2);border:1px solid var(--border-2);border-radius:var(--r);padding:14px 18px;margin-bottom:18px}
-.confirm-text{flex:1 1 240px;font-size:.94rem}
-.confirm-text .mono{font-weight:600}
-.confirm-actions{display:flex;gap:9px;align-items:center}
-.btn-cancel{min-height:46px;padding:0 18px;border-radius:11px;border:1px solid var(--border);color:var(--muted);transition:.15s}
-.btn-cancel:hover{color:var(--text);border-color:var(--border-2)}
-kbd{font-family:inherit;font-size:.72rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:2px 6px;color:var(--muted)}
-
-/* recent */
-.recent-list{list-style:none}
-.recent-list .empty{color:var(--faint);font-size:.88rem}
-.recent-item{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--border);font-size:.88rem}
-.recent-item:first-child{border-top:none}
-.recent-row-num{font-variant-numeric:tabular-nums;font-size:.74rem;color:var(--faint);flex:none}
-.recent-handle{font-weight:600}
-.recent-extra{color:var(--muted);font-size:.82rem}
-.recent-mode{margin-left:auto;font-size:.66rem;font-weight:700;padding:2px 9px;border-radius:7px}
-.recent-mode.updated{color:var(--muted);background:var(--surface2)}
-.recent-mode.created{color:var(--go);background:#1b2019}
-.recent-time{font-variant-numeric:tabular-nums;font-size:.74rem;color:var(--faint)}
-
-/* queue */
-.q-filters{display:flex;gap:14px;align-items:center;margin-bottom:12px;flex-wrap:wrap;color:var(--muted);font-size:.85rem}
-.q-filters label{display:inline-flex;align-items:center;gap:6px;min-height:40px;cursor:pointer}
-.q-row{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:12px 4px;border-top:1px solid var(--border);align-items:center}
-.q-row:first-child{border-top:none}
-.q-main{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
-.q-handle{font-weight:600;cursor:pointer;background:none;border:none;color:var(--text);padding:4px 2px;min-height:40px;display:inline-flex;align-items:center}
-.q-handle:hover{color:var(--accent)}
-.q-sub{grid-column:1;color:var(--muted);font-size:.78rem;display:flex;gap:10px;flex-wrap:wrap}
-.q-actions{grid-column:2;grid-row:1 / span 2;display:flex;gap:8px;align-items:center}
-.q-log{min-height:40px;padding:0 14px;border-radius:9px;border:1px solid rgba(56,189,248,.4);color:var(--accent);font-weight:600;font-size:.82rem;white-space:nowrap;transition:.15s}
-.q-log:hover:not(:disabled){background:var(--accent-dim)}
-.q-log:disabled{opacity:.4;cursor:not-allowed}
-.q-ig{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);border-radius:9px;border:1px solid var(--border)}
-.q-ig:hover{color:var(--text);border-color:var(--border-2)}
-.q-ig svg{width:16px;height:16px}
-.days{font-variant-numeric:tabular-nums;font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid}
-.days.fresh{color:var(--go);border-color:#3d5a3a}
-.days.warn{color:var(--amber);border-color:#5a4d2a}
-.days.late{color:var(--red);border-color:#5a3232}
-.qual-tag{font-size:.68rem;font-weight:600;color:var(--muted);border:1px solid #2c2c32;border-radius:999px;padding:1px 8px;white-space:nowrap}
-
-/* toasts */
-.toasts{position:fixed;z-index:60;bottom:18px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:9px;width:min(460px,calc(100vw - 32px))}
-.toast{display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border-2);border-radius:var(--r);padding:13px 16px;font-size:.88rem;box-shadow:var(--shadow);animation:rise .24s cubic-bezier(.2,.8,.2,1)}
-.toast.ok{border-left:3px solid var(--go)}
-.toast.err{border-left:3px solid var(--red)}
-.toast .msg{flex:1}
-.toast .mono{font-weight:600}
-.toast-act{min-height:38px;padding:0 14px;border-radius:9px;border:1px solid var(--border-2);color:var(--text);font-weight:600;font-size:.84rem;flex:none;transition:.15s}
-.toast-act:hover{background:var(--accent-dim)}
-.toast-x{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;color:var(--faint);flex:none;border-radius:8px}
-.toast-x:hover{color:var(--text)}
-.toast-x svg{width:15px;height:15px}
-@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-kbd.hint{margin-left:6px;opacity:.6}
-@media(max-width:640px){.search-input,.note-input,.deal-filter{font-size:16px}}
-.deal-filter{width:100%;min-height:46px;padding:10px 14px;margin-bottom:10px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;color:var(--text);font-size:.9rem}
-.deal-filter:focus{border-color:var(--border-2)}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+.wrapc{max-width:720px}
+.demo-banner{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;
+  color:#8a8375;text-align:center;padding:6px 12px;border-bottom:1px solid #e6e2da;background:#f4f2ed;margin-bottom:16px}
+.srch{display:flex;gap:9px;align-items:center;margin-bottom:16px;position:relative}
+.srch input{flex:1}
+.ac{position:absolute;top:calc(100% + 5px);left:0;right:0;background:#fff;border:1px solid #e6e2da;
+  border-radius:10px;box-shadow:0 12px 30px -14px rgba(33,31,27,.3);z-index:20;overflow:hidden;max-height:300px;overflow-y:auto}
+.ac div{padding:9px 13px;font-size:13px;cursor:pointer;display:flex;gap:9px;align-items:center}
+.ac div:hover,.ac div.on{background:#fdfcf9}
+.ac .h{font-weight:600}
+.ac .m{color:#8a8375;font-size:12px;margin-left:auto}
+.lead-card{background:#fff;border:1px solid #e6e2da;border-radius:12px;padding:16px 18px;margin-bottom:16px}
+.lead-card .top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:5px}
+.lead-card .hh{font-size:15px;font-weight:700}
+.lead-card .meta{color:#6d675b;font-size:12.5px}
+.lead-card .note{color:#4d4a42;font-size:12.5px;margin-top:2px}
+.sect{margin-bottom:15px}
+.sect > .v2-lab{display:block;margin-bottom:7px}
+.stg{display:flex;gap:7px;flex-wrap:wrap}
+.stg button{min-height:34px;padding:0 14px;border-radius:99px;border:1px solid #ddd8cd;background:#fff;
+  font-size:12.5px;font-weight:500;color:#4d4a42}
+.stg button:hover{border-color:#8a8375;color:#211f1b}
+.stg button.now{border:2px solid #211f1b;background:#f4f2ed;color:#211f1b;font-weight:600}
+.stg button.booked{border-color:#c9dfd2;color:#2a6a4d}
+.stg button.booked:hover{background:#eef5f0}
+.stg.sec button{color:#8a8375;font-size:12px}
+.chips-r{display:flex;gap:7px;flex-wrap:wrap}
+.chips-r button{min-height:30px;padding:0 12px;border-radius:99px;border:1px solid #ddd8cd;background:#fff;
+  font-size:12px;color:#4d4a42}
+.chips-r button.on{background:#211f1b;border-color:#211f1b;color:#f9f8f5;font-weight:600}
+.chips-r button.hot.on{background:#faf3e6;border-color:#e0cba0;color:#a8762a}
+.conf{display:flex;align-items:center;gap:11px;flex-wrap:wrap;padding:13px 16px;border:1px solid #c9dfd2;
+  border-radius:12px;background:#eef5f0;margin-bottom:15px}
+.conf .sp{flex:1}
+.recent{margin-top:24px}
+.recent ul{list-style:none;margin-top:8px}
+.recent li{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid #f0ede6;font-size:12.5px;color:#4d4a42}
+.recent li:first-child{border-top:none}
+.recent .t{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#98917f;flex:none}
+.recent .sp{flex:1}
+.mic{width:34px;height:34px;flex:none;border-radius:50%;background:#2a6a4d;color:#fff;display:inline-flex;
+  align-items:center;justify-content:center;font-size:11px}
+.mic.on{background:#b4543e;animation:pul 1.3s ease infinite}
+@keyframes pul{0%,100%{box-shadow:0 0 0 0 rgba(180,84,62,.4)}50%{box-shadow:0 0 0 9px rgba(180,84,62,0)}}
+.drop{position:fixed;inset:0;background:rgba(33,31,27,.45);z-index:75;display:flex;align-items:center;
+  justify-content:center;color:#f9f8f5;font-size:15px;font-weight:600}
+/* screenshot review modal */
+.modal{position:fixed;inset:0;background:rgba(33,31,27,.45);z-index:80;display:flex;align-items:flex-start;
+  justify-content:center;padding:40px 20px;overflow-y:auto}
+.modal .box{width:min(680px,100%);background:#f9f8f5;border:1px solid #e6e2da;border-radius:14px}
+.modal .mh{padding:18px 22px;border-bottom:1px solid #e6e2da}
+.modal .mh h2{font-size:16px;font-weight:700}
+.modal .mh p{color:#8a8375;font-size:12.5px;margin-top:3px}
+.modal .mb{padding:16px 22px;display:flex;flex-direction:column;gap:11px}
+.modal .mf{padding:14px 22px;border-top:1px solid #e6e2da;display:flex;align-items:center;gap:10px}
+.modal .mf .sp{flex:1}
+.sc-card{background:#fff;border:1px solid #e6e2da;border-radius:12px;padding:13px 15px}
+.sc-card.low{border-color:#e0cba0}
+.sc-card.dupe{opacity:.6}
 </style>
 </head>
 <body>
-<div class="demo-banner" id="demoBanner" hidden>DEMO — writes go nowhere</div>
+<main class="v2-main wrapc">
+  <div class="demo-banner" id="demoBanner" hidden>DEMO — writes go nowhere</div>
 
-<div class="wrap">
-  <header class="hdr">
-    <span class="dot" id="connDot" role="status" aria-label="Connecting"></span>
+  <header class="v2-h">
     <h1>Log a lead</h1>
-    <span class="hdr-spacer"></span>
-    <span class="hdr-meta">Sheet date <strong class="mono" id="metaDate">—</strong></span>
-    <span class="hdr-meta"><strong id="metaCount">—</strong> leads</span>
-    <a class="hdr-meta" href="worklist.html" style="color:var(--accent)">Worklist →</a>
-    <a class="hdr-meta" href="leads.html" style="color:var(--accent)">All leads →</a>
-    <a class="hdr-meta" href="deals.html" style="color:var(--accent)">Closing →</a>
-    <button class="icon-btn" id="gearBtn" aria-label="Sign out">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.559.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.894.149c-.424.07-.764.383-.929.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 0 1-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.398.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.272-.806.108-1.204-.165-.397-.506-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894Z"/><path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
-    </button>
-    <button class="icon-btn" id="refreshBtn" aria-label="Refresh leads from the sheet" disabled>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
-    </button>
+    <span class="sub"><span id="metaCount">—</span> leads · <span id="metaDate">—</span></span>
+    <span class="sp"></span>
+    <button class="v2-btn sm" id="refreshBtn" disabled>Refresh</button>
   </header>
 
-  <section class="card" id="skeleton" hidden aria-label="Loading leads">
-    <div class="skel-row big"></div>
-    <div class="skel-row w60"></div>
-    <div class="skel-row"></div>
-    <div class="skel-row w40"></div>
+  <section id="skeleton" class="v2-card" style="padding:30px;text-align:center;color:#8a8375" hidden>Loading…</section>
+  <section id="loadError" class="v2-card" style="padding:24px;text-align:center" hidden>
+    <p id="loadErrorMsg" style="margin-bottom:12px;color:#8a8375">Couldn’t load.</p>
+    <button class="v2-btn" id="loadRetry">Retry</button>
   </section>
 
-  <section class="card load-error" id="loadError" hidden>
-    <p id="loadErrorMsg">Couldn't load leads.</p>
-    <button class="btn-primary" id="loadRetry">Retry</button>
-  </section>
-
-  <main id="app" hidden>
+  <div id="app" hidden>
     <div id="viewUpdate">
-    <section class="card">
-      <div class="search-wrap">
-        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
-        <input class="search-input" id="searchInput" type="text" placeholder="@handle, IG link, or just say what happened…"
-          role="combobox" aria-expanded="false" aria-controls="acList" aria-autocomplete="list"
-          aria-label="Search leads by handle or Instagram link"
-          autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
-        <ul class="ac-list" id="acList" role="listbox" aria-label="Matching leads" hidden></ul>
+      <div class="srch">
+        <input class="v2-in" id="searchInput" type="text" placeholder="Search a handle, or say what happened…"
+               autocomplete="off" spellcheck="false">
+        <button class="mic" id="micBtn" hidden aria-label="Speak">●</button>
+        <button class="v2-btn dash" id="scanBtn" type="button">Paste screenshot ⌘V</button>
+        <input id="scanFile" type="file" accept="image/*" hidden>
+        <div class="ac" id="acList" hidden></div>
       </div>
-      <div class="scan-row">
-        <button class="scan-btn" id="scanBtn" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/><path d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/></svg>
-          Scan a screenshot
-        </button>
-        <span class="scan-hint">or paste (<kbd>⌘V</kbd>) / drop an image anywhere</span>
-        <input type="file" id="scanFile" accept="image/*" hidden>
-      </div>
-      <div class="arm-chip" id="armChip" hidden></div>
+      <div class="v2-lab" id="voiceHint" hidden style="margin:-8px 0 12px">listening…</div>
 
-      <fieldset class="chips-set" style="margin-top:16px">
-        <legend>Last status <span class="opt">(sticky)</span></legend>
-        <div class="chips" id="statusChips"></div>
-      </fieldset>
+      <div class="lead-card" id="armChip" hidden></div>
 
-      <div class="temp-row">
-        <label for="tempSel">Temp <span class="opt">(optional)</span></label>
-        <select id="tempSel"><option value="">Temp — no change</option></select>
-        <input class="note-input" id="noteInput" type="text" placeholder="quick note…" autocomplete="off">
+      <div class="conf" id="confirmBar" hidden>
+        <span class="v2-ai">AI</span>
+        <span id="confirmText"></span>
+        <span class="sp"></span>
+        <button class="v2-btn go sm" id="confirmBtn">Confirm</button>
+        <button class="v2-btn sm" id="cancelBtn">Edit</button>
       </div>
 
-      <div class="log-row">
-        <button class="btn-log" id="logBtn" disabled>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-          <span id="logBtnLabel">Log “Follow up Sent” · keep stage</span>
-          <kbd class="hint">F</kbd>
-        </button>
+      <div class="sect">
+        <span class="v2-lab">Move stage</span>
+        <div class="stg" role="group" aria-label="Primary stages">
+          <button data-stage="Engaged 1">Engaged 1</button>
+          <button data-stage="Engaged 2">Engaged 2</button>
+          <button data-stage="Engaged 3">Engaged 3</button>
+          <button class="booked" data-stage="Booked">Booked</button>
+          <button data-stage="Archive">Archive</button>
+        </div>
+        <div class="stg sec" role="group" aria-label="Secondary stages" style="margin-top:7px">
+          <button data-stage="No Close">No Close</button>
+          <button data-stage="No Reply">No Reply</button>
+          <button data-stage="Closed">Closed</button>
+        </div>
       </div>
 
-      <div class="stage-row" role="group" aria-label="Primary stages">
-        <button class="stage-btn stage-e1" data-stage="Engaged 1">Engaged 1<kbd class="hint">1</kbd></button>
-        <button class="stage-btn stage-e2" data-stage="Engaged 2">Engaged 2<kbd class="hint">2</kbd></button>
-        <button class="stage-btn stage-e3" data-stage="Engaged 3">Engaged 3<kbd class="hint">3</kbd></button>
-        <button class="stage-btn stage-booked" data-stage="Booked">Booked<kbd class="hint">B</kbd></button>
-        <button class="stage-btn stage-archive" data-stage="Archive">Archive<kbd class="hint">A</kbd></button>
-      </div>
-      <div class="stage-row stage-row-secondary" role="group" aria-label="Secondary stages">
-        <button class="stage-btn stage-sec" data-stage="No Reply">No Reply</button>
-        <button class="stage-btn stage-sec" data-stage="Closed">Closed</button>
+      <div class="sect">
+        <span class="v2-lab">Status</span>
+        <div class="chips-r" id="statusChips"></div>
       </div>
 
-    </section>
+      <div class="sect">
+        <span class="v2-lab">Temp</span>
+        <div class="chips-r" id="tempChips"></div>
+        <select id="tempSel" hidden><option value="">Temp — no change</option></select>
+      </div>
 
-    <div class="voice-row">
-      <button class="mic-btn" id="micBtn" hidden aria-pressed="false" aria-label="Dictate a command, e.g. oscarwxng engaged 2">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/></svg>
-      </button>
-      <p class="voice-hint" id="voiceHint"></p>
-    </div>
+      <div class="sect">
+        <input class="v2-in" id="noteInput" type="text" placeholder="Quick note…" autocomplete="off">
+      </div>
 
-    <div class="confirm-bar" id="confirmBar" hidden role="group" aria-label="Confirm command">
-      <div class="confirm-text" id="confirmText" aria-live="polite"></div>
-      <div class="confirm-actions">
-        <button class="btn-primary" id="confirmBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" aria-hidden="true"><path d="m4.5 12.75 6 6 9-13.5"/></svg>
-          Confirm
-        </button>
-        <button class="btn-cancel" id="cancelBtn">Cancel</button>
-        <kbd>Enter</kbd>
+      <div style="display:flex;gap:9px;align-items:center">
+        <button class="v2-btn go" id="logBtn" disabled><span id="logBtnLabel">Log it</span></button>
+      </div>
+
+      <div class="recent">
+        <span class="v2-lab">Recent</span>
+        <ul id="recentList"></ul>
       </div>
     </div>
+  </div>
+</main>
 
-    <section class="card">
-      <h2>Recent</h2>
-      <ul class="recent-list" id="recentList"><li class="empty">Nothing yet.</li></ul>
-    </section>
+<div class="drop" id="dropOver" hidden>Drop the screenshot to read it</div>
+
+<div class="modal" id="scanModal" hidden>
+  <div class="box">
+    <div class="mh" style="display:flex;align-items:flex-start;gap:10px">
+      <div style="flex:1"><h2 id="scanTitle">Screenshot → leads</h2>
+        <p id="scanSub">AI reads the handles — edit anything before adding.</p></div>
+      <button class="v2-btn sm" id="scanClose">×</button>
     </div>
-
-  </main>
-</div>
-
-<div class="drop-over" id="dropOver"><div class="box">Drop the screenshot to read it</div></div>
-<div class="modal" id="scanModal">
-  <div class="card2">
-    <div class="mhead"><h2 id="scanTitle">Leads from screenshot</h2>
-      <button class="lc-x" id="scanClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18 18 6M6 6l12 12"/></svg></button>
+    <div class="mb" id="scanBody"></div>
+    <div class="mf">
+      <span id="scanCount" style="color:#8a8375;font-size:12.5px"></span>
+      <span class="sp"></span>
+      <button class="v2-btn" id="scanCancel">Cancel</button>
+      <button class="v2-btn go" id="scanAdd">Add leads</button>
     </div>
-    <div class="mbody" id="scanBody"></div>
-    <div class="mfoot"><button class="m-cancel" id="scanCancel">Cancel</button><button class="m-add" id="scanAdd">Add leads</button></div>
   </div>
 </div>
-<div class="toasts" id="toasts" aria-live="polite"></div>
+
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260711l';
+import * as core from './crm-core.js?v=20260721a';
 const session = await core.requireAuth();
 if (session) {
+await core.installChrome({ active: 'log-lead' });
 
 var $ = function (id) { return document.getElementById(id); };
 
@@ -419,9 +216,8 @@ function daysSince(dmy) {
 }
 function daysBadge(dmy) {
   var n = daysSince(dmy);
-  if (n === null) return '<span class="days late">never</span>';
-  var cls = n <= 7 ? 'fresh' : n <= 14 ? 'warn' : 'late';
-  return '<span class="days ' + cls + '">' + (n <= 0 ? 'today' : n + 'd ago') + '</span>';
+  if (n === null) return '<span class="v2-age late">never</span>';
+  return '<span class="v2-age ' + core.ageClass(n) + '">' + (n <= 0 ? 'today' : n + 'd') + '</span>';
 }
 function canonIn(list, v) {
   if (!v) return null;
@@ -431,29 +227,7 @@ function canonIn(list, v) {
 }
 
 /* ---------- toasts ---------- */
-function toast(opts) {
-  var el = document.createElement('div');
-  el.className = 'toast ' + (opts.type || '');
-  var msg = document.createElement('span');
-  msg.className = 'msg';
-  msg.innerHTML = opts.html;
-  el.appendChild(msg);
-  if (opts.action) {
-    var act = document.createElement('button');
-    act.className = 'toast-act';
-    act.textContent = opts.action.label;
-    act.addEventListener('click', function () { el.remove(); opts.action.fn(); });
-    el.appendChild(act);
-  }
-  var x = document.createElement('button');
-  x.className = 'toast-x';
-  x.setAttribute('aria-label', 'Dismiss');
-  x.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 18 18 6M6 6l12 12"/></svg>';
-  x.addEventListener('click', function () { el.remove(); });
-  el.appendChild(x);
-  $('toasts').appendChild(el);
-  if (!opts.sticky) setTimeout(function () { el.remove(); }, opts.ttl || 4500);
-}
+var toast = core.toast;
 
 /* ---------- data layer: Supabase via crm-core ---------- */
 function api(action, payload) {
@@ -475,11 +249,7 @@ function api(action, payload) {
   }
   throw new Error('unknown action ' + action);
 }
-function setDot(s) {
-  var dot = $('connDot');
-  dot.className = 'dot' + (s ? ' ' + s : '');
-  dot.setAttribute('aria-label', s === 'ok' ? 'Connected' : s === 'err' ? 'Connection error' : 'Connecting');
-}
+function setDot() { /* v2 chrome has no status dot */ }
 
 /* ---------- bootstrap ---------- */
 function runBootstrap(firstLoad) {
@@ -533,21 +303,22 @@ function renderStatusChips() {
   state.selectedStatus = '';
   state.statuses.forEach(function (s) {
     var b = document.createElement('button');
-    b.className = 'chip';
     b.type = 'button';
     b.textContent = s;
     b.setAttribute('aria-pressed', 'false');
     b.addEventListener('click', function () { selectStatus(state.selectedStatus === s ? '' : s); });
     box.appendChild(b);
   });
-  box.closest('fieldset').hidden = state.statuses.length === 0;
+  box.parentNode.hidden = state.statuses.length === 0;
 }
 function selectStatus(s) {
   state.selectedStatus = s;
   if ($('logBtnLabel')) updateLogBtn();
   var chips = $('statusChips').children;
   for (var i = 0; i < chips.length; i++) {
-    chips[i].setAttribute('aria-pressed', chips[i].textContent === s ? 'true' : 'false');
+    var on = chips[i].textContent === s;
+    chips[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+    chips[i].classList.toggle('on', on);
   }
 }
 function renderTempSelect() {
@@ -557,6 +328,28 @@ function renderTempSelect() {
     var o = document.createElement('option');
     o.value = t; o.textContent = t;
     sel.appendChild(o);
+  });
+  // chips are the UI; the select stays as the value store the rest of the page reads
+  var box = $('tempChips');
+  box.innerHTML = '';
+  state.temps.forEach(function (t) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = t.replace(' Lead', '');
+    if (/hot/i.test(t)) b.className = 'hot';
+    b.addEventListener('click', function () {
+      sel.value = (sel.value === t) ? '' : t;
+      syncTempChips();
+      if ($('logBtnLabel')) updateLogBtn();
+    });
+    box.appendChild(b);
+  });
+  syncTempChips();
+}
+function syncTempChips() {
+  var v = $('tempSel').value;
+  Array.prototype.forEach.call($('tempChips').children, function (b, i) {
+    b.classList.toggle('on', state.temps[i] === v);
   });
 }
 
@@ -597,22 +390,26 @@ function renderChip() {
   var a = state.armed;
   if (!a) { chip.hidden = true; chip.innerHTML = ''; return; }
   chip.hidden = false;
-  chip.className = 'arm-chip' + (a.mode === 'new' ? ' is-new' : a.mode === 'hint' ? ' is-hint' : '');
+  chip.className = 'lead-card';
   if (a.mode === 'existing') {
     var l = a.lead;
     var dups = state.leads.filter(function (x) { return x.h === l.h; }).length;
-    chip.innerHTML = '<span class="mono">@' + esc(l.h) + '</span><span class="chip-meta">— ' +
-      esc(l.level || 'no level') +
-      (l.status ? ' · ' + esc(l.status) : '') +
-      (l.lastContact ? ' · ' + daysBadge(l.lastContact) : '') +
-      (l.qual ? ' <span class="qual-tag">' + esc(l.qual) + '</span>' : '') +
-      (dups > 1 ? ' · ' + dups + ' rows' : '') + '</span>' +
-      (l.url ? '<a class="ig-mini" href="' + esc(l.url) + '" target="_blank" rel="noopener">open IG ↗</a>' : '') +
-      (l.notes ? '<span class="chip-meta" title="' + esc(l.notes) + '">📝</span>'.replace('📝', '&#9998;') : '');
+    chip.innerHTML = '<div class="top">' +
+        '<span class="hh">@' + esc(l.h) + '</span>' +
+        (l.url ? '<a href="' + esc(l.url) + '" target="_blank" rel="noopener" style="font-size:12.5px">open profile ↗</a>' : '') +
+      '</div>' +
+      '<div class="meta">' + esc(l.level || 'no level') +
+        (l.status ? ' · ' + esc(l.status) : '') +
+        (l.lastContact ? ' · ' + daysBadge(l.lastContact) + ' since contact' : '') +
+        (l.qual ? ' · ' + esc(l.qual) : '') +
+        (dups > 1 ? ' · ' + dups + ' rows' : '') + '</div>' +
+      (l.notes ? '<div class="note">' + esc(l.notes) + '</div>' : '');
   } else if (a.mode === 'new') {
-    chip.innerHTML = '<span class="tag-new">NEW</span><span>will create <span class="mono">@' + esc(a.handle) + '</span></span>';
+    chip.innerHTML = '<div class="top"><span class="hh">@' + esc(a.handle) + '</span>' +
+      '<span class="v2-ai" style="color:#2a6a4d;border-color:#c9dfd2">new</span></div>' +
+      '<div class="meta">Not in the CRM yet — pick a stage to create it.</div>';
   } else {
-    chip.innerHTML = '<span>Press <kbd>Enter</kbd> to run this command.</span>';
+    chip.innerHTML = '<div class="meta">Press Enter to run this command.</div>';
   }
 }
 
@@ -622,15 +419,12 @@ function renderAc(results) {
   var list = $('acList');
   if (!results.length) { closeAc(); return; }
   list.innerHTML = results.map(function (l, i) {
-    var c = LEVEL_COLORS[l.level] || '#8a8a92';
-    return '<li class="ac-item" id="ac-opt-' + i + '" role="option" aria-selected="false" data-i="' + i + '">' +
-      '<span class="ac-handle">@' + esc(l.h) + '</span>' +
-      '<span class="badge" style="color:' + c + ';border-color:' + c + '55;background:' + c + '1A">' + esc(l.level || '—') + '</span>' +
-      '<span class="ac-meta"><span' + (l.temp === 'Hot Lead' ? ' class="temp-hot"' : '') + '>' + esc(l.temp || '—') + '</span>' +
-      (l.status ? '<span>' + esc(l.status) + '</span>' : '') +
-      (l.qual ? '<span class="qual-tag">' + esc(l.qual) + '</span>' : '') + '</span>' +
-      '<span class="ac-date">' + esc(l.lastContact || '—') + '</span>' +
-      '</li>';
+    return '<div class="ac-item" id="ac-opt-' + i + '" role="option" aria-selected="false" data-i="' + i + '">' +
+      '<span class="h">@' + esc(l.h) + '</span>' +
+      '<span style="color:#6d675b;font-size:12px">' + esc(l.level || '—') + '</span>' +
+      (l.temp === 'Hot Lead' ? '<span class="v2-hot" style="font-size:11.5px">Hot</span>' : '') +
+      '<span class="m">' + esc(l.status || '') + (l.lastContact ? ' · ' + esc(l.lastContact) : '') + '</span>' +
+      '</div>';
   }).join('');
   list.hidden = false;
   state.acOpen = true;
@@ -677,8 +471,8 @@ function aiInterpret(text) {
   if (aiBusy) return;
   aiBusy = true;
   var chip = $('armChip');
-  chip.hidden = false; chip.className = 'arm-chip is-hint';
-  chip.innerHTML = aiBadge() + '<span>Reading…</span>';
+  chip.hidden = false; chip.className = 'lead-card';
+  chip.innerHTML = aiBadge() + ' <span>Reading…</span>';
   var armed = state.armed && state.armed.mode === 'existing' ? state.armed.lead.h : '';
   api('interpret', { text: text, mode: 'setter', deal: armed || undefined })
     .then(function (res) {
@@ -707,7 +501,7 @@ function aiInterpret(text) {
       $('searchInput').value = st.handle;
       applyQuery(st.handle);
       if (st.status) selectStatus(canonIn(state.statuses, st.status) || '');
-      if (st.temp) $('tempSel').value = st.temp;
+      if (st.temp) { $('tempSel').value = st.temp; syncTempChips(); }
       if (st.notes) $('noteInput').value = st.notes;
       state.pending = { handle: st.handle, stage: st.stage, status: st.status, isNew: isNew, ai: true,
         note: st.notes, why: st.stage === 'Booked' ? ' · pings Reinis on WhatsApp' : '' };
@@ -775,15 +569,15 @@ function hideConfirmBar() {
 }
 
 function markStage(stage) {
-  document.querySelectorAll('.stage-btn').forEach(function (b) {
-    b.classList.toggle('preselect', !!stage && b.dataset.stage === stage);
+  document.querySelectorAll('.stg button').forEach(function (b) {
+    b.classList.toggle('now', !!stage && b.dataset.stage === stage);
   });
 }
 
 /* ---------- the ONE action: write ---------- */
 function setBusy(v) {
   state.busy = v;
-  document.querySelectorAll('.stage-btn, #confirmBtn').forEach(function (b) { b.disabled = v; });
+  document.querySelectorAll('.stg button, #confirmBtn').forEach(function (b) { b.disabled = v; });
 }
 
 function doWrite(args) {
@@ -1043,7 +837,7 @@ function bindEvents() {
     pickLead(state.acResults[Number(li.dataset.i)]);
   });
 
-  document.querySelectorAll('.stage-btn').forEach(function (btn) {
+  document.querySelectorAll('.stg button').forEach(function (btn) {
     btn.addEventListener('click', function () { stageAction(btn.dataset.stage); });
   });
 
@@ -1072,7 +866,6 @@ function bindEvents() {
 
   $('refreshBtn').addEventListener('click', function () { runBootstrap(false); });
   $('loadRetry').addEventListener('click', function () { runBootstrap(true); });
-  $('gearBtn').addEventListener('click', function () { core.signOut(); });
 
   $('logBtn').addEventListener('click', logAction);
 
@@ -1153,7 +946,7 @@ function renderScan(leads) {
     var handle = CRMParse.normalizeHandle(l.handle) || (l.name || '').trim();
     l._suggested = { handle: handle, stage: l.stage || 'Engaged 1', status: canonIn(state.statuses, l.status) || l.status || '', temp: l.temp || '', notes: l.notes || '' };
     var exists = state.byHandle.get(CRMParse.normalizeHandle(handle));
-    return '<div class="lead-card" data-i="' + i + '">' +
+    return '<div class="sc-card" data-i="' + i + '">' +
       '<div class="lc-top"><input class="lc-h" data-f="handle" value="' + esc(handle) + '" placeholder="handle">' +
         '<button class="lc-x" data-rm="' + i + '" aria-label="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18 18 6M6 6l12 12"/></svg></button></div>' +
       '<div class="lc-grid">' +
@@ -1169,12 +962,12 @@ function renderScan(leads) {
   Array.prototype.forEach.call($('scanBody').querySelectorAll('[data-rm]'), function (b) {
     b.onclick = function () {
       var card = b.closest('.lead-card'); card.remove();
-      if (!$('scanBody').querySelector('.lead-card')) closeScanModal();
+      if (!$('scanBody').querySelector('.sc-card')) closeScanModal();
     };
   });
 }
 async function addScanned() {
-  var cards = [].slice.call($('scanBody').querySelectorAll('.lead-card'));
+  var cards = [].slice.call($('scanBody').querySelectorAll('.sc-card'));
   if (!cards.length) return;
   $('scanAdd').disabled = true; $('scanAdd').textContent = 'Adding…';
   var added = 0, updated = 0, failed = 0;
@@ -1235,9 +1028,9 @@ function bindScan() {
 
 function boot() {
   if (typeof window.CRMParse === 'undefined') {
-    document.querySelector('.wrap').insertAdjacentHTML('beforeend',
-      '<section class="card load-error"><p>parser.js failed to load — the panel can’t run without it. ' +
-      'Make sure parser.js sits next to setter.html.</p></section>');
+    document.querySelector('.v2-main').insertAdjacentHTML('beforeend',
+      '<section class="v2-card" style="padding:20px;color:#b4543e">parser.js failed to load — ' +
+      'the page can’t run without it.</section>');
     return;
   }
   initVoice();
