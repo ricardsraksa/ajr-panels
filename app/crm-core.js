@@ -1415,16 +1415,17 @@ export function installTheme() {
     if (HTMLScriptElement.supports && HTMLScriptElement.supports('speculationrules')) {
       const sr = document.createElement('script');
       sr.type = 'speculationrules';
-      const others = ['worklist', 'log-lead', 'leads', 'report', 'deals', 'close-call', 'settings']
+      const others = ['worklist', 'log-lead', 'leads', 'deals', 'report', 'close-call', 'settings']
         .map((p) => p + '.html')
         .filter((p) => !location.pathname.endsWith('/' + p));
       sr.textContent = JSON.stringify({
-        // the sidebar's pages: built as soon as this page settles, so any click
-        // lands on a finished page. Everything else still prerenders on hover.
+        // Chrome only honors TWO immediate prerenders — spend them on the
+        // likeliest next pages, prefetch the rest, hover-prerender everything.
         prerender: [
-          { urls: others, eagerness: 'immediate' },
+          { urls: others.slice(0, 2), eagerness: 'immediate' },
           { where: { href_matches: '/*\\.html*' }, eagerness: 'moderate' },
         ],
+        prefetch: [{ urls: others.slice(2), eagerness: 'immediate' }],
       });
       document.head.append(sr);
     }
@@ -1516,6 +1517,11 @@ export async function installChrome(opts = {}) {
       side.querySelector('#v2-rl').textContent = role;
     } catch (e) { /* chrome still renders */ }
   })();
+  // let the render-blocking gate go: two frames from now the theme, sidebar
+  // and (with warm caches) the page's first data render are all painted
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (window.__reveal) window.__reveal();
+  }));
   (async () => {
     try {
       const b = await chromeCounts();

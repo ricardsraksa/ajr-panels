@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260721s">
+<link rel="modulepreload" href="./crm-core.js?v=20260721t">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <script>/* hold the raw markup off-screen until the shared theme lands; a dead
@@ -13,6 +13,12 @@ script may never strand the user on a blank page, hence the timeout */
 document.documentElement.classList.add('v2-boot');
 setTimeout(function () { document.documentElement.classList.remove('v2-boot'); }, 4000);</script>
 <style>html{background:#f9f8f5}.v2-boot body{visibility:hidden}</style>
+<script type="module" blocking="render">
+/* Chrome holds the OLD page's pixels until this resolves, then cross-fades to
+   the finished new page — the "every click opens a new browser" gap dies here.
+   Capped so a wedged script can only delay paint, never prevent it. */
+await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
+</script>
 <title>Voice log · AJR</title>
 <style>
 .col{max-width:560px;margin:0 auto}
@@ -215,7 +221,7 @@ setTimeout(function () { document.documentElement.classList.remove('v2-boot'); }
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721s';
+import * as core from './crm-core.js?v=20260721t';
 const _session = await core.requireAuth();
 if (_session) {
 await core.installChrome({ active: 'close-call' });
