@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
 <title>All leads · AJR</title>
 <style>
 .l-thead,.l-row{grid-template-columns:118px 74px 44px 100px 60px 52px minmax(0,1fr)}
@@ -127,7 +128,7 @@
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721l';
+import * as core from './crm-core.js?v=20260721m';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });

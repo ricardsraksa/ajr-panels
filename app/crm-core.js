@@ -3,7 +3,10 @@
  * Loaded as an ES module; pages import { core } and call its adapters.
  * All writes log prev/next into `activity`, so every write is undoable. */
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// Bundled locally (tools/bundle-supabase.md). The esm.sh version arrived as a
+// 16-request waterfall, three levels deep, that re-resolved every 10 minutes —
+// the single biggest fixed cost on every page load.
+import { createClient } from './supabase-js.mjs';
 
 const SUPABASE_URL = 'https://cukjynfatkyiuzvstgcp.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1a2p5bmZhdGt5aXV6dnN0Z2NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0Mzg3MjAsImV4cCI6MjA5OTAxNDcyMH0.l8-zXB6AgAKutZJTh30t6Tl2c3-f-H8kG6D9iF9eQtM';
@@ -159,17 +162,29 @@ export function todayDmy() {
 
 /* ---------- data: reads (shapes match what the panels already expect) ---------- */
 
+/** Read a whole table without a sequential page walk: page 0 carries the total
+ *  count, so every remaining page can be fetched at the same time. */
+async function pagedSelect(table, cols, order = 'id') {
+  const first = await supa.from(table).select(cols, { count: 'exact' }).order(order).range(0, 999);
+  if (first.error) throw new Error(first.error.message);
+  const total = first.count || first.data.length;
+  if (total <= 1000) return first.data;
+  const jobs = [];
+  for (let off = 1000; off < total; off += 1000) {
+    jobs.push(supa.from(table).select(cols).order(order).range(off, off + 999));
+  }
+  const rest = await Promise.all(jobs);
+  for (const r of rest) {
+    if (r.error) throw new Error(r.error.message);
+    first.data.push(...r.data);
+  }
+  return first.data;
+}
+
 export async function loadLeads() {
   if (DEMO) return _demo.leads.map(_clone);
-  const out = [];
-  for (let off = 0; ; off += 1000) {
-    const { data, error } = await supa.from('leads')
-      .select('id,handle,ig_url,level,last_status,temp,qualification,notes,last_contact,date_added,pain_points,email,phone,linkedin')
-      .order('id').range(off, off + 999);
-    if (error) throw new Error(error.message);
-    out.push(...data);
-    if (data.length < 1000) break;
-  }
+  const out = await pagedSelect('leads',
+    'id,handle,ig_url,level,last_status,temp,qualification,notes,last_contact,date_added,pain_points,email,phone,linkedin');
   return out.map((l) => ({
     id: l.id, h: l.handle, url: l.ig_url || '',
     level: l.level || '', status: l.last_status || '', temp: l.temp || '',
@@ -1142,14 +1157,7 @@ export async function pipelineHealth() {
       'Booked': 19, 'No Reply': 95, 'No Close': 6, 'Closed': 8, 'Archive': 629 },
       stale: 356, never: 167, noLevel: 130, overdueDays: rules.overdueDays };
   }
-  const rows = [];
-  for (let off = 0; ; off += 1000) {
-    const { data, error } = await supa.from('leads')
-      .select('level,last_contact').range(off, off + 999);
-    if (error) throw new Error(error.message);
-    rows.push(...data);
-    if (data.length < 1000) break;
-  }
+  const rows = await pagedSelect('leads', 'level,last_contact');
   const byLevel = {};
   let stale = 0, never = 0, noLevel = 0;
   for (const r of rows) {
@@ -1393,24 +1401,28 @@ export async function installChrome(opts = {}) {
   };
   side.querySelector('#v2-out').onclick = () => signOut();
 
-  // who am I
-  try {
-    const email = await userEmail();
-    const role = await roleFor(email);
-    const name = String(email || '').split('@')[0];
-    side.querySelector('#v2-av').textContent = (name[0] || '·').toUpperCase();
-    side.querySelector('#v2-nm').textContent = name;
-    side.querySelector('#v2-rl').textContent = role;
-  } catch (e) { /* chrome still renders */ }
-
-  // badges: waiting leads + calls today
-  try {
-    const b = await chromeCounts();
-    const w = side.querySelector('[data-slot="worklist"]');
-    if (w && b.waiting) w.outerHTML = '<span class="badge-n">' + b.waiting + '</span>';
-    const d = side.querySelector('[data-slot="deals"]');
-    if (d && b.today) d.outerHTML = '<span class="badge-red">' + b.today + ' today</span>';
-  } catch (e) { /* badges are decorative */ }
+  // Identity and badges are decoration — they fill in whenever their queries
+  // land. Awaiting them here held EVERY page's data fetch hostage to two
+  // sidebar round trips, which is why the whole app felt slow.
+  (async () => {
+    try {
+      const email = await userEmail();
+      const role = await roleFor(email);
+      const name = String(email || '').split('@')[0];
+      side.querySelector('#v2-av').textContent = (name[0] || '·').toUpperCase();
+      side.querySelector('#v2-nm').textContent = name;
+      side.querySelector('#v2-rl').textContent = role;
+    } catch (e) { /* chrome still renders */ }
+  })();
+  (async () => {
+    try {
+      const b = await chromeCounts();
+      const w = side.querySelector('[data-slot="worklist"]');
+      if (w && b.waiting) w.outerHTML = '<span class="badge-n">' + b.waiting + '</span>';
+      const d = side.querySelector('[data-slot="deals"]');
+      if (d && b.today) d.outerHTML = '<span class="badge-red">' + b.today + ' today</span>';
+    } catch (e) { /* badges are decorative */ }
+  })();
   return side;
 }
 

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
 <title>Settings · AJR</title>
 <style>
 .demo-banner{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;
@@ -130,7 +131,7 @@
 
 
 <script type="module">
-import * as core from './crm-core.js?v=20260721l';
+import * as core from './crm-core.js?v=20260721m';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'settings' });

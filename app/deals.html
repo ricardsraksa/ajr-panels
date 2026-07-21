@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
 <title>Deals · AJR</title>
 <style>
 :root{--faint:#98917f}
@@ -198,7 +199,7 @@
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721l';
+import * as core from './crm-core.js?v=20260721m';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
