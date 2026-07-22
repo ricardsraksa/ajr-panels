@@ -64,6 +64,20 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
   background:#fff;color:#2a6a4d;font:600 12px 'Instrument Sans',system-ui,sans-serif;cursor:pointer}
 .sentbtn:hover{background:#eef5f0}
 .sentbtn:disabled{opacity:.5}
+.poolcell.done{opacity:.55}
+.poolcell.done a{color:#6d675b}
+.ckspace{width:15px;flex:none}
+.stagetag{flex:none;font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;
+  color:#4d4a42;background:#f0ede6;border-radius:5px;padding:2px 6px}
+.sentdate{flex:none;font:400 11px 'IBM Plex Mono',monospace;color:#98917f}
+.uptobtn{flex:none;min-height:28px;padding:0 9px;border-radius:7px;border:1px solid #e6e2da;background:#fff;
+  color:#8a8375;font:600 11px 'Instrument Sans',system-ui,sans-serif;cursor:pointer}
+.uptobtn:hover{color:#211f1b;border-color:#ccc5b6}
+.nalbtn{flex:none;width:28px;min-height:28px;border-radius:7px;border:1px solid transparent;background:none;
+  color:#ccc5b6;font-size:13px;cursor:pointer}
+.nalbtn:hover{color:#b4543e;border-color:#e6d3ce;background:#fff}
+.senttoday{flex-wrap:wrap;background:#f7faf7;border-bottom:1px solid #e6e2da}
+.st-h{font:500 12.5px 'IBM Plex Mono',monospace}
 @media(max-width:760px){
   /* three 83px columns on a phone truncated every handle to nothing */
   .poolgrid{grid-template-columns:1fr}
@@ -300,7 +314,9 @@ const LEVEL_COLORS = {
   'Engaged 1': '#a9a9b1', 'Engaged 2': '#c9c9cf', 'Engaged 3': '#e9e9ec',
   'Booked': '#8ee59a', 'No Close': '#d99a9a', 'Archive': '#6e6e78', 'No Reply': '#8a8a92', 'Closed': '#c9c9cf', 'Outreach': '#7f8fa6', '': '#6e6e78'
 };
-const state = { leads: [], sel: new Set(), src: 'due', kind: 'followup', poolSort: 'new', stale: null, filter: 'ALL', q: '', sort: { key: 'lastContact', dir: -1 }, shown: 100, editing: null, busy: false };
+const _ss = (k, d) => { try { return sessionStorage.getItem(k) || d; } catch (e) { return d; } };
+const state = { leads: [], sel: new Set(), src: 'due',
+  kind: _ss('ajr_kind', 'followup'), poolSort: _ss('ajr_poolsort', 'new'), stale: null, filter: 'ALL', q: '', sort: { key: 'lastContact', dir: -1 }, shown: 100, editing: null, busy: false };
 
 const toast = core.toast;
 
@@ -371,9 +387,10 @@ function profileHref(l) {
 
 function batchList() {
   if (state.src !== 'pool') return state.stale || [];
-  const pool = state.leads.filter((l) => l.level === 'Outreach' && !l.lastContact);
-  // sort by when the account was followed; entries with no date (a CSV import
-  // carries none) sink to the bottom either way rather than jumping the queue
+  // the MIRROR of Instagram's own following list: every followed account —
+  // tracked leads included, already-messaged included — in follow-date order.
+  // Nothing ever drops out, so position N here is position N on his phone.
+  const pool = state.leads.filter((l) => l.followed && l.level !== 'Archive');
   const key = (l) => l.followed ? core.dmyToIso(l.followed) : '';
   return pool.sort((a, b) => {
     const ka = key(a), kb = key(b);
@@ -384,17 +401,18 @@ function batchList() {
   });
 }
 function renderPool() {
-  const pool = state.leads.filter((l) => l.level === 'Outreach');
-  const poolTodo = pool.filter((l) => !l.lastContact).length;
   const due = (state.stale || []).length;
-  const todo = batchList();
+  const todo = batchList(); // pool: the full IG mirror; due: the stale queue
+  const fresh = state.src === 'pool' ? todo.filter((l) => !l.lastContact) : todo;
+  const sentToday = state.src === 'pool'
+    ? todo.filter((l) => l.lastContact === core.todayDmy()) : [];
   const sel = state.sel;
   const t = $('table');
 
   const tabs = '<div class="poolbar">' +
     '<div class="tf" id="srcTabs" role="group" aria-label="Batch source">' +
       '<button data-src="due" aria-pressed="' + (state.src === 'due') + '">Due a follow-up ' + due.toLocaleString() + '</button>' +
-      '<button data-src="pool" aria-pressed="' + (state.src === 'pool') + '">IG following ' + poolTodo.toLocaleString() + '</button>' +
+      '<button data-src="pool" aria-pressed="' + (state.src === 'pool') + '">IG following ' + (state.src === 'pool' ? todo.length : state.leads.filter((l) => l.followed && l.level !== 'Archive').length).toLocaleString() + '</button>' +
     '</div>' +
     '<span class="sp"></span>' +
     (state.src === 'pool' ? '<button class="v2-btn sm" id="poolImport">Import IG following…</button>' : '') +
@@ -410,13 +428,16 @@ function renderPool() {
         : '<div style="font-weight:600;color:#211f1b;margin-bottom:6px">Nobody is overdue</div>' +
           '<div>Every live lead has been touched inside the overdue window. Nothing to batch.</div>') +
       '</div>';
-    $('count').textContent = state.src === 'pool' ? pool.length.toLocaleString() + ' in pool' : '0 due';
+    $('count').textContent = state.src === 'pool' ? '0 followed' : '0 due';
     return;
   }
 
   t.innerHTML = tabs +
     '<div class="poolbar">' +
-      '<b>' + todo.length.toLocaleString() + '</b><span>' + (state.src === 'pool' ? 'not yet worked from the CRM' : 'waiting on a follow-up') + '</span>' +
+      (state.src === 'pool'
+        ? '<b>' + fresh.length.toLocaleString() + '</b><span>not yet messaged</span>' +
+          '<span style="color:#98917f">·</span><span>' + (todo.length - fresh.length).toLocaleString() + ' sent</span>'
+        : '<b>' + todo.length.toLocaleString() + '</b><span>waiting on a follow-up</span>') +
       '<span class="sp"></span>' +
       (state.src === 'pool'
         ? '<span style="color:#8a8375">followed</span>' +
@@ -441,16 +462,39 @@ function renderPool() {
       '<button class="v2-btn sm" id="poolSkip"' + (sel.size ? '' : ' disabled') + ' title="Friends, family, anyone who should never be contacted">Not a lead</button>' +
       '<button class="v2-btn go sm" id="poolMark"' + (sel.size ? '' : ' disabled') + '>Mark batch sent today</button>' +
     '</div>' +
-    '<div class="poolgrid">' + todo.slice(0, 300).map((l) =>
-      '<label class="poolcell">' +
-        '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>' +
+    (sentToday.length
+      ? '<div class="poolbar senttoday"><span class="v2-lab" style="margin:0">Sent today ' + sentToday.length + '</span>' +
+        sentToday.slice(0, 40).map((l) =>
+          '<a class="st-h" href="log-lead.html?lead=' + encodeURIComponent(l.h) + '" title="Open in Log a lead">@' + esc(l.h) + '</a>').join('') +
+        '</div>'
+      : '') +
+    '<div class="poolgrid">' + (state.src === 'pool' ? todo : todo.slice(0, 300)).map((l, i) => {
+      if (state.src === 'due') {
+        return '<label class="poolcell">' +
+          '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>' +
+          '<a href="' + esc(profileHref(l)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
+          '<span class="poolage">' + esc(l.last || 'never') + '</span>' +
+          '<button class="sentbtn" data-sent="' + l.id + '" title="Mark just this one sent">Sent</button>' +
+        '</label>';
+      }
+      const done = !!l.lastContact;
+      const tracked = l.level && l.level !== 'Outreach';
+      return '<label class="poolcell' + (done ? ' done' : '') + '">' +
+        (done ? '<span class="ckspace"></span>'
+              : '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>') +
         '<a href="' + esc(profileHref(l)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
-        '<span class="poolage">' + esc(state.src === 'due' ? (l.last || 'never') : (l.followed || '—')) + '</span>' +
-        '<button class="sentbtn" data-sent="' + l.id + '" title="Mark just this one sent">Sent</button>' +
-      '</label>').join('') + '</div>' +
-    (todo.length > 300 ? '<div class="v2-empty">+ ' + (todo.length - 300).toLocaleString() + ' more…</div>' : '');
+        (tracked ? '<span class="stagetag">' + esc(l.level) + '</span>' : '') +
+        '<span class="poolage">' + esc(l.followed || '—') + '</span>' +
+        (done ? '<span class="sentdate">sent ' + esc(l.lastContact) + '</span>'
+              : '<button class="sentbtn" data-sent="' + l.id + '" title="Mark just this one sent">Sent</button>') +
+        '<button class="uptobtn" data-upto="' + i + '" title="Select everyone above (not yet messaged) through this row">↑ here</button>' +
+        '<button class="nalbtn" data-nal="' + l.id + '" title="Not a lead — dead account, friend, irrelevant. Archives it.">✕</button>' +
+      '</label>';
+    }).join('') + '</div>' +
+    (state.src === 'due' && todo.length > 300 ? '<div class="v2-empty">+ ' + (todo.length - 300).toLocaleString() + ' more…</div>' : '');
   $('count').textContent = state.src === 'pool'
-    ? pool.length.toLocaleString() + ' in pool' : due.toLocaleString() + ' due a follow-up';
+    ? todo.length.toLocaleString() + ' followed · ' + fresh.length.toLocaleString() + ' unmessaged'
+    : due.toLocaleString() + ' due a follow-up';
 }
 
 function renderTable() {
@@ -649,7 +693,7 @@ $('table').addEventListener('click', async (e) => {
     return;
   }
   const kind = e.target.closest('#kindTabs button');
-  if (kind) { state.kind = kind.getAttribute('data-kind'); renderPool(); return; }
+  if (kind) { state.kind = kind.getAttribute('data-kind'); try { sessionStorage.setItem('ajr_kind', state.kind); } catch (x) {} renderPool(); return; }
   const one = e.target.closest('[data-sent]');
   if (one) {
     e.preventDefault(); // the row is a <label>; don't toggle its checkbox too
@@ -672,17 +716,47 @@ $('table').addEventListener('click', async (e) => {
     return;
   }
   const ps = e.target.closest('#poolSort button');
-  if (ps) { state.poolSort = ps.getAttribute('data-sort'); state.sel = new Set(); renderPool(); return; }
+  if (ps) { state.poolSort = ps.getAttribute('data-sort'); try { sessionStorage.setItem('ajr_poolsort', state.poolSort); } catch (x) {} state.sel = new Set(); renderPool(); return; }
+  const nal = e.target.closest('[data-nal]');
+  if (nal) {
+    e.preventDefault();
+    const id = Number(nal.getAttribute('data-nal'));
+    nal.disabled = true;
+    try {
+      const l = state.leads.find((x) => x.id === id);
+      const res = await core.noContact([id]);
+      if (l) l.level = 'Archive';
+      state.sel.delete(id);
+      renderSumbar(); renderPool();
+      toast({ type: 'ok', ttl: 8000, html: 'Removed <span class="mono">@' + esc(l ? l.h : id) + '</span> — not a lead.',
+        action: { label: 'Undo', fn: async () => { await core.undoNoContact(res.undo); load(); } } });
+    } catch (err) {
+      nal.disabled = false;
+      toast({ type: 'err', html: 'Failed: ' + esc(err.message), sticky: true });
+    }
+    return;
+  }
+  const upto = e.target.closest('[data-upto]');
+  if (upto) {
+    e.preventDefault(); // row is a <label>
+    const idx = +upto.getAttribute('data-upto');
+    // his session = the top of this order down to the last handle he DM'd;
+    // rows already messaged in earlier sessions are skipped, never re-stamped
+    state.sel = new Set(batchList().slice(0, idx + 1).filter((l) => !l.lastContact).map((l) => l.id));
+    renderPool();
+    return;
+  }
   const take = e.target.closest('[data-take]');
   if (take) {
     const n = +take.getAttribute('data-take');
-    state.sel = new Set(batchList().slice(0, n).map((l) => l.id));
+    const src = state.src === 'pool' ? batchList().filter((l) => !l.lastContact) : batchList();
+    state.sel = new Set(src.slice(0, n).map((l) => l.id));
     renderPool();
     return;
   }
   if (e.target.closest('#poolCopy')) {
-    const todo = batchList();
-    const pick = state.sel.size ? todo.filter((l) => state.sel.has(l.id)) : todo.slice(0, 100);
+    const todo = state.src === 'pool' ? batchList().filter((l) => !l.lastContact) : batchList();
+    const pick = state.sel.size ? batchList().filter((l) => state.sel.has(l.id)) : todo.slice(0, 100);
     const txt = pick.map((l) => '@' + l.h).join('\n');
     try { await navigator.clipboard.writeText(txt); toast({ type: 'ok', html: 'Copied ' + pick.length + ' handles.' }); }
     catch (err) { toast({ type: 'err', html: 'Copy failed: ' + esc(err.message) }); }
