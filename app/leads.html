@@ -739,27 +739,26 @@ $('table').addEventListener('click', async (e) => {
   if (upto) {
     e.preventDefault(); // row is a <label>
     const idx = +upto.getAttribute('data-upto');
-    // his session = the top of this order down to the last handle he DM'd;
-    // rows already messaged in earlier sessions are skipped, never re-stamped.
+    // his session = the top of this order down to the last handle he DM'd —
+    // EVERY row in that range, messaged before or not: he worked the IG list
+    // top-down and DM'd them all, so all of them get today's stamp.
     // Stash whatever selection this replaces — a stray click on ↑ here used to
     // silently destroy hand-picked checkboxes.
     if (state.sel.size) state.prevSel = state.sel;
-    state.sel = new Set(batchList().slice(0, idx + 1).filter((l) => !l.lastContact).map((l) => l.id));
+    state.sel = new Set(batchList().slice(0, idx + 1).map((l) => l.id));
     renderPool();
     return;
   }
   const take = e.target.closest('[data-take]');
   if (take) {
     const n = +take.getAttribute('data-take');
-    const src = state.src === 'pool' ? batchList().filter((l) => !l.lastContact) : batchList();
     if (state.sel.size) state.prevSel = state.sel;
-    state.sel = new Set(src.slice(0, n).map((l) => l.id));
+    state.sel = new Set(batchList().slice(0, n).map((l) => l.id));
     renderPool();
     return;
   }
   if (e.target.closest('#poolCopy')) {
-    const todo = state.src === 'pool' ? batchList().filter((l) => !l.lastContact) : batchList();
-    const pick = state.sel.size ? batchList().filter((l) => state.sel.has(l.id)) : todo.slice(0, 100);
+    const pick = state.sel.size ? batchList().filter((l) => state.sel.has(l.id)) : batchList().slice(0, 100);
     const txt = pick.map((l) => '@' + l.h).join('\n');
     try { await navigator.clipboard.writeText(txt); toast({ type: 'ok', html: 'Copied ' + pick.length + ' handles.' }); }
     catch (err) { toast({ type: 'err', html: 'Copy failed: ' + esc(err.message) }); }
