@@ -14,7 +14,13 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 export const supa = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 /* canonical vocab (was Apps Script Config.gs) */
-export const STAGES = ['Engaged 1', 'Engaged 2', 'Engaged 3', 'Booked', 'No Close', 'Archive', 'No Reply', 'Closed', 'Outreach'];
+export const STAGES = ['Engaged 1', 'Engaged 2', 'Engaged 3', 'Booked', 'No Close', 'Archive', 'No Reply', 'Closed', 'Following'];
+/* The following-list bucket was called 'Outreach' until 2026-07-22. Reads
+   accept both so a cached page and a migrated database can never disagree;
+   writes only ever produce 'Following'. */
+export const POOL = 'Following';
+export const POOL_VALUES = ['Following', 'Outreach'];
+export const isPool = (lvl) => lvl === 'Following' || lvl === 'Outreach';
 export const STATUSES = ['Follow up Sent', "Haven't read", 'End of convo', 'Mid convo',
   'Lifestyle sent', 'Left on read', 'Story reply', 'Call Pitched', 'Meme sent', 'LM Sent'];
 
@@ -58,13 +64,13 @@ const _demo = {
     { id: 15, h: 'priya.dtc', url: 'https://instagram.com/priya.dtc', level: 'No Close', status: 'Call done', qual: 'Qualified 1', notes: '[no close 05/07] — bad timing, revisit Q4', lastContact: _ago(4) },
     // outreach pool: imported from the IG following export, not yet leads.
     // lastContact '' = not messaged yet; stamped = already sent.
-    { id: 16, h: 'brandonleeco', url: 'https://instagram.com/brandonleeco', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1), followed: _ago(400) },
-    { id: 17, h: 'thesupplyhouse', url: 'https://instagram.com/thesupplyhouse', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1), followed: _ago(15) },
-    { id: 18, h: 'nordic.wear', url: 'https://instagram.com/nordic.wear', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1), followed: _ago(1200) },
-    { id: 19, h: 'jaycollective', url: 'https://instagram.com/jaycollective', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1), followed: _ago(90) },
-    { id: 20, h: 'mirafitwear', url: 'https://instagram.com/mirafitwear', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1), followed: _ago(2600) },
-    { id: 21, h: 'oatly.fanpage', url: 'https://instagram.com/oatly.fanpage', level: 'Outreach', status: 'Follow up Sent', qual: '', notes: '', lastContact: _ago(0), dateAdded: _ago(1), followed: _ago(730) },
-    { id: 22, h: 'kettlebrandco', url: 'https://instagram.com/kettlebrandco', level: 'Outreach', status: 'Follow up Sent', qual: '', notes: '', lastContact: _ago(0), dateAdded: _ago(1), followed: _ago(45) }
+    { id: 16, h: 'brandonleeco', url: 'https://instagram.com/brandonleeco', level: 'Following', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1), followed: _ago(400) },
+    { id: 17, h: 'thesupplyhouse', url: 'https://instagram.com/thesupplyhouse', level: 'Following', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1), followed: _ago(15) },
+    { id: 18, h: 'nordic.wear', url: 'https://instagram.com/nordic.wear', level: 'Following', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1), followed: _ago(1200) },
+    { id: 19, h: 'jaycollective', url: 'https://instagram.com/jaycollective', level: 'Following', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1), followed: _ago(90) },
+    { id: 20, h: 'mirafitwear', url: 'https://instagram.com/mirafitwear', level: 'Following', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1), followed: _ago(2600) },
+    { id: 21, h: 'oatly.fanpage', url: 'https://instagram.com/oatly.fanpage', level: 'Following', status: 'Follow up Sent', qual: '', notes: '', lastContact: _ago(0), dateAdded: _ago(1), followed: _ago(730) },
+    { id: 22, h: 'kettlebrandco', url: 'https://instagram.com/kettlebrandco', level: 'Following', status: 'Follow up Sent', qual: '', notes: '', lastContact: _ago(0), dateAdded: _ago(1), followed: _ago(45) }
   ],
   deals: [
     { row: 101, id: 101, leadId: null, name: 'Oscar Wong', link: 'https://instagram.com/oscarwxng', status: 'Discovery Call', meeting: _ago(0), followup: '', qual: 'Qualified 2', cash: '', notes: 'supplement brand ~40k/mo', hasFF: true, fireflies_link: 'https://app.fireflies.ai/view/demo' },
@@ -532,6 +538,10 @@ export async function looseBookings() {
  *  as leads, so a deleted friend would come straight back on the next
  *  following re-import. Archive keeps them out of the pool, the worklist and
  *  the funnel forever. Snapshot-based undo restores them exactly. */
+/** '✕ not a lead'. If the lead was marked sent TODAY it was almost certainly
+ *  a mis-click on the way here, so the stamp is retracted too — and a
+ *  compensating batch row keeps today's follow-up count honest instead of
+ *  leaving a DM that never happened on the scoreboard. */
 export async function noContact(ids) {
   const list = Array.isArray(ids) ? ids : [ids];
   if (!list.length) return { ok: true, marked: 0 };
@@ -539,39 +549,50 @@ export async function noContact(ids) {
     const prev = [];
     _demo.leads.forEach((l) => {
       if (list.indexOf(l.id) >= 0) {
-        prev.push({ id: l.id, level: l.level, notes: l.notes, hidden: l.hidden });
+        prev.push({ id: l.id, level: l.level, notes: l.notes, hidden: l.hidden,
+          lastContact: l.lastContact, status: l.status });
         l.level = 'Archive';
         l.hidden = true;
+        if (l.lastContact === todayDmy()) { l.lastContact = ''; l.status = ''; }
         l.notes = (l.notes ? l.notes + '\n' : '') + '[no contact] not a lead';
       }
     });
     return { ok: true, marked: prev.length, undo: { _demoNoContact: prev } };
   }
   const { data: before, error: qErr } = await supa.from('leads')
-    .select('id,level,notes,outreach_hidden').in('id', list);
+    .select('id,level,notes,outreach_hidden,last_contact,last_status').in('id', list);
   if (qErr) throw new Error(qErr.message);
+  const todayIso = dmyToIso(todayDmy());
+  let retracted = 0;
   for (const b of before || []) {
-    const { error } = await supa.from('leads')
-      .update({ level: 'Archive', outreach_hidden: true,
-        notes: (b.notes ? b.notes + '\n' : '') + '[no contact] not a lead' })
-      .eq('id', b.id);
+    const patch = { level: 'Archive', outreach_hidden: true,
+      notes: (b.notes ? b.notes + '\n' : '') + '[no contact] not a lead' };
+    if (b.last_contact === todayIso) { patch.last_contact = null; patch.last_status = null; retracted++; }
+    const { error } = await supa.from('leads').update(patch).eq('id', b.id);
     if (error) throw new Error(error.message);
   }
   // one summary row; 'no-contact' is invisible to the metrics on purpose
   await logActivity('leads', list[0], 'no-contact', null, { marked: (before || []).length });
-  return { ok: true, marked: (before || []).length, undo: { noContactPrev: before } };
+  // ...but a retracted mark must come off today's count, so log the negative
+  if (retracted) {
+    await logActivity('leads', list[0], 'update', { retracted_batch: retracted },
+      { batch: -retracted, batch_kind: 'followup' });
+  }
+  return { ok: true, marked: (before || []).length, retracted, undo: { noContactPrev: before } };
 }
 export async function undoNoContact(undo) {
   if (undo && undo._demoNoContact) {
     undo._demoNoContact.forEach((p) => {
       const l = _demo.leads.find((x) => x.id === p.id);
-      if (l) { l.level = p.level; l.notes = p.notes; l.hidden = !!p.hidden; }
+      if (l) { l.level = p.level; l.notes = p.notes; l.hidden = !!p.hidden;
+        l.lastContact = p.lastContact || ''; l.status = p.status || ''; }
     });
     return { ok: true };
   }
   const prev = (undo && undo.noContactPrev) || [];
   for (const p of prev) {
-    await supa.from('leads').update({ level: p.level, notes: p.notes, outreach_hidden: !!p.outreach_hidden }).eq('id', p.id);
+    await supa.from('leads').update({ level: p.level, notes: p.notes,
+      outreach_hidden: !!p.outreach_hidden, last_contact: p.last_contact, last_status: p.last_status }).eq('id', p.id);
   }
   dropBookCache();
   return { ok: true, restored: prev.length };
@@ -665,7 +686,7 @@ export async function linkBooking(bookingId, dealRow) {
 }
 
 /* ---------- outreach pool (mass IG follow-up) ----------
-   The whole IG following list lives here as leads staged 'Outreach': a bucket
+   The whole IG following list lives here as leads staged 'Following': a bucket
    kept out of the worklist and the main lead list. last_contact null = not
    messaged yet. Replying promotes them with no special UI — the setter just
    logs them normally and setterUpdate moves them up the ladder. */
@@ -786,7 +807,7 @@ export async function importFollowing(input) {
     const ids = [];
     fresh.forEach((h) => {
       const id = Date.now() + Math.floor(Math.random() * 1e6);
-      _demo.leads.push({ id, h, url: 'https://instagram.com/' + h, level: 'Outreach',
+      _demo.leads.push({ id, h, url: 'https://instagram.com/' + h, level: POOL,
         status: '', qual: '', notes: '', lastContact: '', dateAdded: todayDmy(),
         followed: isoToDmy(followedBy.get(h) || '') });
       ids.push(id);
@@ -806,7 +827,7 @@ export async function importFollowing(input) {
   for (let i = 0; i < fresh.length; i += 500) {
     const chunk = fresh.slice(i, i + 500).map((h) => ({
       handle: h, ig_url: 'https://www.instagram.com/' + h + '/',
-      level: 'Outreach', last_contact: null, date_added: todayIso,
+      level: POOL, last_contact: null, date_added: todayIso,
       followed_at: followedBy.get(h) || null,
     }));
     const { data, error } = await supa.from('leads').insert(chunk).select('id');
@@ -822,7 +843,7 @@ export async function importFollowing(input) {
 }
 
 /** Undo an import: delete the rows it created — but ONLY those still untouched
- *  (level Outreach, never messaged). A pool entry that replied and got promoted
+ *  (level Following, never messaged). A pool entry that replied and got promoted
  *  is a real lead now; undoing the import must not take it down. */
 export async function undoImport(ids) {
   dropBookCache();
@@ -830,7 +851,7 @@ export async function undoImport(ids) {
   if (DEMO) {
     const s = new Set(ids);
     const before = _demo.leads.length;
-    _demo.leads = _demo.leads.filter((l) => !(s.has(l.id) && l.level === 'Outreach' && !l.lastContact));
+    _demo.leads = _demo.leads.filter((l) => !(s.has(l.id) && isPool(l.level) && !l.lastContact));
     const deleted = before - _demo.leads.length;
     return { ok: true, deleted, kept: ids.length - deleted };
   }
@@ -838,7 +859,7 @@ export async function undoImport(ids) {
   for (let i = 0; i < ids.length; i += 500) {
     const chunk = ids.slice(i, i + 500);
     const { data, error } = await supa.from('leads').delete()
-      .in('id', chunk).eq('level', 'Outreach').is('last_contact', null).select('id');
+      .in('id', chunk).in('level', POOL_VALUES).is('last_contact', null).select('id');
     if (error) throw new Error(error.message);
     deleted += (data || []).length;
   }
@@ -849,12 +870,12 @@ export async function undoImport(ids) {
 export async function outreachPool(opts = {}) {
   const limit = opts.limit || 500;
   if (DEMO) {
-    return _demo.leads.filter((l) => l.level === 'Outreach' && !l.lastContact)
+    return _demo.leads.filter((l) => isPool(l.level) && !l.lastContact)
       .slice(0, limit).map(_clone);
   }
   const { data, error } = await supa.from('leads')
     .select('id,handle,ig_url,date_added')
-    .eq('level', 'Outreach').is('last_contact', null)
+    .in('level', POOL_VALUES).is('last_contact', null)
     .order('date_added', { ascending: true }).limit(limit);
   if (error) throw new Error(error.message);
   return data.map((l) => ({ id: l.id, h: l.handle, url: l.ig_url || '', dateAdded: isoToDmy(l.date_added) }));
@@ -872,7 +893,7 @@ export async function staleBatch(opts = {}) {
   const cutoff = new Date(Date.now() - rules.overdueDays * 86400000).toISOString().slice(0, 10);
   if (DEMO) {
     return _demo.leads
-      .filter((l) => ['Archive', 'Closed', 'Outreach', 'Booked'].indexOf(l.level) < 0)
+      .filter((l) => ['Archive', 'Closed', 'Booked'].indexOf(l.level) < 0 && !isPool(l.level))
       .filter((l) => !l.lastContact || dmyToIso(l.lastContact) < cutoff)
       .sort((a, b) => String(dmyToIso(a.lastContact) || '').localeCompare(String(dmyToIso(b.lastContact) || '')))
       .slice(0, limit)
@@ -882,7 +903,7 @@ export async function staleBatch(opts = {}) {
   if (hit) return hit;
   const { data, error } = await supa.from('leads')
     .select('id,handle,ig_url,last_contact,level')
-    .not('level', 'in', '("Archive","Closed","Outreach","Booked")')
+    .not('level', 'in', '("Archive","Closed","Outreach","Following","Booked")')
     .or(`last_contact.is.null,last_contact.lt.${cutoff}`)
     .order('last_contact', { ascending: true, nullsFirst: true }).limit(limit);
   if (error) throw new Error(error.message);
@@ -1293,7 +1314,7 @@ export async function setterStats(days = 14) {
       if (next.level === 'Booked') b.booked++;
       // the only reply signal the system records: someone from the cold-DM pool
       // answered, so the setter logged them as a real lead
-      if (prev.level === 'Outreach') b.replies++;
+      if (isPool(prev.level)) b.replies++;
     }
   }
   return dayKeys.map((k) => ({ day: k, ...byDay.get(k) }));
@@ -1304,7 +1325,7 @@ export async function setterStats(days = 14) {
    the app went live. These read the tables themselves, so they describe the
    whole book — 1,000+ leads imported before any of it was logged included. */
 
-const DEAD_LEVELS = ['Archive', 'Closed', 'Outreach'];
+const DEAD_LEVELS = ['Archive', 'Closed', 'Outreach', 'Following'];
 
 /** What's sitting in the pipeline right now, and what's rotting in it.
  *  `stale` uses the worklist's own overdue window so the two screens can never
@@ -1338,8 +1359,8 @@ export async function funnelAllTime() {
   if (DEMO) return { leads: 1160, booked: 33, closed: 8, cash: 24500, pool: 812 };
   const count = async (q) => { const { count: c } = await q; return c || 0; };
   const [leads, pool, deals, closed] = await Promise.all([
-    count(supa.from('leads').select('id', { count: 'exact', head: true }).neq('level', 'Outreach')),
-    count(supa.from('leads').select('id', { count: 'exact', head: true }).eq('level', 'Outreach')),
+    count(supa.from('leads').select('id', { count: 'exact', head: true }).not('level', 'in', '("Outreach","Following")')),
+    count(supa.from('leads').select('id', { count: 'exact', head: true }).in('level', POOL_VALUES)),
     count(supa.from('deals').select('id', { count: 'exact', head: true })),
     count(supa.from('deals').select('id', { count: 'exact', head: true }).eq('status', 'Closed')),
   ]);

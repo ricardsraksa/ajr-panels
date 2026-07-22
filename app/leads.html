@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260722o">
+<link rel="modulepreload" href="./crm-core.js?v=20260722p">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -273,7 +273,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
     <a id="q-log" href="#" style="display:block;text-align:center;font-size:12.5px;margin-bottom:12px">Open in Log a lead →</a>
     <div class="g2">
       <div class="fld"><label>Stage</label>
-        <select class="v2-in" id="f-level"><option value="">no level</option><option>Engaged 1</option><option>Engaged 2</option><option>Engaged 3</option><option>Booked</option><option>No Close</option><option>Outreach</option><option>Archive</option><option>No Reply</option><option>Closed</option></select>
+        <select class="v2-in" id="f-level"><option value="">no level</option><option>Engaged 1</option><option>Engaged 2</option><option>Engaged 3</option><option>Booked</option><option>No Close</option><option>Following</option><option>Archive</option><option>No Reply</option><option>Closed</option></select>
       </div>
       <div class="fld"><label>Status</label><select class="v2-in" id="f-status"><option value="">—</option></select></div>
       <div class="fld"><label>Qualification</label>
@@ -298,7 +298,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260722o';
+import * as core from './crm-core.js?v=20260722p';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -306,10 +306,10 @@ const RULES = await core.worklistRules();
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
-const STAGE_ORDER = ['Engaged 3', 'Engaged 2', 'Engaged 1', 'Booked', 'No Close', 'No Reply', '', 'Archive', 'Closed', 'Outreach'];
+const STAGE_ORDER = ['Engaged 3', 'Engaged 2', 'Engaged 1', 'Booked', 'No Close', 'No Reply', '', 'Archive', 'Closed', 'Following'];
 const LEVEL_COLORS = {
   'Engaged 1': '#a9a9b1', 'Engaged 2': '#c9c9cf', 'Engaged 3': '#e9e9ec',
-  'Booked': '#8ee59a', 'No Close': '#d99a9a', 'Archive': '#6e6e78', 'No Reply': '#8a8a92', 'Closed': '#c9c9cf', 'Outreach': '#7f8fa6', '': '#6e6e78'
+  'Booked': '#8ee59a', 'No Close': '#d99a9a', 'Archive': '#6e6e78', 'No Reply': '#8a8a92', 'Closed': '#c9c9cf', 'Following': '#7f8fa6', '': '#6e6e78'
 };
 const _ss = (k, d) => { try { return sessionStorage.getItem(k) || d; } catch (e) { return d; } };
 const state = { leads: [], sel: new Set(), src: 'due',
@@ -329,17 +329,19 @@ function renderSumbar() {
   // row of the screen; the counts live on inside the options
   const counts = {};
   state.leads.forEach((l) => { const k = l.level || ''; counts[k] = (counts[k] || 0) + 1; });
-  const realCount = state.leads.length - (counts['Outreach'] || 0) - (counts['Archive'] || 0);
+  const poolCount = state.leads.filter((l) => core.isPool(l.level)).length;
+  const realCount = state.leads.length - poolCount - (counts['Archive'] || 0);
   const opts = [['ALL', 'All', realCount]]
-    .concat(STAGE_ORDER.filter((st) => counts[st]).map((st) => [st, st || 'No level', counts[st]]));
+    .concat(STAGE_ORDER.filter((st) => (st === 'Following' ? poolCount : counts[st]))
+      .map((st) => [st, st || 'No level', st === 'Following' ? poolCount : counts[st]]));
   const sel = $('stageSel');
   sel.innerHTML = opts.map(([key, label, n]) =>
     `<option value="${esc(key)}">${esc(label)} (${n})</option>`).join('');
   sel.value = state.filter;
   sel.onchange = () => {
     state.filter = sel.value; state.shown = 100;
-    // picking Outreach IS the pool — land on its tab, not the follow-up queue
-    if (state.filter === 'Outreach') { state.src = 'pool'; state.kind = 'followup'; state.sel = new Set(); }
+    // picking Following IS the pool — land on its tab, not the follow-up queue
+    if (state.filter === 'Following') { state.src = 'pool'; state.kind = 'followup'; state.sel = new Set(); }
     renderSumbar(); renderTable();
   };
 }
@@ -359,10 +361,11 @@ function cmp(a, b, key) {
 function visible() {
   const q = state.q.toLowerCase().trim();
   let list = state.leads.filter((l) => {
-    // Outreach and Archive are buckets, not the working book — each is only
-    // visible under its own chip. 'All' means the leads actually in play.
-    if (state.filter === 'ALL' && (l.level === 'Outreach' || l.level === 'Archive')) return false;
-    if (state.filter !== 'ALL' && (l.level || '') !== state.filter) return false;
+    // Following and Archive are buckets, not the working book — each is only
+    // visible under its own option. 'All' means the leads actually in play.
+    if (state.filter === 'ALL' && (core.isPool(l.level) || l.level === 'Archive')) return false;
+    if (state.filter === 'Following') { if (!core.isPool(l.level)) return false; }
+    else if (state.filter !== 'ALL' && (l.level || '') !== state.filter) return false;
     if (q && !((l.h + ' ' + l.notes + ' ' + l.email + ' ' + l.status + ' ' + l.pains).toLowerCase().includes(q))) return false;
     return true;
   });
@@ -500,9 +503,9 @@ function renderPool() {
 }
 
 function renderTable() {
-  if (state.filter === 'Outreach') { renderPool(); return; }
+  if (state.filter === 'Following') { renderPool(); return; }
   const rows = visible();
-  const realTotal = state.leads.filter((l) => l.level !== 'Outreach' && l.level !== 'Archive').length;
+  const realTotal = state.leads.filter((l) => !core.isPool(l.level) && l.level !== 'Archive').length;
   $('count').textContent = rows.length === realTotal
     ? realTotal + ' leads' : rows.length + ' of ' + realTotal;
   const head = '<div class="v2-thead l-thead l-min">' + COLS.map(([key, label]) =>
@@ -737,7 +740,9 @@ $('table').addEventListener('click', async (e) => {
       if (l) l.level = 'Archive';
       state.sel.delete(id);
       renderSumbar(); renderPool();
-      toast({ type: 'ok', ttl: 8000, html: 'Removed <span class="mono">@' + esc(l ? l.h : id) + '</span> — not a lead.',
+      toast({ type: 'ok', ttl: 8000,
+        html: 'Removed <span class="mono">@' + esc(l ? l.h : id) + '</span> — not a lead.' +
+          (res.retracted ? ' Today\u2019s sent mark was taken back too.' : ''),
         action: { label: 'Undo', fn: async () => { await core.undoNoContact(res.undo); load(); } } });
     } catch (err) {
       nal.disabled = false;
@@ -860,7 +865,7 @@ $('importFile').onchange = async () => {
     const res = await core.importFollowing(text);
     if (!res.total) { toast({ type: 'err', html: 'No handles found in that file. Works with following.json from your IG export, or a CSV/text file with a column of handles or profile links.', sticky: true }); return; }
     await load();
-    state.filter = 'Outreach'; renderSumbar(); renderTable();
+    state.filter = 'Following'; renderSumbar(); renderTable();
     const bar = document.createElement('div');
     bar.className = 'impbar';
     bar.innerHTML = 'Imported <b>' + res.added.toLocaleString() + '</b> · <b>' + res.skippedExisting.toLocaleString() +

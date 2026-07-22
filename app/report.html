@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260722o">
+<link rel="modulepreload" href="./crm-core.js?v=20260722p">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f9f8f5}</style>
 <script type="module" blocking="render">
@@ -296,7 +296,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260722o';
+import * as core from './crm-core.js?v=20260722p';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'report' });
@@ -374,7 +374,7 @@ function renderFunnel(sum, basis) {
 
 const STAGE_COLOURS = { 'Engaged 1': '#c9dfd2', 'Engaged 2': '#8cbba4', 'Engaged 3': '#4f8f6c',
   'Booked': '#2a6a4d', 'Closed': '#1d4d37', 'No Close': '#a8762a', 'No Reply': '#ccc5b6',
-  'Archive': '#e0d9c9', 'Outreach': '#efeadd' };
+  'Archive': '#e0d9c9', 'Following': '#efeadd', 'Outreach': '#efeadd' };
 // Archive is not pipeline — 629 of them would squash every live stage into a
 // sliver. It stays in the legend so the book still adds up.
 const LIVE_STAGES = ['Engaged 1', 'Engaged 2', 'Engaged 3', 'Booked', 'No Close', 'Closed', 'No Reply'];
