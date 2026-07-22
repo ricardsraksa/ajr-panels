@@ -2016,17 +2016,22 @@ export function installScanner(opts = {}) {
     $i('sc2-title').textContent = leads.length + ' lead' + (leads.length === 1 ? '' : 's') + ' found';
     $i('sc2-add').disabled = false;
     $i('sc2-body').innerHTML = leads.map((l, i) => {
-      const handle = (l.handle || l.name || '').trim().toLowerCase().replace(/^@/, '');
+      // NEVER fall back to the display name: an inbox screenshot shows names
+      // ('Luka Vukoslavovic'), and turning one into a handle invents a lead
+      // that matches nobody. Leave it blank so the card asks for the real one.
+      const handle = (l.handle || '').trim().toLowerCase().replace(/^@/, '');
+      const shownName = (l.name || '').trim();
       l._suggested = { handle, stage: l.stage || 'Engaged 1', status: l.status || '', notes: l.notes || '' };
       const exists = opts.exists ? opts.exists(handle) : null;
       return '<div class="sc2-card" data-i="' + i + '">' +
-        '<div class="t"><input class="hh" data-f="handle" value="' + escH(handle) + '" placeholder="handle">' +
+        '<div class="t"><input class="hh" data-f="handle" value="' + escH(handle) + '" placeholder="' + (shownName ? escH(shownName) + ' — type their @handle' : 'handle') + '">' +
           '<button class="x" data-rm>✕</button></div>' +
         '<div class="g">' +
           '<select data-f="stage">' + optHtml(['Engaged 1','Engaged 2','Engaged 3','Booked','No Reply'], l.stage || 'Engaged 1') + '</select>' +
           '<select data-f="status">' + optHtml(statuses, l.status, 'Status —') + '</select>' +
         '</div>' +
         '<input class="nn" data-f="notes" value="' + escH(l.notes || '') + '" placeholder="note">' +
+        (!handle ? '<div class="low">only a display name was visible — add the @handle or this one is skipped</div>' : '') +
         (l.confidence && l.confidence !== 'high' ? '<div class="low">low confidence — double-check this one</div>' : '') +
         (exists ? '<div class="ex">already a lead — this updates @' + escH(exists) + '</div>' : '') +
       '</div>';
