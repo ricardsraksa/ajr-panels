@@ -910,7 +910,7 @@ export async function markBatchSent(ids, opts = {}) {
       if (s.has(l.id)) { prev.push({ id: l.id, lastContact: l.lastContact, status: l.status });
         l.lastContact = whenDmy; l.status = status; }
     });
-    return { ok: true, marked: prev.length, kind, undo: { _demo: true, outreach: prev } };
+    return { ok: true, marked: prev.length, kind, when: whenDmy, undo: { _demo: true, outreach: prev } };
   }
   // snapshot first — the update is destructive and undo has to be exact
   const before = [];
