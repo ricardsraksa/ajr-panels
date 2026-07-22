@@ -1579,7 +1579,6 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 .v2-age.late{color:var(--red);font-weight:600}
 .v2-ai{display:inline-flex;align-items:center;gap:4px;font:600 10.5px var(--mono);color:var(--ai);
   border:1px solid var(--ai-line);border-radius:99px;padding:1px 7px;white-space:nowrap}
-.v2-hot{color:var(--amber);font-weight:700}
 .v2-money{font-family:var(--mono);font-weight:600;color:var(--go)}
 
 /* toasts */

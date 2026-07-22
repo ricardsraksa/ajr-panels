@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260722a">
+<link rel="modulepreload" href="./crm-core.js?v=20260722b">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -207,7 +207,6 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 .v2-age.late{color:var(--red);font-weight:600}
 .v2-ai{display:inline-flex;align-items:center;gap:4px;font:600 10.5px var(--mono);color:var(--ai);
   border:1px solid var(--ai-line);border-radius:99px;padding:1px 7px;white-space:nowrap}
-.v2-hot{color:var(--amber);font-weight:700}
 .v2-money{font-family:var(--mono);font-weight:600;color:var(--go)}
 
 /* toasts */
@@ -335,7 +334,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260722a';
+import * as core from './crm-core.js?v=20260722b';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
