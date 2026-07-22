@@ -58,13 +58,13 @@ const _demo = {
     { id: 15, h: 'priya.dtc', url: 'https://instagram.com/priya.dtc', level: 'No Close', status: 'Call done', qual: 'Qualified 1', notes: '[no close 05/07] — bad timing, revisit Q4', lastContact: _ago(4) },
     // outreach pool: imported from the IG following export, not yet leads.
     // lastContact '' = not messaged yet; stamped = already sent.
-    { id: 16, h: 'brandonleeco', url: 'https://instagram.com/brandonleeco', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1) },
-    { id: 17, h: 'thesupplyhouse', url: 'https://instagram.com/thesupplyhouse', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1) },
-    { id: 18, h: 'nordic.wear', url: 'https://instagram.com/nordic.wear', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1) },
-    { id: 19, h: 'jaycollective', url: 'https://instagram.com/jaycollective', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1) },
-    { id: 20, h: 'mirafitwear', url: 'https://instagram.com/mirafitwear', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1) },
-    { id: 21, h: 'oatly.fanpage', url: 'https://instagram.com/oatly.fanpage', level: 'Outreach', status: 'Follow up Sent', qual: '', notes: '', lastContact: _ago(0), dateAdded: _ago(1) },
-    { id: 22, h: 'kettlebrandco', url: 'https://instagram.com/kettlebrandco', level: 'Outreach', status: 'Follow up Sent', qual: '', notes: '', lastContact: _ago(0), dateAdded: _ago(1) }
+    { id: 16, h: 'brandonleeco', url: 'https://instagram.com/brandonleeco', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1), followed: _ago(400) },
+    { id: 17, h: 'thesupplyhouse', url: 'https://instagram.com/thesupplyhouse', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1), followed: _ago(15) },
+    { id: 18, h: 'nordic.wear', url: 'https://instagram.com/nordic.wear', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1), followed: _ago(1200) },
+    { id: 19, h: 'jaycollective', url: 'https://instagram.com/jaycollective', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1), followed: _ago(90) },
+    { id: 20, h: 'mirafitwear', url: 'https://instagram.com/mirafitwear', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1), followed: _ago(2600) },
+    { id: 21, h: 'oatly.fanpage', url: 'https://instagram.com/oatly.fanpage', level: 'Outreach', status: 'Follow up Sent', qual: '', notes: '', lastContact: _ago(0), dateAdded: _ago(1), followed: _ago(730) },
+    { id: 22, h: 'kettlebrandco', url: 'https://instagram.com/kettlebrandco', level: 'Outreach', status: 'Follow up Sent', qual: '', notes: '', lastContact: _ago(0), dateAdded: _ago(1), followed: _ago(45) }
   ],
   deals: [
     { row: 101, id: 101, leadId: null, name: 'Oscar Wong', link: 'https://instagram.com/oscarwxng', status: 'Discovery Call', meeting: _ago(0), followup: '', qual: 'Qualified 2', cash: '', notes: 'supplement brand ~40k/mo', hasFF: true, fireflies_link: 'https://app.fireflies.ai/view/demo' },
