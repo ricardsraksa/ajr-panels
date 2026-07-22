@@ -64,8 +64,6 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
   background:#fff;color:#2a6a4d;font:600 12px 'Instrument Sans',system-ui,sans-serif;cursor:pointer}
 .sentbtn:hover{background:#eef5f0}
 .sentbtn:disabled{opacity:.5}
-.poolcell.done{opacity:.55}
-.poolcell.done a{color:#6d675b}
 .ckspace{width:15px;flex:none}
 .stagetag{flex:none;font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;
   color:#4d4a42;background:#f0ede6;border-radius:5px;padding:2px 6px}
@@ -462,6 +460,9 @@ function renderPool() {
       '</div>' +
       '<button class="v2-btn sm" id="poolSkip"' + (sel.size ? '' : ' disabled') + ' title="Friends, family, anyone who should never be contacted">Not a lead</button>' +
       '<button class="v2-btn go sm" id="poolMark"' + (sel.size ? '' : ' disabled') + '>Mark batch sent today</button>' +
+      (state.lastBatchUndo
+        ? '<button class="v2-btn sm" id="poolUndo">Undo last batch (' + state.lastBatchUndo.count + ')</button>'
+        : '') +
     '</div>' +
     (sentToday.length
       ? '<div class="poolbar senttoday"><span class="v2-lab" style="margin:0">Sent today ' + sentToday.length + '</span>' +
@@ -777,6 +778,22 @@ $('table').addEventListener('click', async (e) => {
     }
     return;
   }
+  const pu = e.target.closest('#poolUndo');
+  if (pu) {
+    pu.disabled = true;
+    const u = state.lastBatchUndo;
+    state.lastBatchUndo = null;
+    try {
+      await core.undoOutreachSent(u.undo);
+      toast({ type: 'ok', html: 'Batch of ' + u.count + ' un-marked.' });
+      load();
+    } catch (err) {
+      state.lastBatchUndo = u; // keep the chance to retry
+      toast({ type: 'err', html: 'Undo failed: ' + esc(err.message), sticky: true });
+      renderPool();
+    }
+    return;
+  }
   const mark = e.target.closest('#poolMark');
   if (mark && !mark.disabled) {
     const ids = Array.from(state.sel);
@@ -787,6 +804,9 @@ $('table').addEventListener('click', async (e) => {
       state.leads.forEach((l) => { if (state.sel.has(l.id)) { l.lastContact = today; l.status = 'Follow up Sent'; } });
       if (state.stale) state.stale = state.stale.filter((l) => !state.sel.has(l.id));
       state.sel = new Set();
+      // the toast's Undo dies in 10 seconds; the bar button stays until the
+      // next batch (or navigation) replaces it
+      if (res.undo) state.lastBatchUndo = { undo: res.undo, count: res.marked };
       renderSumbar(); renderPool();
       toast({ type: 'ok', ttl: 10000,
         html: 'Marked <b>' + res.marked + '</b> as sent today — counted as ' +
