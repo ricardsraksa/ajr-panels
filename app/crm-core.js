@@ -1555,7 +1555,23 @@ input::placeholder,textarea::placeholder{color:var(--off)}
 .v2-side .me .rl{display:block;font-size:11px;color:var(--muted-2)}
 .v2-side .me .out{margin-left:auto;color:var(--muted-2);font-size:11px}
 .v2-main{flex:1;min-width:0;padding:26px 30px 60px}
-@media(max-width:900px){.v2-side{width:64px;padding:16px 8px}.v2-side .wm,.v2-side .grp,.v2-side .krow,.v2-side .me .nm,.v2-side .me .rl{display:none}}
+@media(max-width:900px) and (min-width:761px){.v2-side{width:64px;padding:16px 8px}.v2-side .wm,.v2-side .grp,.v2-side .krow,.v2-side .me .nm,.v2-side .me .rl{display:none}}
+/* phone: the sidebar becomes a scrolling top strip. As a 64px rail it ate a
+   third of the screen and wrapped every label onto three lines. */
+@media(max-width:760px){
+  .v2-shell{display:block}
+  .v2-side{flex-direction:row;width:auto;height:auto;align-items:center;gap:6px;padding:8px 10px;
+    border-right:none;border-bottom:1px solid var(--line);overflow-x:auto;-webkit-overflow-scrolling:touch;
+    position:sticky;top:0;z-index:20}
+  .v2-side::-webkit-scrollbar{display:none}
+  .v2-side .wm,.v2-side .grp,.v2-side .krow,.v2-side .sp,.v2-side .me .nm,.v2-side .me .rl{display:none}
+  .v2-side a.nav{white-space:nowrap;padding:9px 13px;min-height:40px;font-size:13px}
+  .v2-side .badge-n,.v2-side .badge-red{margin-left:6px}
+  .v2-side .me{border-top:none;margin:0 0 0 auto;padding:0 0 0 6px}
+  .v2-main{padding:16px 14px 60px}
+  .v2-h{flex-wrap:wrap;gap:8px}
+  .v2-h h1{font-size:20px}
+}
 
 /* headers */
 .v2-h{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
