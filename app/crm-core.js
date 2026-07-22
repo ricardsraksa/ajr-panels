@@ -209,13 +209,14 @@ export async function loadLeads() {
   const hit = _ttlGet(BOOK_KEY);
   if (hit) return hit;
   const out = await pagedSelect('leads',
-    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,ig_status,ig_last_post,ig_name,outreach_hidden,pain_points,email,phone,linkedin');
+    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,followed_ts,ig_status,ig_last_post,ig_name,outreach_hidden,pain_points,email,phone,linkedin');
   const mapped = out.map((l) => ({
     id: l.id, h: l.handle, url: l.ig_url || '',
     level: l.level || '', status: l.last_status || '',
     qual: l.qualification || '', notes: l.notes || '',
     lastContact: isoToDmy(l.last_contact), dateAdded: isoToDmy(l.date_added),
     followed: isoToDmy(l.followed_at),
+    followedTs: l.followed_ts || '', // exact instant — Instagram orders within a day too
     igStatus: l.ig_status || '', igLastPost: isoToDmy(l.ig_last_post), igName: l.ig_name || '',
     hidden: !!l.outreach_hidden,
     pains: l.pain_points || '', email: l.email || '', phone: l.phone || '', linkedin: l.linkedin || '',
@@ -714,7 +715,7 @@ export function parseFollowingEntries(input) {
   const add = (v, ts) => {
     const h = normHandle(v);
     if (!h || out.has(h)) return;
-    const d = Number(ts) > 0 ? new Date(Number(ts) * 1000).toISOString().slice(0, 10) : '';
+    const d = Number(ts) > 0 ? new Date(Number(ts) * 1000).toISOString() : '';
     out.set(h, { h, followed: d });
   };
   const walk = (node) => {
@@ -828,7 +829,8 @@ export async function importFollowing(input) {
     const chunk = fresh.slice(i, i + 500).map((h) => ({
       handle: h, ig_url: 'https://www.instagram.com/' + h + '/',
       level: POOL, last_contact: null, date_added: todayIso,
-      followed_at: followedBy.get(h) || null,
+      followed_at: (followedBy.get(h) || '').slice(0, 10) || null,
+      followed_ts: followedBy.get(h) || null,
     }));
     const { data, error } = await supa.from('leads').insert(chunk).select('id');
     if (error) throw new Error(error.message);
