@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260721z">
+<link rel="modulepreload" href="./crm-core.js?v=20260722a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -193,7 +193,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
     </div>
 
     <section class="v2-card">
-      <div class="v2-thead q-thead"><span>Lead</span><span>Stage</span><span>Since</span><span>Temp · Note</span><span></span></div>
+      <div class="v2-thead q-thead"><span>Lead</span><span>Stage</span><span>Since</span><span>Note</span><span></span></div>
       <div id="queueList"></div>
     </section>
 
@@ -209,7 +209,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721z';
+import * as core from './crm-core.js?v=20260722a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'worklist' });
@@ -299,7 +299,7 @@ function api(action, payload) {
   if (action === 'bootstrap') {
     return core.bootstrap().then(function (d) {
       setDot('ok');
-      return { ok: true, serverDate: d.serverDate, leads: d.leads, statuses: [], temps: [] };
+      return { ok: true, serverDate: d.serverDate, leads: d.leads, statuses: [] };
     }).catch(function (e) { setDot('err'); throw e; });
   }
   if (action === 'setterUpdate') {
@@ -355,16 +355,14 @@ function buildIndex() {
 // filter chip still force-shows all of them regardless of age.
 var NOCLOSE_RESURFACE_DAYS = 30;
 var LVL_W = { 'Engaged 3': 3, 'Engaged 2': 2, 'Engaged 1': 1, 'No Close': 0.5, 'No Reply': 0.5, '': 0.5 };
-var TEMP_W = { 'Hot Lead': 2, 'Warm Lead': 1 };
 function leadScore(l) {
   var qualW = l.qual && !/^unqual/i.test(l.qual) ? 2 : 0;
-  var w = (LVL_W[l.level] || 0) * 3 + qualW + (TEMP_W[l.temp] || 0);
-  return w;
+  return (LVL_W[l.level] || 0) * 3 + qualW;
 }
 // dead tail: cold Engaged-1, no qualification, silent 60+ days -> sweep, not queue
 function isSweepable(l) {
   var d = daysSince(l.lastContact);
-  return l.level === 'Engaged 1' && !l.qual && l.temp !== 'Hot Lead' && (d === null || d > 60);
+  return l.level === 'Engaged 1' && !l.qual && (d === null || d > 60);
 }
 // Filters are chips now. 'engaged' is one chip covering Engaged 1-3 (that's how
 // the setter thinks about the queue); the rest are opt-in buckets.
@@ -450,7 +448,6 @@ function rowHtml(l, i, sweep) {
     '<span class="q-stage">' + esc(l.level || 'no level') + '</span>' +
     daysBadge(l.lastContact) +
     '<span class="q-note" title="' + esc(note) + '">' +
-      (l.temp === 'Hot Lead' ? '<span class="v2-hot">Hot</span><span class="dot">·</span>' : '') +
       (l.qual ? '<span class="v2-ai" style="color:#6d675b;border-color:#ddd8cd">' + esc(l.qual) + '</span>' : '') +
       '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(note) + '</span>' +
       (dups > 1 ? '<span class="dot">·</span><span style="color:#98917f;white-space:nowrap">' + dups + ' rows</span>' : '') +
@@ -532,7 +529,7 @@ function archiveLead(handle) {
 function undoWrite(res, handle) {
   core.undoWrite(res.undo).then(function () {
     var l = state.byHandle.get(handle);
-    if (l) { l.level = res.prev.level; l.status = res.prev.last_status; l.temp = res.prev.temp;
+    if (l) { l.level = res.prev.level; l.status = res.prev.last_status;
       l.lastContact = core.isoToDmy(res.prev.last_contact); }
     unmarkDone(handle);
     renderFilters(); renderQueue(); renderSweep();

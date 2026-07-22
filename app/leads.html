@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260721z">
+<link rel="modulepreload" href="./crm-core.js?v=20260722a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -17,7 +17,7 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 </script>
 <title>All leads · AJR</title>
 <style>
-.l-thead,.l-row{grid-template-columns:118px 74px 44px 100px 60px 52px minmax(0,1fr)}
+.l-thead,.l-row{grid-template-columns:118px 74px 100px 60px 52px minmax(0,1fr)}
 .l-row{cursor:pointer}
 .lh{font-weight:600;font-size:13.5px;color:#211f1b;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lh:hover{color:#211f1b;text-decoration:underline;text-decoration-color:#ccc5b6}
@@ -214,9 +214,6 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
   <div class="v2-chips" style="margin-bottom:14px">
     <input class="v2-in" id="search" type="text" placeholder="Search handle, notes, email…"
            autocomplete="off" spellcheck="false" style="flex:1;min-width:140px;max-width:260px">
-    <select class="v2-in" id="tempsel" style="width:auto">
-      <option value="">Any temp</option><option>Hot Lead</option><option>Warm Lead</option><option>Cold Lead</option>
-    </select>
   </div>
 
   <div class="v2-card" id="table"><div class="v2-empty" id="skel">Loading leads…</div></div>
@@ -237,9 +234,6 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
     <div class="g2">
       <div class="fld"><label>Stage</label>
         <select class="v2-in" id="f-level"><option value="">no level</option><option>Engaged 1</option><option>Engaged 2</option><option>Engaged 3</option><option>Booked</option><option>No Close</option><option>Outreach</option><option>Archive</option><option>No Reply</option><option>Closed</option></select>
-      </div>
-      <div class="fld"><label>Temp</label>
-        <select class="v2-in" id="f-temp"><option value="">—</option><option>Hot Lead</option><option>Warm Lead</option><option>Cold Lead</option></select>
       </div>
       <div class="fld"><label>Status</label><select class="v2-in" id="f-status"><option value="">—</option></select></div>
       <div class="fld"><label>Qualification</label>
@@ -264,7 +258,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721z';
+import * as core from './crm-core.js?v=20260722a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -277,7 +271,7 @@ const LEVEL_COLORS = {
   'Engaged 1': '#a9a9b1', 'Engaged 2': '#c9c9cf', 'Engaged 3': '#e9e9ec',
   'Booked': '#8ee59a', 'No Close': '#d99a9a', 'Archive': '#6e6e78', 'No Reply': '#8a8a92', 'Closed': '#c9c9cf', 'Outreach': '#7f8fa6', '': '#6e6e78'
 };
-const state = { leads: [], sel: new Set(), src: 'due', kind: 'followup', stale: null, filter: 'ALL', temp: '', q: '', sort: { key: 'lastContact', dir: -1 }, shown: 100, editing: null, busy: false };
+const state = { leads: [], sel: new Set(), src: 'due', kind: 'followup', stale: null, filter: 'ALL', q: '', sort: { key: 'lastContact', dir: -1 }, shown: 100, editing: null, busy: false };
 
 const toast = core.toast;
 
@@ -305,7 +299,7 @@ function renderSumbar() {
 
 /* ---------- table ---------- */
 const COLS = [
-  ['h', 'Handle'], ['level', 'Stage'], ['temp', 'Temp'], ['status', 'Last status'],
+  ['h', 'Handle'], ['level', 'Stage'], ['status', 'Last status'],
   ['lastContact', 'Since'], ['dateAdded', 'Added'], ['notes', 'Notes'],
 ];
 function cmp(a, b, key) {
@@ -322,7 +316,6 @@ function visible() {
     // when its own chip is picked
     if (state.filter === 'ALL' && l.level === 'Outreach') return false;
     if (state.filter !== 'ALL' && (l.level || '') !== state.filter) return false;
-    if (state.temp && l.temp !== state.temp) return false;
     if (q && !((l.h + ' ' + l.notes + ' ' + l.email + ' ' + l.status + ' ' + l.pains).toLowerCase().includes(q))) return false;
     return true;
   });
@@ -417,7 +410,6 @@ function renderTable() {
     return `<div class="v2-row l-row" data-id="${l.id}">
       <a class="lh" href="${esc(l.url || 'https://instagram.com/' + l.h)}" target="_blank" rel="noopener">@${esc(l.h)}</a>
       <span class="l-cell" style="${stageCls}">${esc(l.level || 'no level')}</span>
-      <span class="l-cell ${l.temp === 'Hot Lead' ? 'v2-hot' : 'dim'}">${l.temp ? esc(l.temp.split(' ')[0]) : ''}</span>
       <span class="l-cell">${esc(l.status || '')}</span>
       <span class="v2-age ${core.ageClass(ds, RULES)}">${l.lastContact ? (ds <= 0 ? 'today' : ds + 'd') : '—'}</span>
       <span class="l-mono">${esc((l.dateAdded || '').slice(0, 5))}</span>
@@ -455,7 +447,6 @@ async function openDrawer(id) {
   $('d-meta').textContent = (l.dateAdded ? 'added ' + l.dateAdded + ' · ' : '') + (l.lastContact ? 'last contact ' + l.lastContact : 'never contacted');
   $('q-log').href = 'log-lead.html?lead=' + encodeURIComponent(l.h);
   $('f-level').value = l.level || '';
-  $('f-temp').value = l.temp || '';
   $('f-status').value = core.STATUSES.includes(l.status) ? l.status : '';
   $('f-qual').value = ['Qualified 1','Qualified 2','Qualified 3','Unqualified'].includes(l.qual) ? l.qual : '';
   $('f-notes').value = l.notes || '';
@@ -487,7 +478,7 @@ function closeDrawer() {
 async function saveDrawer() {
   const l = leadById(state.editing); if (!l || state.busy) return;
   const fields = {
-    level: $('f-level').value, temp: $('f-temp').value,
+    level: $('f-level').value,
     status: $('f-status').value || l.status, qual: $('f-qual').value,
     notes: $('f-notes').value, pains: $('f-pains').value,
     email: $('f-email').value.trim(), phone: $('f-phone').value.trim(), linkedin: $('f-linkedin').value.trim(),
@@ -495,7 +486,7 @@ async function saveDrawer() {
   state.busy = true; $('d-save').disabled = true;
   try {
     const res = await core.setLead(l.id, fields);
-    l.level = fields.level; l.temp = fields.temp; l.status = fields.status; l.qual = fields.qual;
+    l.level = fields.level; l.status = fields.status; l.qual = fields.qual;
     l.notes = fields.notes; l.pains = fields.pains; l.email = fields.email; l.phone = fields.phone; l.linkedin = fields.linkedin;
     renderSumbar(); renderTable(); closeDrawer();
     if (res.undo) { state.lastUndo = { res, l }; $('d-cancel').textContent = 'Undo last'; }
@@ -508,7 +499,7 @@ async function saveDrawer() {
 async function undo(res, l) {
   try {
     await core.undoWrite(res.undo);
-    const p = res.prev, M = { level: 'level', last_status: 'status', temp: 'temp', qualification: 'qual',
+    const p = res.prev, M = { level: 'level', last_status: 'status', qualification: 'qual',
       notes: 'notes', pain_points: 'pains', email: 'email', phone: 'phone', linkedin: 'linkedin',
       status: 'status', qual: 'qual', pains: 'pains' };
     Object.keys(p).forEach((k) => { if (M[k]) l[M[k]] = p[k] || ''; });
@@ -549,7 +540,6 @@ async function load() {
 core.STATUSES.forEach((st) => { const o = document.createElement('option'); o.textContent = st; $('f-status').appendChild(o); });
 
 $('search').oninput = (e) => { state.q = e.target.value; state.shown = 100; renderTable(); };
-$('tempsel').onchange = (e) => { state.temp = e.target.value; state.shown = 100; renderTable(); };
 $('refresh').onclick = load;
 $('scrim').onclick = closeDrawer;
 $('d-close').onclick = closeDrawer;

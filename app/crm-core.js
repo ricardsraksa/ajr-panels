@@ -17,7 +17,6 @@ export const supa = createClient(SUPABASE_URL, SUPABASE_ANON);
 export const STAGES = ['Engaged 1', 'Engaged 2', 'Engaged 3', 'Booked', 'No Close', 'Archive', 'No Reply', 'Closed', 'Outreach'];
 export const STATUSES = ['Follow up Sent', "Haven't read", 'End of convo', 'Mid convo',
   'Lifestyle sent', 'Left on read', 'Story reply', 'Call Pitched', 'Meme sent', 'LM Sent'];
-export const TEMPS = ['Warm Lead', 'Cold Lead', 'Hot Lead'];
 
 /* ---------- demo mode (self-contained; no backend, for design/preview) ----------
    Add ?demo=1 to any page. It sticks for the session (so cross-page links stay
@@ -42,30 +41,30 @@ function isoToDmyLocal(d) {
 }
 const _demo = {
   leads: [
-    { id: 1, h: 'jung.labs', url: 'https://instagram.com/jung.labs', level: 'Engaged 3', status: 'Follow up Sent', temp: 'Hot Lead', qual: 'Qualified 3', notes: 'potential referral for his students', lastContact: _ago(20), dateAdded: _ago(90), email: 'jung@labs.io', phone: '', linkedin: '', pains: 'no time to run ads' },
-    { id: 2, h: 'charlay', url: 'https://instagram.com/charlay', level: 'Engaged 3', status: 'Follow up Sent', temp: 'Hot Lead', qual: 'Qualified 3', notes: 'audit accepted, need to book meeting', lastContact: _ago(63) },
-    { id: 3, h: 'akram_meza', url: 'https://instagram.com/akram_meza', level: 'Engaged 3', status: 'Follow up Sent', temp: 'Hot Lead', qual: 'Qualified 1', notes: 'showed interest from story', lastContact: _ago(63) },
-    { id: 4, h: 'oscarwxng', url: 'https://instagram.com/oscarwxng', level: 'Engaged 2', status: 'Story reply', temp: 'Warm Lead', qual: 'Qualified 2', notes: '', lastContact: _ago(4) },
-    { id: 5, h: 'kayla.growth', url: 'https://instagram.com/kayla.growth', level: 'Engaged 2', status: 'Meme sent', temp: 'Warm Lead', qual: '', notes: '', lastContact: _ago(6) },
-    { id: 6, h: 'sofia_scales', url: 'https://instagram.com/sofia_scales', level: 'Engaged 1', status: "Haven't read", temp: 'Warm Lead', qual: '', notes: '', lastContact: _ago(10) },
-    { id: 7, h: 'nina.creates', url: 'https://instagram.com/nina.creates', level: 'Engaged 1', status: 'Lifestyle sent', temp: 'Warm Lead', qual: '', notes: '', lastContact: _ago(8) },
-    { id: 8, h: 'mariusvmil', url: 'https://instagram.com/mariusvmil', level: 'Engaged 1', status: 'Left on read', temp: 'Cold Lead', qual: '', notes: '', lastContact: _ago(120) },
-    { id: 9, h: 'therealashwinn', url: 'https://instagram.com/therealashwinn', level: 'Engaged 1', status: 'End of convo', temp: 'Cold Lead', qual: '', notes: '', lastContact: _ago(140) },
-    { id: 10, h: 'thedtcguy', url: 'https://instagram.com/thedtcguy', level: 'No Reply', status: 'Follow up Sent', temp: 'Cold Lead', qual: '', notes: '', lastContact: _ago(43) },
-    { id: 11, h: 'ecom.aiden', url: 'https://instagram.com/ecom.aiden', level: 'Engaged 3', status: 'Mid convo', temp: 'Hot Lead', qual: 'Qualified 2', notes: 'wants pricing', lastContact: _ago(2) },
-    { id: 12, h: 'bram.vandijk', url: 'https://instagram.com/bram.vandijk', level: 'Archive', status: 'Left on read', temp: 'Cold Lead', qual: 'Unqualified', notes: '', lastContact: _ago(90) },
-    { id: 13, h: 'lena.builds', url: 'https://instagram.com/lena.builds', level: 'Booked', status: 'Call Pitched', temp: 'Hot Lead', qual: 'Qualified 3', notes: 'call booked friday', lastContact: _ago(1) },
-    { id: 14, h: 'devon.scales', url: 'https://instagram.com/devon.scales', level: 'No Close', status: 'Call done', temp: 'Warm Lead', qual: 'Qualified 2', notes: '[no close 20/05] — price too high', lastContact: _ago(40) },
-    { id: 15, h: 'priya.dtc', url: 'https://instagram.com/priya.dtc', level: 'No Close', status: 'Call done', temp: 'Warm Lead', qual: 'Qualified 1', notes: '[no close 05/07] — bad timing, revisit Q4', lastContact: _ago(4) },
+    { id: 1, h: 'jung.labs', url: 'https://instagram.com/jung.labs', level: 'Engaged 3', status: 'Follow up Sent', qual: 'Qualified 3', notes: 'potential referral for his students', lastContact: _ago(20), dateAdded: _ago(90), email: 'jung@labs.io', phone: '', linkedin: '', pains: 'no time to run ads' },
+    { id: 2, h: 'charlay', url: 'https://instagram.com/charlay', level: 'Engaged 3', status: 'Follow up Sent', qual: 'Qualified 3', notes: 'audit accepted, need to book meeting', lastContact: _ago(63) },
+    { id: 3, h: 'akram_meza', url: 'https://instagram.com/akram_meza', level: 'Engaged 3', status: 'Follow up Sent', qual: 'Qualified 1', notes: 'showed interest from story', lastContact: _ago(63) },
+    { id: 4, h: 'oscarwxng', url: 'https://instagram.com/oscarwxng', level: 'Engaged 2', status: 'Story reply', qual: 'Qualified 2', notes: '', lastContact: _ago(4) },
+    { id: 5, h: 'kayla.growth', url: 'https://instagram.com/kayla.growth', level: 'Engaged 2', status: 'Meme sent', qual: '', notes: '', lastContact: _ago(6) },
+    { id: 6, h: 'sofia_scales', url: 'https://instagram.com/sofia_scales', level: 'Engaged 1', status: "Haven't read", qual: '', notes: '', lastContact: _ago(10) },
+    { id: 7, h: 'nina.creates', url: 'https://instagram.com/nina.creates', level: 'Engaged 1', status: 'Lifestyle sent', qual: '', notes: '', lastContact: _ago(8) },
+    { id: 8, h: 'mariusvmil', url: 'https://instagram.com/mariusvmil', level: 'Engaged 1', status: 'Left on read', qual: '', notes: '', lastContact: _ago(120) },
+    { id: 9, h: 'therealashwinn', url: 'https://instagram.com/therealashwinn', level: 'Engaged 1', status: 'End of convo', qual: '', notes: '', lastContact: _ago(140) },
+    { id: 10, h: 'thedtcguy', url: 'https://instagram.com/thedtcguy', level: 'No Reply', status: 'Follow up Sent', qual: '', notes: '', lastContact: _ago(43) },
+    { id: 11, h: 'ecom.aiden', url: 'https://instagram.com/ecom.aiden', level: 'Engaged 3', status: 'Mid convo', qual: 'Qualified 2', notes: 'wants pricing', lastContact: _ago(2) },
+    { id: 12, h: 'bram.vandijk', url: 'https://instagram.com/bram.vandijk', level: 'Archive', status: 'Left on read', qual: 'Unqualified', notes: '', lastContact: _ago(90) },
+    { id: 13, h: 'lena.builds', url: 'https://instagram.com/lena.builds', level: 'Booked', status: 'Call Pitched', qual: 'Qualified 3', notes: 'call booked friday', lastContact: _ago(1) },
+    { id: 14, h: 'devon.scales', url: 'https://instagram.com/devon.scales', level: 'No Close', status: 'Call done', qual: 'Qualified 2', notes: '[no close 20/05] — price too high', lastContact: _ago(40) },
+    { id: 15, h: 'priya.dtc', url: 'https://instagram.com/priya.dtc', level: 'No Close', status: 'Call done', qual: 'Qualified 1', notes: '[no close 05/07] — bad timing, revisit Q4', lastContact: _ago(4) },
     // outreach pool: imported from the IG following export, not yet leads.
     // lastContact '' = not messaged yet; stamped = already sent.
-    { id: 16, h: 'brandonleeco', url: 'https://instagram.com/brandonleeco', level: 'Outreach', status: '', temp: 'Cold Lead', qual: '', notes: '', lastContact: '', dateAdded: _ago(1) },
-    { id: 17, h: 'thesupplyhouse', url: 'https://instagram.com/thesupplyhouse', level: 'Outreach', status: '', temp: 'Cold Lead', qual: '', notes: '', lastContact: '', dateAdded: _ago(1) },
-    { id: 18, h: 'nordic.wear', url: 'https://instagram.com/nordic.wear', level: 'Outreach', status: '', temp: 'Cold Lead', qual: '', notes: '', lastContact: '', dateAdded: _ago(1) },
-    { id: 19, h: 'jaycollective', url: 'https://instagram.com/jaycollective', level: 'Outreach', status: '', temp: 'Cold Lead', qual: '', notes: '', lastContact: '', dateAdded: _ago(1) },
-    { id: 20, h: 'mirafitwear', url: 'https://instagram.com/mirafitwear', level: 'Outreach', status: '', temp: 'Cold Lead', qual: '', notes: '', lastContact: '', dateAdded: _ago(1) },
-    { id: 21, h: 'oatly.fanpage', url: 'https://instagram.com/oatly.fanpage', level: 'Outreach', status: 'Follow up Sent', temp: 'Cold Lead', qual: '', notes: '', lastContact: _ago(0), dateAdded: _ago(1) },
-    { id: 22, h: 'kettlebrandco', url: 'https://instagram.com/kettlebrandco', level: 'Outreach', status: 'Follow up Sent', temp: 'Cold Lead', qual: '', notes: '', lastContact: _ago(0), dateAdded: _ago(1) }
+    { id: 16, h: 'brandonleeco', url: 'https://instagram.com/brandonleeco', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1) },
+    { id: 17, h: 'thesupplyhouse', url: 'https://instagram.com/thesupplyhouse', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1) },
+    { id: 18, h: 'nordic.wear', url: 'https://instagram.com/nordic.wear', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1) },
+    { id: 19, h: 'jaycollective', url: 'https://instagram.com/jaycollective', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1) },
+    { id: 20, h: 'mirafitwear', url: 'https://instagram.com/mirafitwear', level: 'Outreach', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1) },
+    { id: 21, h: 'oatly.fanpage', url: 'https://instagram.com/oatly.fanpage', level: 'Outreach', status: 'Follow up Sent', qual: '', notes: '', lastContact: _ago(0), dateAdded: _ago(1) },
+    { id: 22, h: 'kettlebrandco', url: 'https://instagram.com/kettlebrandco', level: 'Outreach', status: 'Follow up Sent', qual: '', notes: '', lastContact: _ago(0), dateAdded: _ago(1) }
   ],
   deals: [
     { row: 101, id: 101, leadId: null, name: 'Oscar Wong', link: 'https://instagram.com/oscarwxng', status: 'Discovery Call', meeting: _ago(0), followup: '', qual: 'Qualified 2', cash: '', notes: 'supplement brand ~40k/mo', hasFF: true, fireflies_link: 'https://app.fireflies.ai/view/demo' },
@@ -87,7 +86,7 @@ function _demoApplyUndo(u) {
 }
 function _demoInterpret(text, mode) {
   const t = (text || '').toLowerCase();
-  const intent = { route: 'unknown', handle: '', stage: '', status: '', temp: '', target: '',
+  const intent = { route: 'unknown', handle: '', stage: '', status: '', target: '',
     deal_status: '', meeting: '', followup: '', cash: '', notes: '', confidence: 'high' };
   const name = (t.match(/\b(oscar\w*|awais|lena\w*|marcus|viktor\w*|greg\w*|marco|kayla\w*|nina\w*|sofia\w*|akram\w*|jung\w*|charlay|aiden)\b/) || [])[0] || '';
   const money = t.match(/(\d+(?:\.\d+)?)\s*(k|grand|thousand)/);
@@ -102,7 +101,6 @@ function _demoInterpret(text, mode) {
     intent.route = 'setter'; intent.handle = name;
     intent.stage = /engaged? (?:one|1)/.test(t) ? 'Engaged 1' : /engaged? (?:two|2)/.test(t) ? 'Engaged 2' : /engaged? (?:three|3)/.test(t) ? 'Engaged 3' : /book/.test(t) ? 'Booked' : /archiv/.test(t) ? 'Archive' : '';
     intent.status = /story repl/.test(t) ? 'Story reply' : /follow.?up/.test(t) ? 'Follow up Sent' : /left on read/.test(t) ? 'Left on read' : '';
-    intent.temp = /hot/.test(t) ? 'Hot Lead' : /warm/.test(t) ? 'Warm Lead' : /cold/.test(t) ? 'Cold Lead' : '';
     if (notes) intent.notes = notes.replace(/[.,]+$/, '');
     if (!intent.handle) intent.route = 'unknown';
   }
@@ -205,10 +203,10 @@ export async function loadLeads() {
   const hit = _ttlGet(BOOK_KEY);
   if (hit) return hit;
   const out = await pagedSelect('leads',
-    'id,handle,ig_url,level,last_status,temp,qualification,notes,last_contact,date_added,pain_points,email,phone,linkedin');
+    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,pain_points,email,phone,linkedin');
   const mapped = out.map((l) => ({
     id: l.id, h: l.handle, url: l.ig_url || '',
-    level: l.level || '', status: l.last_status || '', temp: l.temp || '',
+    level: l.level || '', status: l.last_status || '',
     qual: l.qualification || '', notes: l.notes || '',
     lastContact: isoToDmy(l.last_contact), dateAdded: isoToDmy(l.date_added),
     pains: l.pain_points || '', email: l.email || '', phone: l.phone || '', linkedin: l.linkedin || '',
@@ -247,7 +245,7 @@ export async function bootstrap() {
 
 /* ---------- data: writes (each returns an undo token) ---------- */
 
-const LEAD_FIELDS = { stage: 'level', status: 'last_status', temp: 'temp', note: 'notes' };
+const LEAD_FIELDS = { stage: 'level', status: 'last_status', note: 'notes' };
 
 async function logActivity(table, rowId, action, prev, next) {
   dropBookCache(); // any write may have touched a lead — never serve it stale
@@ -259,7 +257,7 @@ async function logActivity(table, rowId, action, prev, next) {
   return data.id;
 }
 
-/** Update (or create) a lead. args: {handle, stage?, status?, temp?, note?}
+/** Update (or create) a lead. args: {handle, stage?, status?, note?}
  *  Mirrors the old setterUpdate contract: stamps last_contact=today, appends
  *  the note, requires a stage to create a new lead. */
 export async function setterUpdate(args) {
@@ -268,18 +266,17 @@ export async function setterUpdate(args) {
   if (DEMO) {
     const hit = _demo.leads.find((l) => l.h === handle);
     if (hit) {
-      const prev = { level: hit.level, last_status: hit.status, temp: hit.temp, notes: hit.notes, last_contact: dmyToIso(hit.lastContact) };
+      const prev = { level: hit.level, last_status: hit.status, notes: hit.notes, last_contact: dmyToIso(hit.lastContact) };
       if (args.stage) hit.level = args.stage;
       if (args.status) hit.status = args.status;
-      if (args.temp) hit.temp = args.temp;
       if (args.note) hit.notes = hit.notes ? hit.notes + '\n' + args.note : args.note;
       hit.lastContact = todayDmy();
       let deal = null;
       if (args.stage === 'Booked') deal = await ensureDealForLead(hit, { meeting: args.meeting, time: args.meetingTime });
-      return { ok: true, mode: 'updated', row: hit.id, handle, prev, deal, undo: _demoUndoToken('leads', 'id', hit.id, { level: prev.level, status: prev.last_status, temp: prev.temp, notes: prev.notes, lastContact: isoToDmy(prev.last_contact) }) };
+      return { ok: true, mode: 'updated', row: hit.id, handle, prev, deal, undo: _demoUndoToken('leads', 'id', hit.id, { level: prev.level, status: prev.last_status, notes: prev.notes, lastContact: isoToDmy(prev.last_contact) }) };
     }
     if (!args.stage) throw new Error('stage required to create');
-    const nl = { id: Date.now(), h: handle, url: 'https://instagram.com/' + handle, level: args.stage, status: args.status || '', temp: args.temp || 'Warm Lead', qual: '', notes: args.note || '', lastContact: todayDmy() };
+    const nl = { id: Date.now(), h: handle, url: 'https://instagram.com/' + handle, level: args.stage, status: args.status || '', qual: '', notes: args.note || '', lastContact: todayDmy() };
     _demo.leads.push(nl);
     return { ok: true, mode: 'created', row: nl.id, handle };
   }
@@ -289,12 +286,11 @@ export async function setterUpdate(args) {
 
   const todayIso = dmyToIso(todayDmy());
   if (hit) {
-    const prev = { level: hit.level, last_status: hit.last_status, temp: hit.temp,
+    const prev = { level: hit.level, last_status: hit.last_status,
       notes: hit.notes, last_contact: hit.last_contact };
     const patch = { last_contact: todayIso };
     if (args.stage) patch.level = args.stage;
     if (args.status) patch.last_status = args.status;
-    if (args.temp) patch.temp = args.temp;
     if (args.note) patch.notes = hit.notes ? hit.notes + '\n' + args.note : args.note;
     const { error } = await supa.from('leads').update(patch).eq('id', hit.id);
     if (error) throw new Error(error.message);
@@ -310,7 +306,7 @@ export async function setterUpdate(args) {
   if (!args.stage) throw new Error('stage required to create');
   const rowNew = {
     handle, ig_url: 'https://www.instagram.com/' + handle + '/',
-    level: args.stage, last_status: args.status || null, temp: args.temp || 'Warm Lead',
+    level: args.stage, last_status: args.status || null,
     notes: args.note || null, last_contact: todayIso, date_added: todayIso,
   };
   const { data: created, error: cErr } = await supa.from('leads')
@@ -460,12 +456,11 @@ export async function ensureDealForLead(lead, when = {}) {
   // re-ping, since we only get here when a new deal is actually created.
   try {
     const { data: L } = await supa.from('leads')
-      .select('handle,ig_url,qualification,temp,phone,email,pain_points,last_status,notes')
+      .select('handle,ig_url,qualification,phone,email,pain_points,last_status,notes')
       .eq('id', lead.id).maybeSingle();
     await bookedAlert({
       name: '@' + ((L && L.handle) || h),
       qual: (L && L.qualification) || lead.qualification || '',
-      temp: (L && L.temp) || '',
       phone: (cal && cal.phone) || (L && L.phone) || '',
       email: (cal && cal.email) || (L && L.email) || '',
       pains: (L && L.pain_points) || '',
@@ -756,7 +751,7 @@ export async function importFollowing(input) {
     fresh.forEach((h) => {
       const id = Date.now() + Math.floor(Math.random() * 1e6);
       _demo.leads.push({ id, h, url: 'https://instagram.com/' + h, level: 'Outreach',
-        status: '', temp: 'Cold Lead', qual: '', notes: '', lastContact: '', dateAdded: todayDmy() });
+        status: '', qual: '', notes: '', lastContact: '', dateAdded: todayDmy() });
       ids.push(id);
     });
     return { total: handles.length, added: fresh.length, skippedExisting: handles.length - fresh.length, ids };
@@ -774,7 +769,7 @@ export async function importFollowing(input) {
   for (let i = 0; i < fresh.length; i += 500) {
     const chunk = fresh.slice(i, i + 500).map((h) => ({
       handle: h, ig_url: 'https://www.instagram.com/' + h + '/',
-      level: 'Outreach', temp: 'Cold Lead', last_contact: null, date_added: todayIso,
+      level: 'Outreach', last_contact: null, date_added: todayIso,
     }));
     const { data, error } = await supa.from('leads').insert(chunk).select('id');
     if (error) throw new Error(error.message);
@@ -932,7 +927,7 @@ export async function undoOutreachSent(undo) {
 
 /** Direct-set a lead's fields (leads-browser editor). Only present keys write. */
 export async function setLead(id, fields) {
-  const MAP = { level: 'level', status: 'last_status', temp: 'temp', qual: 'qualification',
+  const MAP = { level: 'level', status: 'last_status', qual: 'qualification',
     notes: 'notes', pains: 'pain_points', email: 'email', phone: 'phone', linkedin: 'linkedin' };
   if (DEMO) {
     const l = _demo.leads.find((x) => x.id === id);
@@ -1063,8 +1058,8 @@ export async function visionScan(imageB64, mediaType) {
   if (DEMO) {
     await new Promise((r) => setTimeout(r, 700));
     return { ok: true, leads: [
-      { handle: 'growthwithdan', name: 'Dan', stage: 'Engaged 3', status: 'Call Pitched', temp: 'Hot Lead', notes: 'runs a supplement brand ~40k/mo, asked about the audit', confidence: 'high' },
-      { handle: 'sara.ecom', name: 'Sara', stage: 'Engaged 2', status: 'Left on read', temp: 'Warm Lead', notes: 'talked about her email flows, sent audit offer', confidence: 'medium' },
+      { handle: 'growthwithdan', name: 'Dan', stage: 'Engaged 3', status: 'Call Pitched', notes: 'runs a supplement brand ~40k/mo, asked about the audit', confidence: 'high' },
+      { handle: 'sara.ecom', name: 'Sara', stage: 'Engaged 2', status: 'Left on read', notes: 'talked about her email flows, sent audit offer', confidence: 'medium' },
     ] };
   }
   const { data, error } = await supa.functions.invoke('vision', { body: { image: imageB64, media_type: mediaType } });
@@ -1084,7 +1079,7 @@ export async function logAiFeedback(source, context, suggested, final) {
 }
 
 /** Ping the team channel that a lead just booked. Takes a payload object so the
- *  message can carry everything the closer needs to prep (qualification, temp,
+ *  message can carry everything the closer needs to prep (qualification,
  *  phone/email, pain points, last DM status, notes, link). Fire-and-forget. */
 export async function bookedAlert(payload) {
   if (DEMO) return;
@@ -1966,14 +1961,13 @@ export function installScanner(opts = {}) {
     $i('sc2-add').disabled = false;
     $i('sc2-body').innerHTML = leads.map((l, i) => {
       const handle = (l.handle || l.name || '').trim().toLowerCase().replace(/^@/, '');
-      l._suggested = { handle, stage: l.stage || 'Engaged 1', status: l.status || '', temp: l.temp || '', notes: l.notes || '' };
+      l._suggested = { handle, stage: l.stage || 'Engaged 1', status: l.status || '', notes: l.notes || '' };
       const exists = opts.exists ? opts.exists(handle) : null;
       return '<div class="sc2-card" data-i="' + i + '">' +
         '<div class="t"><input class="hh" data-f="handle" value="' + escH(handle) + '" placeholder="handle">' +
           '<button class="x" data-rm>✕</button></div>' +
         '<div class="g">' +
           '<select data-f="stage">' + optHtml(['Engaged 1','Engaged 2','Engaged 3','Booked','No Reply'], l.stage || 'Engaged 1') + '</select>' +
-          '<select data-f="temp">' + optHtml(['Hot Lead','Warm Lead','Cold Lead'], l.temp, 'Temp —') + '</select>' +
           '<select data-f="status">' + optHtml(statuses, l.status, 'Status —') + '</select>' +
         '</div>' +
         '<input class="nn" data-f="notes" value="' + escH(l.notes || '') + '" placeholder="note">' +
@@ -2015,10 +2009,10 @@ export function installScanner(opts = {}) {
       const handle = g('handle').toLowerCase().replace(/^@/, '');
       if (!handle) continue;
       try {
-        await setterUpdate({ handle, stage: g('stage'), status: g('status'), temp: g('temp'), note: g('notes') });
+        await setterUpdate({ handle, stage: g('stage'), status: g('status'), note: g('notes') });
         const orig = items[+card.getAttribute('data-i')];
         if (orig && orig._suggested) logAiFeedback('vision', handle, orig._suggested,
-          { handle, stage: g('stage'), status: g('status'), temp: g('temp'), notes: g('notes') });
+          { handle, stage: g('stage'), status: g('status'), notes: g('notes') });
         n++;
       } catch (e) { /* count only successes */ }
     }

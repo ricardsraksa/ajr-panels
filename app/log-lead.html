@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260721z">
+<link rel="modulepreload" href="./crm-core.js?v=20260722a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -281,12 +281,6 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
       </div>
 
       <div class="sect">
-        <span class="v2-lab">Temp</span>
-        <div class="chips-r" id="tempChips"></div>
-        <select id="tempSel" hidden><option value="">Temp — no change</option></select>
-      </div>
-
-      <div class="sect">
         <input class="v2-in" id="noteInput" type="text" placeholder="Quick note…" autocomplete="off">
       </div>
 
@@ -324,7 +318,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721z';
+import * as core from './crm-core.js?v=20260722a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'log-lead' });
@@ -344,7 +338,7 @@ var state = {
   leads: [],                 // raw bootstrap rows
   byHandle: new Map(),       // handle -> bottom-most lead row (mirrors server duplicate rule)
   unique: [],                // deduped leads in sheet order
-  statuses: [], temps: [],
+  statuses: [],
   serverDate: '',
   armed: null,               // {mode:'existing',lead} | {mode:'new',handle} | {mode:'hint'}
   selectedStatus: '',
@@ -388,7 +382,7 @@ function api(action, payload) {
     return core.bootstrap().then(function (d) {
       setDot('ok');
       return { ok: true, serverDate: d.serverDate, leads: d.leads,
-        stages: core.STAGES.slice(), statuses: core.STATUSES.slice(), temps: core.TEMPS.slice() };
+        stages: core.STAGES.slice(), statuses: core.STATUSES.slice() };
     }).catch(function (e) { setDot('err'); throw e; });
   }
   if (action === 'setterUpdate') {
@@ -413,12 +407,10 @@ function runBootstrap(firstLoad) {
     state.serverDate = data.serverDate || '';
     state.leads = data.leads || [];
     state.statuses = data.statuses || [];
-    state.temps = data.temps || [];
     buildIndex();
     $('metaDate').textContent = state.serverDate || '—';
     $('metaCount').textContent = String(state.leads.length);
     renderStatusChips();
-    renderTempSelect();
     updateLogBtn();
     $('skeleton').hidden = true; $('loadError').hidden = true; $('app').hidden = false;
     if (state.deepLead) { $('searchInput').value = state.deepLead; state.deepLead = ''; }
@@ -449,7 +441,7 @@ function buildIndex() {
   });
 }
 
-/* ---------- status chips + temp ---------- */
+/* ---------- status chips ---------- */
 function renderStatusChips() {
   var box = $('statusChips');
   box.innerHTML = '';
@@ -473,37 +465,6 @@ function selectStatus(s) {
     chips[i].setAttribute('aria-pressed', on ? 'true' : 'false');
     chips[i].classList.toggle('on', on);
   }
-}
-function renderTempSelect() {
-  var sel = $('tempSel');
-  while (sel.options.length > 1) sel.remove(1);
-  state.temps.forEach(function (t) {
-    var o = document.createElement('option');
-    o.value = t; o.textContent = t;
-    sel.appendChild(o);
-  });
-  // chips are the UI; the select stays as the value store the rest of the page reads
-  var box = $('tempChips');
-  box.innerHTML = '';
-  state.temps.forEach(function (t) {
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = t.replace(' Lead', '');
-    if (/hot/i.test(t)) b.className = 'hot';
-    b.addEventListener('click', function () {
-      sel.value = (sel.value === t) ? '' : t;
-      syncTempChips();
-      if ($('logBtnLabel')) updateLogBtn();
-    });
-    box.appendChild(b);
-  });
-  syncTempChips();
-}
-function syncTempChips() {
-  var v = $('tempSel').value;
-  Array.prototype.forEach.call($('tempChips').children, function (b, i) {
-    b.classList.toggle('on', state.temps[i] === v);
-  });
 }
 
 /* ---------- search / autocomplete / arming ---------- */
@@ -575,7 +536,6 @@ function renderAc(results) {
     return '<div class="ac-item" id="ac-opt-' + i + '" role="option" aria-selected="false" data-i="' + i + '">' +
       '<span class="h">@' + esc(l.h) + '</span>' +
       '<span style="color:#6d675b;font-size:12px">' + esc(l.level || '—') + '</span>' +
-      (l.temp === 'Hot Lead' ? '<span class="v2-hot" style="font-size:11.5px">Hot</span>' : '') +
       '<span class="m">' + esc(l.status || '') + (l.lastContact ? ' · ' + esc(l.lastContact) : '') + '</span>' +
       '</div>';
   }).join('');
@@ -640,9 +600,9 @@ function aiInterpret(text) {
         return;
       }
       var st = cmd.setter;
-      if (!st.stage && !st.status && !st.temp && !st.notes) {
+      if (!st.stage && !st.status && !st.notes) {
         renderChip();
-        toast({ html: aiBadge() + 'Heard the lead but no change — say a stage, status or temp.', ttl: 5000 });
+        toast({ html: aiBadge() + 'Heard the lead but no change — say a stage, status or note.', ttl: 5000 });
         return;
       }
       var isNew = !state.byHandle.get(st.handle);
@@ -654,7 +614,6 @@ function aiInterpret(text) {
       $('searchInput').value = st.handle;
       applyQuery(st.handle);
       if (st.status) selectStatus(canonIn(state.statuses, st.status) || '');
-      if (st.temp) { $('tempSel').value = st.temp; syncTempChips(); }
       if (st.notes) $('noteInput').value = st.notes;
       state.pending = { handle: st.handle, stage: st.stage, status: st.status, isNew: isNew, ai: true,
         note: st.notes, why: st.stage === 'Booked' ? ' · pings Reinis on WhatsApp' : '' };
@@ -708,7 +667,6 @@ function showConfirmBar() {
     (p.isNew ? '<span class="tag-new" style="color:#0b1f10;background:#8ee59a;padding:1px 8px;border-radius:999px;font-size:.72rem;font-weight:700">NEW</span> ' : '') +
     '<span class="mono">@' + esc(p.handle) + '</span> → <span class="mono">' + esc(p.stage) + '</span>' +
     (effStatus ? ' · ' + esc(effStatus) : '') +
-    ($('tempSel').value ? ' · ' + esc($('tempSel').value) : '') +
     (p.note ? ' · <span class="opt">“' + esc(p.note.length > 40 ? p.note.slice(0, 40) + '…' : p.note) + '”</span>' : '') +
     (p.why ? '<span class="opt">' + esc(p.why) + '</span>' : '');
   $('confirmBar').hidden = false;
@@ -739,12 +697,10 @@ function doWrite(args) {
   var payload = { handle: args.handle };
   if (args.stage) payload.stage = args.stage;
   if (args.status) payload.status = args.status;
-  if (args.temp) payload.temp = args.temp;
   if (args.note) payload.note = args.note;
   api('setterUpdate', payload).then(function (res) {
     var extras = [];
     if (args.status) extras.push(args.status);
-    if (args.temp) extras.push(args.temp);
     if (args.note) extras.push('note saved');
     var html = (res.mode === 'created' ? 'Created ' : '') +
       '<span class="mono">@' + esc(res.handle) + '</span>' +
@@ -771,7 +727,7 @@ function undoWrite(res) {
       var l = state.byHandle.get(res.handle);
       if (l) {
         l.level = res.prev.level; l.status = res.prev.last_status;
-        l.temp = res.prev.temp; l.lastContact = core.isoToDmy(res.prev.last_contact);
+        l.lastContact = core.isoToDmy(res.prev.last_contact);
       }
       toast({ type: 'ok', html: 'Undone — <span class="mono">@' + esc(res.handle) + '</span> restored to ' + esc(res.prev.level || 'no level') + '.' });
     })
@@ -786,14 +742,13 @@ function applyWriteLocally(res, args) {
     if (!l) return;
     if (args.stage) l.level = args.stage;
     if (args.status) l.status = args.status;
-    if (args.temp) l.temp = args.temp;
     l.lastContact = state.serverDate;
     return;
   }
   {
     var nl = {
       h: res.handle, url: 'https://www.instagram.com/' + res.handle + '/',
-      level: args.stage || '', status: args.status || '', temp: args.temp || 'Warm Lead',
+      level: args.stage || '', status: args.status || '',
       qual: '', notes: args.note || '', lastContact: state.serverDate
     };
     state.leads.push(nl);
@@ -807,7 +762,7 @@ function resetAction() {
   $('searchInput').value = '';
   state.armed = null;
   renderChip(); closeAc(); hideConfirmBar();
-  // status chip + temp stay STICKY for batch logging; note is per-lead
+  // the status chip stays STICKY for batch logging; the note is per-lead
   $('noteInput').value = '';
   updateLogBtn();
   $('searchInput').focus();
@@ -818,12 +773,12 @@ var recent = [];
 function addRecent(res, args) {
   recent.unshift({
     row: res.row, handle: res.handle, mode: res.mode, stage: args.stage,
-    status: args.status || '', temp: args.temp || '',
+    status: args.status || '',
     time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
   });
   var list = $('recentList');
   list.innerHTML = recent.map(function (r) {
-    var extras = [r.status, r.temp].filter(Boolean).join(', ');
+    var extras = [r.status].filter(Boolean).join(', ');
     return '<li class="recent-item">' +
       '<span class="recent-row-num">row ' + esc(r.row) + '</span>' +
       '<span class="recent-handle">@' + esc(r.handle) + '</span>' +
@@ -917,7 +872,6 @@ function stageAction(stage) {
     handle: a.mode === 'existing' ? a.lead.h : a.handle,
     stage: stage,
     status: state.selectedStatus,
-    temp: $('tempSel').value,
     note: $('noteInput').value.trim()
   };
   if (needsConfirm) {
@@ -938,7 +892,6 @@ function logAction() {
   doWrite({
     handle: a.lead.h,
     status: state.selectedStatus || 'Follow up Sent',
-    temp: $('tempSel').value,
     note: $('noteInput').value.trim()
   });
 }
@@ -999,7 +952,7 @@ function bindEvents() {
     if (!p) return;
     if (!p.stage && p.isNew) { toast({ type: 'err', html: 'New lead needs a stage first.' }); return; }
     hideConfirmBar();
-    doWrite({ handle: p.handle, stage: p.stage, status: p.status || state.selectedStatus, temp: $('tempSel').value, note: p.note || $('noteInput').value.trim() });
+    doWrite({ handle: p.handle, stage: p.stage, status: p.status || state.selectedStatus, note: p.note || $('noteInput').value.trim() });
   });
   $('cancelBtn').addEventListener('click', function () {
     hideConfirmBar();
@@ -1097,14 +1050,13 @@ function renderScan(leads) {
   $('scanAdd').disabled = false;
   $('scanBody').innerHTML = leads.map(function (l, i) {
     var handle = CRMParse.normalizeHandle(l.handle) || (l.name || '').trim();
-    l._suggested = { handle: handle, stage: l.stage || 'Engaged 1', status: canonIn(state.statuses, l.status) || l.status || '', temp: l.temp || '', notes: l.notes || '' };
+    l._suggested = { handle: handle, stage: l.stage || 'Engaged 1', status: canonIn(state.statuses, l.status) || l.status || '', notes: l.notes || '' };
     var exists = state.byHandle.get(CRMParse.normalizeHandle(handle));
     return '<div class="sc-card" data-i="' + i + '">' +
       '<div class="lc-top"><input class="lc-h" data-f="handle" value="' + esc(handle) + '" placeholder="handle">' +
         '<button class="lc-x" data-rm="' + i + '" aria-label="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18 18 6M6 6l12 12"/></svg></button></div>' +
       '<div class="lc-grid">' +
         '<select data-f="stage">' + opts(['Engaged 1','Engaged 2','Engaged 3','Booked','No Reply'], l.stage || 'Engaged 1') + '</select>' +
-        '<select data-f="temp">' + opts(['Hot Lead','Warm Lead','Cold Lead'], l.temp, 'Temp —') + '</select>' +
         '<select data-f="status">' + opts(state.statuses, canonIn(state.statuses, l.status) || l.status, 'Status —') + '</select>' +
         '</div>' +
       '<input class="lc-note" data-f="notes" value="' + esc(l.notes || '') + '" placeholder="note">' +
@@ -1130,14 +1082,14 @@ async function addScanned() {
     var handle = CRMParse.normalizeHandle(g('handle'));
     if (!handle) { failed++; continue; }
     try {
-      var res = await api('setterUpdate', { handle: handle, stage: g('stage'), status: g('status'), temp: g('temp'), note: g('notes') });
+      var res = await api('setterUpdate', { handle: handle, stage: g('stage'), status: g('status'), note: g('notes') });
       if (res.mode === 'created') added++; else updated++;
       var orig = scanLeads[+card.getAttribute('data-i')];
       if (orig && orig._suggested) {
         core.logAiFeedback('vision', handle, orig._suggested,
-          { handle: handle, stage: g('stage'), status: g('status'), temp: g('temp'), notes: g('notes') });
+          { handle: handle, stage: g('stage'), status: g('status'), notes: g('notes') });
       }
-      applyWriteLocally(res, { handle: handle, stage: g('stage'), status: g('status'), temp: g('temp'), note: g('notes') });
+      applyWriteLocally(res, { handle: handle, stage: g('stage'), status: g('status'), note: g('notes') });
       pushRecentFromScan(res, handle, g('stage'));
     } catch (e) { failed++; }
   }

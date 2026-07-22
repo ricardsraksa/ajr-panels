@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260721z">
+<link rel="modulepreload" href="./crm-core.js?v=20260722a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -341,7 +341,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721z';
+import * as core from './crm-core.js?v=20260722a';
 const _session = await core.requireAuth();
 if (_session) {
 await core.installChrome({ active: 'close-call' });
@@ -792,7 +792,7 @@ function onCloserOk(res, w) {
 function undoSetter(res) {
   api('restore', { tab: 'instagram', row: res.row, values: res.prev, reqId: newReqId() }).then(function () {
     var l = state.byHandle.get(res.handle);
-    if (l) { l.level = res.prev.level; l.status = res.prev.status; l.temp = res.prev.temp; l.lastContact = res.prev.lastContact; }
+    if (l) { l.level = res.prev.level; l.status = res.prev.status; l.lastContact = res.prev.lastContact; }
   }).catch(function (err) { toast({ type: 'err', html: 'Undo failed: ' + esc(err.message), sticky: true }); });
 }
 function undoCloser(res, deal) {
