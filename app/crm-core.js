@@ -203,13 +203,14 @@ export async function loadLeads() {
   const hit = _ttlGet(BOOK_KEY);
   if (hit) return hit;
   const out = await pagedSelect('leads',
-    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,pain_points,email,phone,linkedin');
+    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,ig_status,ig_last_post,pain_points,email,phone,linkedin');
   const mapped = out.map((l) => ({
     id: l.id, h: l.handle, url: l.ig_url || '',
     level: l.level || '', status: l.last_status || '',
     qual: l.qualification || '', notes: l.notes || '',
     lastContact: isoToDmy(l.last_contact), dateAdded: isoToDmy(l.date_added),
     followed: isoToDmy(l.followed_at),
+    igStatus: l.ig_status || '', igLastPost: isoToDmy(l.ig_last_post),
     pains: l.pain_points || '', email: l.email || '', phone: l.phone || '', linkedin: l.linkedin || '',
   }));
   _ttlSet(BOOK_KEY, mapped);

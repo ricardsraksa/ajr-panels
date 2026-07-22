@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260722h">
+<link rel="modulepreload" href="./crm-core.js?v=20260722i">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -70,6 +70,9 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .stagetag{flex:none;font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;
   color:#4d4a42;background:#f0ede6;border-radius:5px;padding:2px 6px}
 .sentdate{flex:none;font:400 11px 'IBM Plex Mono',monospace;color:#98917f}
+.igflag{flex:none;font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.05em;text-transform:uppercase;
+  color:#98917f;border:1px solid #e6e2da;border-radius:5px;padding:1px 6px}
+.igflag.warn{color:#a8762a;border-color:#eadfc8}
 .uptobtn{flex:none;min-height:28px;padding:0 9px;border-radius:7px;border:1px solid #e6e2da;background:#fff;
   color:#8a8375;font:600 11px 'Instrument Sans',system-ui,sans-serif;cursor:pointer}
 .uptobtn:hover{color:#211f1b;border-color:#ccc5b6}
@@ -301,7 +304,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260722h';
+import * as core from './crm-core.js?v=20260722i';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -383,6 +386,19 @@ const onPhone = matchMedia('(max-width: 760px)').matches || /iPhone|Android/i.te
 function profileHref(l) {
   return onPhone ? 'https://www.instagram.com/_u/' + encodeURIComponent(l.h) + '/'
                  : (l.url || 'https://instagram.com/' + l.h);
+}
+
+/** One glanceable word from the activity check: 'private', or 'quiet since
+ *  <yyyy>' when the last visible post is over a year old. Silent otherwise —
+ *  and silent for the unchecked, absence of data isn't a verdict. */
+function igFlag(l) {
+  if (l.igStatus === 'private') return '<span class="igflag">private</span>';
+  if (l.igStatus === 'ok' && l.igLastPost) {
+    const iso = core.dmyToIso(l.igLastPost);
+    const yearAgo = new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10);
+    if (iso < yearAgo) return '<span class="igflag warn">quiet since ' + iso.slice(0, 4) + '</span>';
+  }
+  return '';
 }
 
 function batchList() {
@@ -484,6 +500,7 @@ function renderPool() {
               : '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>') +
         '<a href="' + esc(profileHref(l)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
         (tracked ? '<span class="stagetag">' + esc(l.level) + '</span>' : '') +
+        igFlag(l) +
         '<span class="poolage">' + esc(l.followed || '—') + '</span>' +
         (done ? '<span class="sentdate">sent ' + esc(l.lastContact) + '</span>'
               : '<button class="sentbtn" data-sent="' + l.id + '" title="Mark just this one sent">Sent</button>') +
