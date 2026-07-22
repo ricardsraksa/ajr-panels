@@ -203,7 +203,7 @@ export async function loadLeads() {
   const hit = _ttlGet(BOOK_KEY);
   if (hit) return hit;
   const out = await pagedSelect('leads',
-    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,ig_status,ig_last_post,ig_name,pain_points,email,phone,linkedin');
+    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,ig_status,ig_last_post,ig_name,outreach_hidden,pain_points,email,phone,linkedin');
   const mapped = out.map((l) => ({
     id: l.id, h: l.handle, url: l.ig_url || '',
     level: l.level || '', status: l.last_status || '',
@@ -211,6 +211,7 @@ export async function loadLeads() {
     lastContact: isoToDmy(l.last_contact), dateAdded: isoToDmy(l.date_added),
     followed: isoToDmy(l.followed_at),
     igStatus: l.ig_status || '', igLastPost: isoToDmy(l.ig_last_post), igName: l.ig_name || '',
+    hidden: !!l.outreach_hidden,
     pains: l.pain_points || '', email: l.email || '', phone: l.phone || '', linkedin: l.linkedin || '',
   }));
   _ttlSet(BOOK_KEY, mapped);
@@ -538,19 +539,21 @@ export async function noContact(ids) {
     const prev = [];
     _demo.leads.forEach((l) => {
       if (list.indexOf(l.id) >= 0) {
-        prev.push({ id: l.id, level: l.level, notes: l.notes });
+        prev.push({ id: l.id, level: l.level, notes: l.notes, hidden: l.hidden });
         l.level = 'Archive';
+        l.hidden = true;
         l.notes = (l.notes ? l.notes + '\n' : '') + '[no contact] not a lead';
       }
     });
     return { ok: true, marked: prev.length, undo: { _demoNoContact: prev } };
   }
   const { data: before, error: qErr } = await supa.from('leads')
-    .select('id,level,notes').in('id', list);
+    .select('id,level,notes,outreach_hidden').in('id', list);
   if (qErr) throw new Error(qErr.message);
   for (const b of before || []) {
     const { error } = await supa.from('leads')
-      .update({ level: 'Archive', notes: (b.notes ? b.notes + '\n' : '') + '[no contact] not a lead' })
+      .update({ level: 'Archive', outreach_hidden: true,
+        notes: (b.notes ? b.notes + '\n' : '') + '[no contact] not a lead' })
       .eq('id', b.id);
     if (error) throw new Error(error.message);
   }
@@ -562,13 +565,13 @@ export async function undoNoContact(undo) {
   if (undo && undo._demoNoContact) {
     undo._demoNoContact.forEach((p) => {
       const l = _demo.leads.find((x) => x.id === p.id);
-      if (l) { l.level = p.level; l.notes = p.notes; }
+      if (l) { l.level = p.level; l.notes = p.notes; l.hidden = !!p.hidden; }
     });
     return { ok: true };
   }
   const prev = (undo && undo.noContactPrev) || [];
   for (const p of prev) {
-    await supa.from('leads').update({ level: p.level, notes: p.notes }).eq('id', p.id);
+    await supa.from('leads').update({ level: p.level, notes: p.notes, outreach_hidden: !!p.outreach_hidden }).eq('id', p.id);
   }
   dropBookCache();
   return { ok: true, restored: prev.length };

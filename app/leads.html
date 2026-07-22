@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260722m">
+<link rel="modulepreload" href="./crm-core.js?v=20260722n">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -298,7 +298,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260722m';
+import * as core from './crm-core.js?v=20260722n';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -383,12 +383,11 @@ function profileHref(l) {
 
 function batchList() {
   if (state.src !== 'pool') return state.stale || [];
-  // Instagram's following list in follow-date order — tracked CRM leads
-  // included, but rendered exactly like everyone else (bare handle; their
-  // details live in the Worklist/book, not here). Their last_contact makes
-  // them read as 'sent' (dimmed), which is the correct signal: no re-DM.
-  // Only Archive stays out — those are deliberate removals.
-  const pool = state.leads.filter((l) => l.followed && l.level !== 'Archive');
+  // Instagram's following list in follow-date order — every account still
+  // followed on IG, whatever its CRM stage, because his phone shows them all.
+  // Only rows HE removed with ✕ (or dead accounts) drop out: archiving a lead
+  // in the CRM doesn't unfollow them, so it must not hide them here.
+  const pool = state.leads.filter((l) => l.followed && !l.hidden);
   const key = (l) => l.followed ? core.dmyToIso(l.followed) : '';
   return pool.sort((a, b) => {
     const ka = key(a), kb = key(b);
@@ -410,7 +409,7 @@ function renderPool() {
   const tabs = '<div class="poolbar">' +
     '<div class="tf" id="srcTabs" role="group" aria-label="Batch source">' +
       '<button data-src="due" aria-pressed="' + (state.src === 'due') + '">Due a follow-up ' + due.toLocaleString() + '</button>' +
-      '<button data-src="pool" aria-pressed="' + (state.src === 'pool') + '">IG following ' + (state.src === 'pool' ? todo.length : state.leads.filter((l) => l.followed && l.level !== 'Archive').length).toLocaleString() + '</button>' +
+      '<button data-src="pool" aria-pressed="' + (state.src === 'pool') + '">IG following ' + (state.src === 'pool' ? todo.length : state.leads.filter((l) => l.followed && !l.hidden).length).toLocaleString() + '</button>' +
     '</div>' +
     '<span class="sp"></span>' +
     (state.src === 'pool' ? '<button class="v2-btn sm" id="poolImport">Import IG following…</button>' : '') +
