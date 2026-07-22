@@ -528,6 +528,54 @@ export async function looseBookings() {
   return data;
 }
 
+/** Not a lead, never will be — friends, family, brands you actually follow.
+ *  Marked, not deleted, on purpose: the import guard skips handles that exist
+ *  as leads, so a deleted friend would come straight back on the next
+ *  following re-import. Archive keeps them out of the pool, the worklist and
+ *  the funnel forever. Snapshot-based undo restores them exactly. */
+export async function noContact(ids) {
+  const list = Array.isArray(ids) ? ids : [ids];
+  if (!list.length) return { ok: true, marked: 0 };
+  if (DEMO) {
+    const prev = [];
+    _demo.leads.forEach((l) => {
+      if (list.indexOf(l.id) >= 0) {
+        prev.push({ id: l.id, level: l.level, notes: l.notes });
+        l.level = 'Archive';
+        l.notes = (l.notes ? l.notes + '\n' : '') + '[no contact] not a lead';
+      }
+    });
+    return { ok: true, marked: prev.length, undo: { _demoNoContact: prev } };
+  }
+  const { data: before, error: qErr } = await supa.from('leads')
+    .select('id,level,notes').in('id', list);
+  if (qErr) throw new Error(qErr.message);
+  for (const b of before || []) {
+    const { error } = await supa.from('leads')
+      .update({ level: 'Archive', notes: (b.notes ? b.notes + '\n' : '') + '[no contact] not a lead' })
+      .eq('id', b.id);
+    if (error) throw new Error(error.message);
+  }
+  // one summary row; 'no-contact' is invisible to the metrics on purpose
+  await logActivity('leads', list[0], 'no-contact', null, { marked: (before || []).length });
+  return { ok: true, marked: (before || []).length, undo: { noContactPrev: before } };
+}
+export async function undoNoContact(undo) {
+  if (undo && undo._demoNoContact) {
+    undo._demoNoContact.forEach((p) => {
+      const l = _demo.leads.find((x) => x.id === p.id);
+      if (l) { l.level = p.level; l.notes = p.notes; }
+    });
+    return { ok: true };
+  }
+  const prev = (undo && undo.noContactPrev) || [];
+  for (const p of prev) {
+    await supa.from('leads').update({ level: p.level, notes: p.notes }).eq('id', p.id);
+  }
+  dropBookCache();
+  return { ok: true, restored: prev.length };
+}
+
 /** Dismiss an unlinked booking that isn't a sales call (personal meeting,
  *  other-agency call on the same Calendly). Stamped, not deleted — the row
  *  and its Q&A survive, it just leaves the strip. Undoable. */

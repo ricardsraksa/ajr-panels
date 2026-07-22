@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260721y">
+<link rel="modulepreload" href="./crm-core.js?v=20260721z">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -256,13 +256,15 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
   <div class="dfoot">
     <button class="v2-btn dark" id="d-save">Save</button>
     <button class="v2-btn" id="d-cancel">Close</button>
+    <span class="sp" style="flex:1"></span>
+    <button class="v2-btn" id="d-nocontact" title="Friend, family, anyone who should never be contacted">Not a lead</button>
   </div>
 </aside>
 
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721y';
+import * as core from './crm-core.js?v=20260721z';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -383,6 +385,7 @@ function renderPool() {
         '<button data-kind="followup" aria-pressed="' + (state.kind === 'followup') + '">Follow-up</button>' +
         '<button data-kind="cold" aria-pressed="' + (state.kind === 'cold') + '">Cold DM</button>' +
       '</div>' +
+      '<button class="v2-btn sm" id="poolSkip"' + (sel.size ? '' : ' disabled') + ' title="Friends, family, anyone who should never be contacted">Not a lead</button>' +
       '<button class="v2-btn go sm" id="poolMark"' + (sel.size ? '' : ' disabled') + '>Mark batch sent today</button>' +
     '</div>' +
     '<div class="poolgrid">' + todo.slice(0, 300).map((l) =>
@@ -559,6 +562,20 @@ $('d-cancel').onclick = () => {
   } else closeDrawer();
 };
 $('d-save').onclick = saveDrawer;
+$('d-nocontact').onclick = async () => {
+  const l = state.editing; if (!l) return;
+  const btn = $('d-nocontact'); btn.disabled = true;
+  try {
+    const res = await core.noContact(l.id);
+    l.level = 'Archive';
+    closeDrawer(); renderSumbar(); renderTable();
+    toast({ type: 'ok', ttl: 10000,
+      html: '<span class="mono">@' + esc(l.h) + '</span> marked not a lead — archived, never contacted.',
+      action: { label: 'Undo', fn: async () => { await core.undoNoContact(res.undo); load(); } } });
+  } catch (err) {
+    toast({ type: 'err', html: 'Failed: ' + esc(err.message), sticky: true });
+  } finally { btn.disabled = false; }
+};
 $('q-fu').onclick = quickFu;
 core.pageListen(document, 'keydown', (e) => { if (e.key === 'Escape' && state.editing) closeDrawer(); });
 
@@ -595,6 +612,25 @@ $('table').addEventListener('click', async (e) => {
     const txt = pick.map((l) => '@' + l.h).join('\n');
     try { await navigator.clipboard.writeText(txt); toast({ type: 'ok', html: 'Copied ' + pick.length + ' handles.' }); }
     catch (err) { toast({ type: 'err', html: 'Copy failed: ' + esc(err.message) }); }
+    return;
+  }
+  const skip = e.target.closest('#poolSkip');
+  if (skip && !skip.disabled) {
+    const ids = Array.from(state.sel);
+    skip.disabled = true;
+    try {
+      const res = await core.noContact(ids);
+      state.leads.forEach((l) => { if (state.sel.has(l.id)) l.level = 'Archive'; });
+      if (state.stale) state.stale = state.stale.filter((l) => !state.sel.has(l.id));
+      state.sel = new Set();
+      renderSumbar(); renderPool();
+      toast({ type: 'ok', ttl: 10000,
+        html: 'Marked <b>' + res.marked + '</b> as not a lead — archived, never contacted.',
+        action: { label: 'Undo', fn: async () => { await core.undoNoContact(res.undo); load(); } } });
+    } catch (err) {
+      skip.disabled = false;
+      toast({ type: 'err', html: 'Failed: ' + esc(err.message), sticky: true });
+    }
     return;
   }
   const mark = e.target.closest('#poolMark');
