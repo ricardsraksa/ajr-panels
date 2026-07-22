@@ -52,7 +52,7 @@ const _demo = {
     { id: 9, h: 'therealashwinn', url: 'https://instagram.com/therealashwinn', level: 'Engaged 1', status: 'End of convo', qual: '', notes: '', lastContact: _ago(140) },
     { id: 10, h: 'thedtcguy', url: 'https://instagram.com/thedtcguy', level: 'No Reply', status: 'Follow up Sent', qual: '', notes: '', lastContact: _ago(43), followed: _ago(3000) },
     { id: 11, h: 'ecom.aiden', url: 'https://instagram.com/ecom.aiden', level: 'Engaged 3', status: 'Mid convo', qual: 'Qualified 2', notes: 'wants pricing', lastContact: _ago(2) },
-    { id: 12, h: 'bram.vandijk', url: 'https://instagram.com/bram.vandijk', level: 'Archive', status: 'Left on read', qual: 'Unqualified', notes: '', lastContact: _ago(90) },
+    { id: 12, h: 'bram.vandijk', url: 'https://instagram.com/bram.vandijk', level: 'Archive', status: 'Left on read', qual: 'Unqualified', notes: '', lastContact: _ago(90), followed: _ago(1800) },
     { id: 13, h: 'lena.builds', url: 'https://instagram.com/lena.builds', level: 'Booked', status: 'Call Pitched', qual: 'Qualified 3', notes: 'call booked friday', lastContact: _ago(1) },
     { id: 14, h: 'devon.scales', url: 'https://instagram.com/devon.scales', level: 'No Close', status: 'Call done', qual: 'Qualified 2', notes: '[no close 20/05] — price too high', lastContact: _ago(40) },
     { id: 15, h: 'priya.dtc', url: 'https://instagram.com/priya.dtc', level: 'No Close', status: 'Call done', qual: 'Qualified 1', notes: '[no close 05/07] — bad timing, revisit Q4', lastContact: _ago(4) },
