@@ -451,6 +451,7 @@ function renderPool() {
     '</div>' +
     '<div class="poolbar">' +
       '<b>' + (sel.size || 0) + '</b><span>selected</span>' +
+      (state.prevSel ? '<button class="v2-btn sm" id="selRestore">Restore selection (' + state.prevSel.size + ')</button>' : '') +
       '<button class="v2-btn sm" id="poolCopy">Copy handles</button>' +
       '<span class="sp"></span>' +
       '<span style="color:#8a8375">counts as</span>' +
@@ -738,7 +739,10 @@ $('table').addEventListener('click', async (e) => {
     e.preventDefault(); // row is a <label>
     const idx = +upto.getAttribute('data-upto');
     // his session = the top of this order down to the last handle he DM'd;
-    // rows already messaged in earlier sessions are skipped, never re-stamped
+    // rows already messaged in earlier sessions are skipped, never re-stamped.
+    // Stash whatever selection this replaces — a stray click on ↑ here used to
+    // silently destroy hand-picked checkboxes.
+    if (state.sel.size) state.prevSel = state.sel;
     state.sel = new Set(batchList().slice(0, idx + 1).filter((l) => !l.lastContact).map((l) => l.id));
     renderPool();
     return;
@@ -747,6 +751,7 @@ $('table').addEventListener('click', async (e) => {
   if (take) {
     const n = +take.getAttribute('data-take');
     const src = state.src === 'pool' ? batchList().filter((l) => !l.lastContact) : batchList();
+    if (state.sel.size) state.prevSel = state.sel;
     state.sel = new Set(src.slice(0, n).map((l) => l.id));
     renderPool();
     return;
@@ -778,6 +783,14 @@ $('table').addEventListener('click', async (e) => {
     }
     return;
   }
+  const sr = e.target.closest('#selRestore');
+  if (sr) {
+    const cur = state.sel;
+    state.sel = state.prevSel;
+    state.prevSel = cur.size ? cur : null; // swap, so a second click swaps back
+    renderPool();
+    return;
+  }
   const pu = e.target.closest('#poolUndo');
   if (pu) {
     pu.disabled = true;
@@ -807,6 +820,7 @@ $('table').addEventListener('click', async (e) => {
       // the toast's Undo dies in 10 seconds; the bar button stays until the
       // next batch (or navigation) replaces it
       if (res.undo) state.lastBatchUndo = { undo: res.undo, count: res.marked };
+      state.prevSel = null;
       renderSumbar(); renderPool();
       toast({ type: 'ok', ttl: 10000,
         html: 'Marked <b>' + res.marked + '</b> as sent today — counted as ' +
