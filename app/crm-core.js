@@ -203,12 +203,13 @@ export async function loadLeads() {
   const hit = _ttlGet(BOOK_KEY);
   if (hit) return hit;
   const out = await pagedSelect('leads',
-    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,pain_points,email,phone,linkedin');
+    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,pain_points,email,phone,linkedin');
   const mapped = out.map((l) => ({
     id: l.id, h: l.handle, url: l.ig_url || '',
     level: l.level || '', status: l.last_status || '',
     qual: l.qualification || '', notes: l.notes || '',
     lastContact: isoToDmy(l.last_contact), dateAdded: isoToDmy(l.date_added),
+    followed: isoToDmy(l.followed_at),
     pains: l.pain_points || '', email: l.email || '', phone: l.phone || '', linkedin: l.linkedin || '',
   }));
   _ttlSet(BOOK_KEY, mapped);
@@ -677,6 +678,34 @@ function normHandle(s) {
  *  Meta has changed this shape before, so don't bind to one path: prefer
  *  string_list_data entries found anywhere in the tree, and fall back to any
  *  instagram.com URL / bare handle string. Accepts an object or raw JSON text. */
+/** Handles WITH the date each was followed, when the export carries it
+ *  (2026-era exports do: a unix timestamp beside each entry). parseFollowing
+ *  stays the handle-only view so existing callers are untouched. */
+export function parseFollowingEntries(input) {
+  let data = input;
+  if (typeof input === 'string') { try { data = JSON.parse(input); } catch (e) { return parseFollowing(input).map((h) => ({ h, followed: '' })); } }
+  const out = new Map();
+  const add = (v, ts) => {
+    const h = normHandle(v);
+    if (!h || out.has(h)) return;
+    const d = Number(ts) > 0 ? new Date(Number(ts) * 1000).toISOString().slice(0, 10) : '';
+    out.set(h, { h, followed: d });
+  };
+  const walk = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) { node.forEach(walk); return; }
+    if (Array.isArray(node.string_list_data)) {
+      const ts = (node.string_list_data[0] || {}).timestamp;
+      if (node.title) add(node.title, ts);
+      for (const e of node.string_list_data) add((e && (e.value || e.href)) || '', e && e.timestamp);
+    }
+    Object.keys(node).forEach((k) => walk(node[k]));
+  };
+  walk(data);
+  if (!out.size) return parseFollowing(input).map((h) => ({ h, followed: '' }));
+  return [...out.values()];
+}
+
 export function parseFollowing(input) {
   let data = input;
   const out = [];
@@ -742,7 +771,9 @@ export function parseFollowing(input) {
  *  leads at ANY stage are skipped outright — never demote or duplicate someone
  *  who's already a live conversation. Returns ids so the import is undoable. */
 export async function importFollowing(input) {
-  const handles = parseFollowing(input);
+  const entries = parseFollowingEntries(input);
+  const followedBy = new Map(entries.map((e) => [e.h, e.followed]));
+  const handles = entries.map((e) => e.h);
   if (!handles.length) return { total: 0, added: 0, skippedExisting: 0, ids: [] };
   if (DEMO) {
     const have = new Set(_demo.leads.map((l) => l.h));
@@ -751,7 +782,8 @@ export async function importFollowing(input) {
     fresh.forEach((h) => {
       const id = Date.now() + Math.floor(Math.random() * 1e6);
       _demo.leads.push({ id, h, url: 'https://instagram.com/' + h, level: 'Outreach',
-        status: '', qual: '', notes: '', lastContact: '', dateAdded: todayDmy() });
+        status: '', qual: '', notes: '', lastContact: '', dateAdded: todayDmy(),
+        followed: isoToDmy(followedBy.get(h) || '') });
       ids.push(id);
     });
     return { total: handles.length, added: fresh.length, skippedExisting: handles.length - fresh.length, ids };
@@ -770,6 +802,7 @@ export async function importFollowing(input) {
     const chunk = fresh.slice(i, i + 500).map((h) => ({
       handle: h, ig_url: 'https://www.instagram.com/' + h + '/',
       level: 'Outreach', last_contact: null, date_added: todayIso,
+      followed_at: followedBy.get(h) || null,
     }));
     const { data, error } = await supa.from('leads').insert(chunk).select('id');
     if (error) throw new Error(error.message);

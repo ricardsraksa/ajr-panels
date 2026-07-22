@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260722b">
+<link rel="modulepreload" href="./crm-core.js?v=20260722c">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -257,7 +257,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260722b';
+import * as core from './crm-core.js?v=20260722c';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -270,7 +270,7 @@ const LEVEL_COLORS = {
   'Engaged 1': '#a9a9b1', 'Engaged 2': '#c9c9cf', 'Engaged 3': '#e9e9ec',
   'Booked': '#8ee59a', 'No Close': '#d99a9a', 'Archive': '#6e6e78', 'No Reply': '#8a8a92', 'Closed': '#c9c9cf', 'Outreach': '#7f8fa6', '': '#6e6e78'
 };
-const state = { leads: [], sel: new Set(), src: 'due', kind: 'followup', stale: null, filter: 'ALL', q: '', sort: { key: 'lastContact', dir: -1 }, shown: 100, editing: null, busy: false };
+const state = { leads: [], sel: new Set(), src: 'due', kind: 'followup', poolSort: 'new', stale: null, filter: 'ALL', q: '', sort: { key: 'lastContact', dir: -1 }, shown: 100, editing: null, busy: false };
 
 const toast = core.toast;
 
@@ -326,8 +326,18 @@ function visible() {
    overdue window — real leads with history, so a re-touch. 'pool' is the
    imported IG following, nobody's ever messaged them. */
 function batchList() {
-  if (state.src === 'pool') return state.leads.filter((l) => l.level === 'Outreach' && !l.lastContact);
-  return state.stale || [];
+  if (state.src !== 'pool') return state.stale || [];
+  const pool = state.leads.filter((l) => l.level === 'Outreach' && !l.lastContact);
+  // sort by when the account was followed; entries with no date (a CSV import
+  // carries none) sink to the bottom either way rather than jumping the queue
+  const key = (l) => l.followed ? core.dmyToIso(l.followed) : '';
+  return pool.sort((a, b) => {
+    const ka = key(a), kb = key(b);
+    if (!ka && !kb) return 0;
+    if (!ka) return 1;
+    if (!kb) return -1;
+    return state.poolSort === 'new' ? kb.localeCompare(ka) : ka.localeCompare(kb);
+  });
 }
 function renderPool() {
   const pool = state.leads.filter((l) => l.level === 'Outreach');
@@ -364,6 +374,13 @@ function renderPool() {
     '<div class="poolbar">' +
       '<b>' + todo.length.toLocaleString() + '</b><span>' + (state.src === 'pool' ? 'not yet worked from the CRM' : 'waiting on a follow-up') + '</span>' +
       '<span class="sp"></span>' +
+      (state.src === 'pool'
+        ? '<span style="color:#8a8375">followed</span>' +
+          '<div class="tf" id="poolSort" role="group" aria-label="Sort by follow date">' +
+            '<button data-sort="new" aria-pressed="' + (state.poolSort === 'new') + '">Newest</button>' +
+            '<button data-sort="old" aria-pressed="' + (state.poolSort === 'old') + '">Oldest</button>' +
+          '</div>'
+        : '') +
       '<button class="v2-btn sm' + (sel.size ? '' : ' dark') + '" data-take="25">Next 25</button>' +
       '<button class="v2-btn sm" data-take="50">50</button>' +
       '<button class="v2-btn sm" data-take="100">100</button>' +
@@ -384,7 +401,7 @@ function renderPool() {
       '<label class="poolcell">' +
         '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>' +
         '<a href="' + esc(l.url || ('https://instagram.com/' + l.h)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
-        (state.src === 'due' ? '<span class="poolage">' + esc(l.last || 'never') + '</span>' : '') +
+        '<span class="poolage">' + esc(state.src === 'due' ? (l.last || 'never') : (l.followed || '—')) + '</span>' +
       '</label>').join('') + '</div>' +
     (todo.length > 300 ? '<div class="v2-empty">+ ' + (todo.length - 300).toLocaleString() + ' more…</div>' : '');
   $('count').textContent = state.src === 'pool'
@@ -588,6 +605,8 @@ $('table').addEventListener('click', async (e) => {
   }
   const kind = e.target.closest('#kindTabs button');
   if (kind) { state.kind = kind.getAttribute('data-kind'); renderPool(); return; }
+  const ps = e.target.closest('#poolSort button');
+  if (ps) { state.poolSort = ps.getAttribute('data-sort'); state.sel = new Set(); renderPool(); return; }
   const take = e.target.closest('[data-take]');
   if (take) {
     const n = +take.getAttribute('data-take');
