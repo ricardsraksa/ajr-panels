@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260721u">
+<link rel="modulepreload" href="./crm-core.js?v=20260721v">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -341,7 +341,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721u';
+import * as core from './crm-core.js?v=20260721v';
 const _session = await core.requireAuth();
 if (_session) {
 await core.installChrome({ active: 'close-call' });
@@ -890,8 +890,8 @@ function markPendingSeen_(id) {
 }
 function startPendingWatch() {
   if (pendingTimer) clearInterval(pendingTimer);
-  pendingTimer = setInterval(pollPending, 45000);
-  window.addEventListener('focus', pollPending);
+  pendingTimer = core.pageInterval(pollPending, 45000);
+  core.pageListen(window, 'focus', pollPending);
   pollPending();
 }
 function pollPending() {
@@ -993,7 +993,7 @@ function bind() {
   $('dealFilter').addEventListener('keydown', function (e) { if (e.key === 'Escape') openPicker(false); });
   $('refreshBtn').addEventListener('click', function () { runBootstrap(true); });
   var hiddenAt = null;
-  document.addEventListener('visibilitychange', function () {
+  core.pageListen(document, 'visibilitychange', function () {
     if (document.hidden) { hiddenAt = Date.now(); return; }
     if (hiddenAt && Date.now() - hiddenAt > 5 * 60 * 1000 && !$('app').hidden) runBootstrap(true);
     hiddenAt = null;

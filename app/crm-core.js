@@ -1271,6 +1271,129 @@ export async function snapshotTrend(days = 30) {
   });
 }
 
+/* ---------- single-page shell ----------
+   Sidebar clicks swap the page in place: fetch the target html, cross-fade
+   the content, re-run its script — the document, sidebar, module graph and
+   caches all survive. Any error falls back to a normal navigation, so the
+   worst case is exactly the old behavior.
+
+   Page scripts register document/window listeners and timers through
+   pageListen/pageInterval so a swap can unhook them; element-scoped
+   listeners die with their nodes and need nothing. */
+
+let _pageCleanups = [];
+export function pageListen(target, type, fn, opts) {
+  target.addEventListener(type, fn, opts);
+  _pageCleanups.push(() => target.removeEventListener(type, fn, opts));
+}
+export function pageInterval(fn, ms) {
+  const id = setInterval(fn, ms);
+  _pageCleanups.push(() => clearInterval(id));
+  return id;
+}
+function runPageCleanups() {
+  _pageCleanups.splice(0).forEach((f) => { try { f(); } catch (e) { /* leaving anyway */ } });
+  // the palette closes over per-page data (leads list, jump actions) — drop it
+  // so the next page installs a fresh one
+  const pal = document.getElementById('ck-pal'); if (pal) pal.remove();
+  const sc = document.getElementById('sc2-modal'); if (sc) sc.remove();
+}
+
+const SPA_PAGES = ['worklist.html', 'log-lead.html', 'leads.html', 'report.html',
+  'deals.html', 'close-call.html', 'settings.html'];
+
+export function initRouter() {
+  if (window.__ajrRouter) return;
+  window.__ajrRouter = true;
+  // tag this document's own page styles so a swap can replace them
+  document.querySelectorAll('head style:not(#v2-theme)').forEach((st) => st.setAttribute('data-page-style', ''));
+  document.addEventListener('click', (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = e.target.closest('a[href]');
+    if (!a || a.target === '_blank' || a.hasAttribute('download')) return;
+    const url = new URL(a.getAttribute('href'), location.href);
+    if (url.origin !== location.origin) return;
+    if (!SPA_PAGES.includes(url.pathname.split('/').pop())) return;
+    e.preventDefault();
+    navigate(url.href);
+  });
+  window.addEventListener('popstate', () => {
+    swapTo(location.href).catch(() => location.reload());
+  });
+}
+
+export async function navigate(href) {
+  const u = new URL(href, location.href);
+  try {
+    history.pushState({}, '', u.pathname + u.search);
+    await swapTo(u.href);
+  } catch (err) {
+    location.href = u.href; // never strand the user in a broken shell
+  }
+}
+
+async function swapTo(href) {
+  const t0 = performance.now();
+  const res = await fetch(href, { credentials: 'same-origin' });
+  if (!res.ok) throw new Error('fetch ' + res.status);
+  const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+
+  // a page that needs parser.js, entered from one that didn't load it
+  if (!window.CRMParse && doc.querySelector('script[src*="parser.js"]')) {
+    await new Promise((ok, no) => {
+      const sc = document.createElement('script');
+      sc.src = new URL('./parser.js', location.href).href;
+      sc.onload = ok; sc.onerror = no;
+      document.head.append(sc);
+    });
+  }
+
+  const apply = () => {
+    runPageCleanups();
+    document.title = doc.title;
+    document.querySelectorAll('head style[data-page-style]').forEach((el) => el.remove());
+    doc.querySelectorAll('head style:not(#v2-theme)').forEach((st) => {
+      const el = document.createElement('style');
+      el.textContent = st.textContent;
+      el.setAttribute('data-page-style', '');
+      document.head.append(el);
+    });
+    const keep = new Set([document.querySelector('.v2-side'), document.querySelector('.v2-toasts')]);
+    Array.from(document.body.children).forEach((el) => { if (!keep.has(el)) el.remove(); });
+    Array.from(doc.body.children)
+      .filter((el) => !el.classList.contains('v2-side') && el.tagName !== 'SCRIPT')
+      .forEach((el) => document.body.appendChild(document.importNode(el, true)));
+    window.scrollTo(0, 0);
+  };
+  // same-document view transition: this is the cross-fade Safari DOES support
+  if (document.startViewTransition) {
+    await document.startViewTransition(apply).updateCallbackDone;
+  } else {
+    apply();
+  }
+
+  // run the page's inline module. Its './' imports resolve against a blob URL,
+  // so rebase them onto this directory first — same-URL imports (crm-core)
+  // return the already-loaded singleton, which is the whole point.
+  const mod = doc.querySelector('body script[type="module"]');
+  if (mod) {
+    const base = new URL('./', location.href).href;
+    const code = mod.textContent.split("'./").join("'" + base);
+    const burl = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+    try { await import(burl); } finally { URL.revokeObjectURL(burl); }
+  }
+  try { // one row per swap so the field data shows what SPA navs actually cost
+    if (!DEMO) _spaLog({ page: href.split('/').pop().split('?')[0], ts: new Date().toISOString().slice(0, 19),
+      spa: true, ms: Math.round(performance.now() - t0) });
+  } catch (e) { /* diagnostics */ }
+}
+async function _spaLog(entry) {
+  const { data } = await supa.from('settings').select('value').eq('key', 'perf_log').maybeSingle();
+  let log = []; try { log = JSON.parse((data && data.value) || '[]'); } catch (e) { /* reset */ }
+  log.push(entry);
+  await supa.from('settings').upsert({ key: 'perf_log', value: JSON.stringify(log.slice(-30)), updated_at: new Date().toISOString() });
+}
+
 /* ---------- shared chrome (v2 "paper" design) ----------
    One sidebar + one set of tokens for every page, so the app can't drift
    screen to screen. Pages call installChrome({active}) and render into
@@ -1448,6 +1571,8 @@ export function installTheme() {
    Kept to the last 30 views in settings.perf_log; remove once solved. */
 function perfBeacon() {
   if (DEMO) return;
+  if (window.__beaconed) return; // SPA swaps re-run installChrome in the same document
+  window.__beaconed = true;
   if (document.prerendering) { // log it when (if) the user actually arrives
     document.addEventListener('prerenderingchange', () => perfBeacon(), { once: true });
     return;
@@ -1485,6 +1610,7 @@ function perfBeacon() {
 export async function installChrome(opts = {}) {
   installTheme();
   perfBeacon();
+  initRouter();
   try { navigator.serviceWorker && navigator.serviceWorker.register('./sw.js'); } catch (e) { /* optional */ }
   const active = opts.active || '';
   let side = document.querySelector('.v2-side');
@@ -1685,7 +1811,7 @@ export function installPalette(opts = {}) {
     }
   });
   el.addEventListener('mousedown', (e) => { if (e.target === el) close(); });
-  document.addEventListener('keydown', (e) => {
+  pageListen(document, 'keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); el.classList.contains('on') ? close() : open(); }
   });
 }
@@ -1821,15 +1947,15 @@ export function installScanner(opts = {}) {
     if (opts.onDone) opts.onDone(n);
   };
   // paste + drop
-  window.addEventListener('paste', (e) => {
+  pageListen(window, 'paste', (e) => {
     const its = (e.clipboardData && e.clipboardData.items) || [];
     for (const it of its) if (it.type && it.type.indexOf('image/') === 0) { e.preventDefault(); handleImage(it.getAsFile()); return; }
   });
   let depth = 0;
-  window.addEventListener('dragenter', (e) => { if (e.dataTransfer && [].indexOf.call(e.dataTransfer.types, 'Files') !== -1) { depth++; $i('sc2-drop').classList.add('on'); } });
-  window.addEventListener('dragover', (e) => { if ($i('sc2-drop').classList.contains('on')) e.preventDefault(); });
-  window.addEventListener('dragleave', () => { depth = Math.max(0, depth - 1); if (!depth) $i('sc2-drop').classList.remove('on'); });
-  window.addEventListener('drop', (e) => {
+  pageListen(window, 'dragenter', (e) => { if (e.dataTransfer && [].indexOf.call(e.dataTransfer.types, 'Files') !== -1) { depth++; $i('sc2-drop').classList.add('on'); } });
+  pageListen(window, 'dragover', (e) => { if ($i('sc2-drop').classList.contains('on')) e.preventDefault(); });
+  pageListen(window, 'dragleave', () => { depth = Math.max(0, depth - 1); if (!depth) $i('sc2-drop').classList.remove('on'); });
+  pageListen(window, 'drop', (e) => {
     if (!$i('sc2-drop').classList.contains('on')) return;
     e.preventDefault(); depth = 0; $i('sc2-drop').classList.remove('on');
     const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260721u">
+<link rel="modulepreload" href="./crm-core.js?v=20260721v">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -209,7 +209,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721u';
+import * as core from './crm-core.js?v=20260721v';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'worklist' });
@@ -590,7 +590,7 @@ function bindEvents() {
   $('refreshBtn').addEventListener('click', function () { runBootstrap(false); });
   $('loadRetry').addEventListener('click', function () { runBootstrap(true); });
 
-  document.addEventListener('keydown', function (e) {
+  core.pageListen(document, 'keydown', function (e) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     var t = e.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
@@ -617,7 +617,7 @@ function bindEvents() {
   });
 
   var hiddenAt = null;
-  document.addEventListener('visibilitychange', function () {
+  core.pageListen(document, 'visibilitychange', function () {
     if (document.hidden) { hiddenAt = Date.now(); return; }
     if (hiddenAt && Date.now() - hiddenAt > 5 * 60 * 1000 && !$('app').hidden) runBootstrap(false);
     hiddenAt = null;

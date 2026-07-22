@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260721u">
+<link rel="modulepreload" href="./crm-core.js?v=20260721v">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -324,7 +324,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721u';
+import * as core from './crm-core.js?v=20260721v';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'log-lead' });
@@ -1006,7 +1006,7 @@ function bindEvents() {
     $('searchInput').focus();
   });
 
-  document.addEventListener('keydown', function (e) {
+  core.pageListen(document, 'keydown', function (e) {
     if ($('confirmBar').hidden) return;
     if (e.key === 'Enter' && e.target !== $('confirmBtn') && e.target !== $('cancelBtn')) {
       e.preventDefault();
@@ -1023,7 +1023,7 @@ function bindEvents() {
   $('logBtn').addEventListener('click', logAction);
 
   // keyboard shortcuts when not typing: 1/2/3 stages, B/A/N/C, F = log, Esc = clear
-  document.addEventListener('keydown', function (e) {
+  core.pageListen(document, 'keydown', function (e) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     var t = e.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) {
@@ -1039,7 +1039,7 @@ function bindEvents() {
   });
 
   var hiddenAt = null;
-  document.addEventListener('visibilitychange', function () {
+  core.pageListen(document, 'visibilitychange', function () {
     if (document.hidden) { hiddenAt = Date.now(); return; }
     if (hiddenAt && Date.now() - hiddenAt > 5 * 60 * 1000 && !$('app').hidden) runBootstrap(true);
     hiddenAt = null;
@@ -1160,7 +1160,7 @@ function bindScan() {
   $('scanAdd').addEventListener('click', addScanned);
   $('scanModal').addEventListener('mousedown', function (e) { if (e.target === $('scanModal')) closeScanModal(); });
   // paste an image
-  window.addEventListener('paste', function (e) {
+  core.pageListen(window, 'paste', function (e) {
     var items = (e.clipboardData && e.clipboardData.items) || [];
     for (var i = 0; i < items.length; i++) {
       if (items[i].type && items[i].type.indexOf('image/') === 0) { e.preventDefault(); handleImage(items[i].getAsFile()); return; }
@@ -1168,10 +1168,10 @@ function bindScan() {
   });
   // drag & drop
   var over = $('dropOver'), depth = 0;
-  window.addEventListener('dragenter', function (e) { if (e.dataTransfer && [].indexOf.call(e.dataTransfer.types, 'Files') !== -1) { depth++; over.classList.add('on'); } });
-  window.addEventListener('dragover', function (e) { if (over.classList.contains('on')) e.preventDefault(); });
-  window.addEventListener('dragleave', function () { depth = Math.max(0, depth - 1); if (!depth) over.classList.remove('on'); });
-  window.addEventListener('drop', function (e) {
+  core.pageListen(window, 'dragenter', function (e) { if (e.dataTransfer && [].indexOf.call(e.dataTransfer.types, 'Files') !== -1) { depth++; over.classList.add('on'); } });
+  core.pageListen(window, 'dragover', function (e) { if (over.classList.contains('on')) e.preventDefault(); });
+  core.pageListen(window, 'dragleave', function () { depth = Math.max(0, depth - 1); if (!depth) over.classList.remove('on'); });
+  core.pageListen(window, 'drop', function (e) {
     if (!over.classList.contains('on')) return;
     e.preventDefault(); depth = 0; over.classList.remove('on');
     var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];

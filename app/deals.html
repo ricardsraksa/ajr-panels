@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260721u">
+<link rel="modulepreload" href="./crm-core.js?v=20260721v">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -333,7 +333,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721u';
+import * as core from './crm-core.js?v=20260721v';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
@@ -448,7 +448,7 @@ const TAG = { 'f-status':'tag-f-status','f-meeting':'tag-f-meeting','f-followup'
 function setTag(fid, on) { const t = document.getElementById(TAG[fid]); if (t) t.hidden = !on; }
 function clearTags() { Object.values(TAG).forEach((id) => { const t = document.getElementById(id); if (t) t.hidden = true; }); }
 function showEditor() { $('pick').hidden = true; $('dbody').hidden = false; $('dfoot').hidden = false; }
-document.addEventListener('click', (e) => {
+core.pageListen(document, 'click', (e) => {
   const b = e.target.closest('#f-ctype button');
   if (b) setCallType(b.dataset.v);
 });
@@ -773,7 +773,7 @@ $('f-status').addEventListener('change', syncReasonRow);
 $('f-cash').addEventListener('input', () => { setTag('f-cash', false); state.cashConfirmed = false; $('d-save').textContent = 'Save changes'; checkCashWarn(); syncCashConfirm(); });
 $('cash-confirm').onclick = () => { state.cashConfirmed = true; syncCashConfirm(); checkCashWarn(); toast({ html: 'Amount confirmed — hit Save changes.' }); };
 $('ai-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); runAI(); } });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.editing) closeDrawer(); });
+core.pageListen(document, 'keydown', (e) => { if (e.key === 'Escape' && state.editing) closeDrawer(); });
 
 core.installPalette({ deals: () => state.deals, onDeal: (d) => openDrawer(d.row) });
 initVoice();
