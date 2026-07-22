@@ -403,10 +403,12 @@ function igFlag(l) {
 
 function batchList() {
   if (state.src !== 'pool') return state.stale || [];
-  // the MIRROR of Instagram's own following list: every followed account —
-  // tracked leads included, already-messaged included — in follow-date order.
-  // Nothing ever drops out, so position N here is position N on his phone.
-  const pool = state.leads.filter((l) => l.followed && l.level !== 'Archive');
+  // Instagram's following list in follow-date order — but only the accounts
+  // that are still outreach material. Anyone already in the CRM proper
+  // (tracked stages, or promoted after replying) lives in the Worklist and
+  // the Due tab; showing them here too was noise. Already-messaged pool
+  // entries stay visible (dimmed) so ↑-here session ranges stay honest.
+  const pool = state.leads.filter((l) => l.followed && l.level === 'Outreach');
   const key = (l) => l.followed ? core.dmyToIso(l.followed) : '';
   return pool.sort((a, b) => {
     const ka = key(a), kb = key(b);
@@ -428,7 +430,7 @@ function renderPool() {
   const tabs = '<div class="poolbar">' +
     '<div class="tf" id="srcTabs" role="group" aria-label="Batch source">' +
       '<button data-src="due" aria-pressed="' + (state.src === 'due') + '">Due a follow-up ' + due.toLocaleString() + '</button>' +
-      '<button data-src="pool" aria-pressed="' + (state.src === 'pool') + '">IG following ' + (state.src === 'pool' ? todo.length : state.leads.filter((l) => l.followed && l.level !== 'Archive').length).toLocaleString() + '</button>' +
+      '<button data-src="pool" aria-pressed="' + (state.src === 'pool') + '">IG following ' + (state.src === 'pool' ? todo.length : state.leads.filter((l) => l.followed && l.level === 'Outreach').length).toLocaleString() + '</button>' +
     '</div>' +
     '<span class="sp"></span>' +
     (state.src === 'pool' ? '<button class="v2-btn sm" id="poolImport">Import IG following…</button>' : '') +
@@ -494,12 +496,10 @@ function renderPool() {
         '</label>';
       }
       const done = !!l.lastContact;
-      const tracked = l.level && l.level !== 'Outreach';
       return '<label class="poolcell' + (done ? ' done' : '') + '">' +
         (done ? '<span class="ckspace"></span>'
               : '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>') +
         '<a href="' + esc(profileHref(l)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
-        (tracked ? '<span class="stagetag">' + esc(l.level) + '</span>' : '') +
         igFlag(l) +
         '<span class="poolage">' + esc(l.followed || '—') + '</span>' +
         (done ? '<span class="sentdate">sent ' + esc(l.lastContact) + '</span>'
