@@ -386,12 +386,12 @@ function profileHref(l) {
 
 function batchList() {
   if (state.src !== 'pool') return state.stale || [];
-  // Instagram's following list in follow-date order — but only the accounts
-  // that are still outreach material. Anyone already in the CRM proper
-  // (tracked stages, or promoted after replying) lives in the Worklist and
-  // the Due tab; showing them here too was noise. Already-messaged pool
-  // entries stay visible (dimmed) so ↑-here session ranges stay honest.
-  const pool = state.leads.filter((l) => l.followed && l.level === 'Outreach');
+  // Instagram's following list in follow-date order — tracked CRM leads
+  // included, but rendered exactly like everyone else (bare handle; their
+  // details live in the Worklist/book, not here). Their last_contact makes
+  // them read as 'sent' (dimmed), which is the correct signal: no re-DM.
+  // Only Archive stays out — those are deliberate removals.
+  const pool = state.leads.filter((l) => l.followed && l.level !== 'Archive');
   const key = (l) => l.followed ? core.dmyToIso(l.followed) : '';
   return pool.sort((a, b) => {
     const ka = key(a), kb = key(b);
@@ -413,7 +413,7 @@ function renderPool() {
   const tabs = '<div class="poolbar">' +
     '<div class="tf" id="srcTabs" role="group" aria-label="Batch source">' +
       '<button data-src="due" aria-pressed="' + (state.src === 'due') + '">Due a follow-up ' + due.toLocaleString() + '</button>' +
-      '<button data-src="pool" aria-pressed="' + (state.src === 'pool') + '">IG following ' + (state.src === 'pool' ? todo.length : state.leads.filter((l) => l.followed && l.level === 'Outreach').length).toLocaleString() + '</button>' +
+      '<button data-src="pool" aria-pressed="' + (state.src === 'pool') + '">IG following ' + (state.src === 'pool' ? todo.length : state.leads.filter((l) => l.followed && l.level !== 'Archive').length).toLocaleString() + '</button>' +
     '</div>' +
     '<span class="sp"></span>' +
     (state.src === 'pool' ? '<button class="v2-btn sm" id="poolImport">Import IG following…</button>' : '') +
