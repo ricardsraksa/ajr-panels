@@ -676,7 +676,10 @@ $('d-nocontact').onclick = async () => {
   const btn = $('d-nocontact'); btn.disabled = true;
   try {
     const res = await core.noContact(l.id);
-    l.level = 'Archive';
+    // the list filters on `hidden`, so the local copy must carry it too —
+    // setting only the level left removed rows on screen until a reload
+    l.level = 'Archive'; l.hidden = true;
+    if (l.lastContact === core.todayDmy()) { l.lastContact = ''; l.status = ''; }
     closeDrawer(); renderSumbar(); renderTable();
     toast({ type: 'ok', ttl: 10000,
       html: '<span class="mono">@' + esc(l.h) + '</span> marked not a lead — archived, never contacted.',
@@ -745,7 +748,10 @@ $('table').addEventListener('click', async (e) => {
     try {
       const l = state.leads.find((x) => x.id === id);
       const res = await core.noContact([id]);
-      if (l) l.level = 'Archive';
+      if (l) {
+        l.level = 'Archive'; l.hidden = true;
+        if (res.retracted) { l.lastContact = ''; l.status = ''; }
+      }
       state.sel.delete(id);
       renderSumbar(); renderPool();
       toast({ type: 'ok', ttl: 8000,
@@ -793,7 +799,11 @@ $('table').addEventListener('click', async (e) => {
     skip.disabled = true;
     try {
       const res = await core.noContact(ids);
-      state.leads.forEach((l) => { if (state.sel.has(l.id)) l.level = 'Archive'; });
+      state.leads.forEach((l) => {
+        if (!state.sel.has(l.id)) return;
+        l.level = 'Archive'; l.hidden = true;
+        if (l.lastContact === core.todayDmy()) { l.lastContact = ''; l.status = ''; }
+      });
       if (state.stale) state.stale = state.stale.filter((l) => !state.sel.has(l.id));
       state.sel = new Set();
       renderSumbar(); renderPool();
