@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260722d">
+<link rel="modulepreload" href="./crm-core.js?v=20260722e">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -257,7 +257,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260722d';
+import * as core from './crm-core.js?v=20260722e';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -292,7 +292,13 @@ function renderSumbar() {
     return `<button class="v2-chip${state.filter === key ? ' on' : extra}" data-f="${esc(key)}">${esc(label)}<span class="n">${n}</span></button>`;
   }).join('');
   Array.prototype.forEach.call($('sumbar').children, (b) => {
-    b.onclick = () => { state.filter = b.getAttribute('data-f'); state.shown = 100; renderSumbar(); renderTable(); };
+    b.onclick = () => {
+      state.filter = b.getAttribute('data-f'); state.shown = 100;
+      // the Outreach chip IS the pool — landing on the follow-up queue instead
+      // showed a different list under the chip's own name
+      if (state.filter === 'Outreach') { state.src = 'pool'; state.kind = 'followup'; state.sel = new Set(); }
+      renderSumbar(); renderTable();
+    };
   });
 }
 
