@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260722l">
+<link rel="modulepreload" href="./crm-core.js?v=20260722m">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -341,7 +341,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260722l';
+import * as core from './crm-core.js?v=20260722m';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'log-lead' });
@@ -1072,17 +1072,23 @@ function renderScan(leads) {
   $('scanTitle').textContent = leads.length + ' lead' + (leads.length === 1 ? '' : 's') + ' found';
   $('scanAdd').disabled = false;
   $('scanBody').innerHTML = leads.map(function (l, i) {
-    var handle = CRMParse.normalizeHandle(l.handle) || (l.name || '').trim();
+    // never let a display name become a handle; try to match it instead
+    var handle = CRMParse.normalizeHandle(l.handle) || '';
+    var shownName = (l.name || '').trim();
+    var matched = (!handle && shownName) ? core.makeNameResolver(state.leads)(shownName) : '';
+    if (matched) handle = matched;
     l._suggested = { handle: handle, stage: l.stage || 'Engaged 1', status: canonIn(state.statuses, l.status) || l.status || '', notes: l.notes || '' };
     var exists = state.byHandle.get(CRMParse.normalizeHandle(handle));
     return '<div class="sc-card" data-i="' + i + '">' +
-      '<div class="lc-top"><input class="lc-h" data-f="handle" value="' + esc(handle) + '" placeholder="handle">' +
+      '<div class="lc-top"><input class="lc-h" data-f="handle" value="' + esc(handle) + '" placeholder="' + (shownName ? esc(shownName) + ' — type their @handle' : 'handle') + '">' +
         '<button class="lc-x" data-rm="' + i + '" aria-label="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18 18 6M6 6l12 12"/></svg></button></div>' +
       '<div class="lc-grid">' +
         '<select data-f="stage">' + opts(['Engaged 1','Engaged 2','Engaged 3','Booked','No Reply'], l.stage || 'Engaged 1') + '</select>' +
         '<select data-f="status">' + opts(state.statuses, canonIn(state.statuses, l.status) || l.status, 'Status —') + '</select>' +
         '</div>' +
       '<input class="lc-note" data-f="notes" value="' + esc(l.notes || '') + '" placeholder="note">' +
+      (matched ? '<div class="exists">matched “' + esc(shownName) + '” to @' + esc(matched) + '</div>' : '') +
+      (!handle ? '<div class="exists">only a display name was visible — add the @handle or this one is skipped</div>' : '') +
       (l.confidence && l.confidence !== 'high' ? '<div class="exists">low confidence — double-check this one</div>' : '') +
       (exists ? '<div class="exists">already a lead — this updates @' + esc(exists.h) + '</div>' : '') +
       '</div>';

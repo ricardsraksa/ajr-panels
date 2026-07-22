@@ -203,14 +203,14 @@ export async function loadLeads() {
   const hit = _ttlGet(BOOK_KEY);
   if (hit) return hit;
   const out = await pagedSelect('leads',
-    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,ig_status,ig_last_post,pain_points,email,phone,linkedin');
+    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,ig_status,ig_last_post,ig_name,pain_points,email,phone,linkedin');
   const mapped = out.map((l) => ({
     id: l.id, h: l.handle, url: l.ig_url || '',
     level: l.level || '', status: l.last_status || '',
     qual: l.qualification || '', notes: l.notes || '',
     lastContact: isoToDmy(l.last_contact), dateAdded: isoToDmy(l.date_added),
     followed: isoToDmy(l.followed_at),
-    igStatus: l.ig_status || '', igLastPost: isoToDmy(l.ig_last_post),
+    igStatus: l.ig_status || '', igLastPost: isoToDmy(l.ig_last_post), igName: l.ig_name || '',
     pains: l.pain_points || '', email: l.email || '', phone: l.phone || '', linkedin: l.linkedin || '',
   }));
   _ttlSet(BOOK_KEY, mapped);
@@ -1960,6 +1960,27 @@ export function relTime(iso) {
 /* ---------- shared screenshot scanner (paste / drop / button) ----------
    Pages call installScanner({ statuses, exists(handle), onDone() }). Renders
    its own modal; writes via setterUpdate; logs ai_feedback per added lead. */
+/** Instagram's DM inbox shows DISPLAY NAMES, not handles. Profiles carry a
+ *  full name, so a name seen in a screenshot can be mapped back to its handle.
+ *  Comparison strips emoji, punctuation and case; an ambiguous name (two leads
+ *  sharing it) resolves to nothing rather than guessing wrong. */
+export function normName(x) {
+  return String(x || '')
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{2190}-\u{21FF}]/gu, ' ')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim().toLowerCase();
+}
+export function makeNameResolver(leads) {
+  const byName = new Map();
+  for (const l of leads || []) {
+    const k = normName(l.igName);
+    if (!k) continue;
+    if (byName.has(k)) byName.set(k, null); // ambiguous — never auto-pick
+    else byName.set(k, l.h);
+  }
+  return (name) => byName.get(normName(name)) || '';
+}
+
 export function installScanner(opts = {}) {
   if (document.getElementById('sc2-modal')) return;
   const statuses = opts.statuses || STATUSES;
@@ -2019,8 +2040,12 @@ export function installScanner(opts = {}) {
       // NEVER fall back to the display name: an inbox screenshot shows names
       // ('Luka Vukoslavovic'), and turning one into a handle invents a lead
       // that matches nobody. Leave it blank so the card asks for the real one.
-      const handle = (l.handle || '').trim().toLowerCase().replace(/^@/, '');
+      let handle = (l.handle || '').trim().toLowerCase().replace(/^@/, '');
       const shownName = (l.name || '').trim();
+      // no handle on screen (an inbox list) — try the display name against the
+      // full names we hold for these accounts
+      const matched = !handle && shownName && opts.resolveName ? opts.resolveName(shownName) : '';
+      if (matched) handle = matched;
       l._suggested = { handle, stage: l.stage || 'Engaged 1', status: l.status || '', notes: l.notes || '' };
       const exists = opts.exists ? opts.exists(handle) : null;
       return '<div class="sc2-card" data-i="' + i + '">' +
@@ -2031,6 +2056,7 @@ export function installScanner(opts = {}) {
           '<select data-f="status">' + optHtml(statuses, l.status, 'Status —') + '</select>' +
         '</div>' +
         '<input class="nn" data-f="notes" value="' + escH(l.notes || '') + '" placeholder="note">' +
+        (matched ? '<div class="ex">matched “' + escH(shownName) + '” to @' + escH(matched) + '</div>' : '') +
         (!handle ? '<div class="low">only a display name was visible — add the @handle or this one is skipped</div>' : '') +
         (l.confidence && l.confidence !== 'high' ? '<div class="low">low confidence — double-check this one</div>' : '') +
         (exists ? '<div class="ex">already a lead — this updates @' + escH(exists) + '</div>' : '') +
