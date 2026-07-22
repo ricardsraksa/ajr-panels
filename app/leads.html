@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260722g">
+<link rel="modulepreload" href="./crm-core.js?v=20260722h">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -287,7 +287,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260722g';
+import * as core from './crm-core.js?v=20260722h';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -771,6 +771,8 @@ const scanner = core.installScanner({
   exists: (h) => { const hit = state.leads.find((l) => l.h === h); return hit ? hit.h : null; },
   onDone: (n) => { toast({ type: 'ok', html: 'Screenshot: ' + n + ' lead' + (n === 1 ? '' : 's') + ' written.' }); load(); },
 });
+// 'Paste ⌘V' means nothing on a phone; the same button opens the camera roll
+if (matchMedia('(max-width: 760px)').matches) $('scanBtn').textContent = 'Add screenshot';
 $('scanBtn').onclick = () => scanner.openFile();
 load();
 }

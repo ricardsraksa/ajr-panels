@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260722g">
+<link rel="modulepreload" href="./crm-core.js?v=20260722h">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -20,6 +20,14 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .wrapc{max-width:720px}
 .demo-banner{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;
   color:#8a8375;text-align:center;padding:6px 12px;border-bottom:1px solid #e6e2da;background:#f4f2ed;margin-bottom:16px}
+@media(max-width:760px){
+  /* the handle box was squeezed to ~170px between the mic and the scan button */
+  .srch{flex-wrap:wrap}
+  .srch #searchInput{flex:1 1 100%;order:-1;min-height:46px;font-size:16px} /* 16px stops iOS zooming on focus */
+  .srch .mic{order:1}
+  .srch #scanBtn{order:2;flex:1}
+  .ac{top:auto}
+}
 .srch{display:flex;gap:9px;align-items:center;margin-bottom:16px;position:relative}
 .srch input{flex:1}
 .ac{position:absolute;top:calc(100% + 5px);left:0;right:0;background:#fff;border:1px solid #e6e2da;
@@ -333,7 +341,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260722g';
+import * as core from './crm-core.js?v=20260722h';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'log-lead' });
@@ -1120,6 +1128,8 @@ function pushRecentFromScan(res, handle, stage) {
   if (typeof addRecent === 'function') addRecent(res, { handle: handle, stage: stage });
 }
 function bindScan() {
+  // 'Paste ⌘V' is meaningless on a phone; the same button opens the camera roll
+  if (matchMedia('(max-width: 760px)').matches) $('scanBtn').textContent = 'Add screenshot';
   $('scanBtn').addEventListener('click', function () { $('scanFile').click(); });
   $('scanFile').addEventListener('change', function (e) { if (e.target.files[0]) handleImage(e.target.files[0]); e.target.value = ''; });
   $('scanClose').addEventListener('click', closeScanModal);
