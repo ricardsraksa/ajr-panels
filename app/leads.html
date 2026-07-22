@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260721x">
+<link rel="modulepreload" href="./crm-core.js?v=20260721y">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -262,7 +262,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260721x';
+import * as core from './crm-core.js?v=20260721y';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -346,7 +346,7 @@ function renderPool() {
   const tabs = '<div class="poolbar">' +
     '<div class="tf" id="srcTabs" role="group" aria-label="Batch source">' +
       '<button data-src="due" aria-pressed="' + (state.src === 'due') + '">Due a follow-up ' + due.toLocaleString() + '</button>' +
-      '<button data-src="pool" aria-pressed="' + (state.src === 'pool') + '">Never messaged ' + poolTodo.toLocaleString() + '</button>' +
+      '<button data-src="pool" aria-pressed="' + (state.src === 'pool') + '">IG following ' + poolTodo.toLocaleString() + '</button>' +
     '</div>' +
     '<span class="sp"></span>' +
     (state.src === 'pool' ? '<button class="v2-btn sm" id="poolImport">Import IG following…</button>' : '') +
@@ -368,7 +368,7 @@ function renderPool() {
 
   t.innerHTML = tabs +
     '<div class="poolbar">' +
-      '<b>' + todo.length.toLocaleString() + '</b><span>' + (state.src === 'pool' ? 'not yet messaged' : 'waiting on a follow-up') + '</span>' +
+      '<b>' + todo.length.toLocaleString() + '</b><span>' + (state.src === 'pool' ? 'not yet worked from the CRM' : 'waiting on a follow-up') + '</span>' +
       '<span class="sp"></span>' +
       '<button class="v2-btn sm' + (sel.size ? '' : ' dark') + '" data-take="25">Next 25</button>' +
       '<button class="v2-btn sm" data-take="50">50</button>' +
@@ -575,7 +575,7 @@ $('table').addEventListener('click', async (e) => {
   const src = e.target.closest('#srcTabs button');
   if (src) {
     state.src = src.getAttribute('data-src');
-    state.kind = state.src === 'pool' ? 'cold' : 'followup'; // sane default, still changeable
+    state.kind = 'followup'; // most sends are reconnects — flip to Cold DM per batch when they're not
     state.sel = new Set();
     renderPool();
     return;
