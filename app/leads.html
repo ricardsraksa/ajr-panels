@@ -563,7 +563,7 @@ $('d-cancel').onclick = () => {
 };
 $('d-save').onclick = saveDrawer;
 $('d-nocontact').onclick = async () => {
-  const l = state.editing; if (!l) return;
+  const l = leadById(state.editing); if (!l) return; // state.editing is the id
   const btn = $('d-nocontact'); btn.disabled = true;
   try {
     const res = await core.noContact(l.id);
