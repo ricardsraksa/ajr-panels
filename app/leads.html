@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260722q">
+<link rel="modulepreload" href="./crm-core.js?v=20260722r">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -298,7 +298,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260722q';
+import * as core from './crm-core.js?v=20260722r';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -391,7 +391,11 @@ function batchList() {
   // Only rows HE removed with ✕ (or dead accounts) drop out: archiving a lead
   // in the CRM doesn't unfollow them, so it must not hide them here.
   const pool = state.leads.filter((l) => l.followed && !l.hidden);
-  const key = (l) => l.followed ? core.dmyToIso(l.followed) : '';
+  // Sort by the EXACT follow instant, not the day: 2,673 of these accounts
+  // share a date with another, so day precision reorders whole follow
+  // sessions relative to what Instagram shows. Fall back to the day when a
+  // row has no timestamp (a CSV import carries neither).
+  const key = (l) => l.followedTs || (l.followed ? core.dmyToIso(l.followed) : '');
   return pool.sort((a, b) => {
     const ka = key(a), kb = key(b);
     if (!ka && !kb) return 0;
