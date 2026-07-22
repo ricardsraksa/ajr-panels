@@ -249,12 +249,13 @@ export async function bootstrap() {
 
 const LEAD_FIELDS = { stage: 'level', status: 'last_status', note: 'notes' };
 
-async function logActivity(table, rowId, action, prev, next) {
+async function logActivity(table, rowId, action, prev, next, atIso) {
   dropBookCache(); // any write may have touched a lead — never serve it stale
   const email = await userEmail();
+  const row = { actor: email, table_name: table, row_id: rowId, action, prev, next };
+  if (atIso) row.created_at = atIso; // backdated work belongs to its own day
   const { data, error } = await supa.from('activity')
-    .insert({ actor: email, table_name: table, row_id: rowId, action, prev, next })
-    .select('id').single();
+    .insert(row).select('id').single();
   if (error) throw new Error(error.message);
   return data.id;
 }
@@ -894,16 +895,20 @@ export async function staleBatch(opts = {}) {
  *  in the activity row so the split is retrievable later, not just today.
  *  Previous values are captured per lead so undo can put them back: these are
  *  real leads with real history, and blanking last_contact would destroy it. */
+/** `when` (dd/MM/yyyy) backdates a batch: last_contact gets that date AND the
+ *  activity row is stamped midday on it, so the dashboard and the Slack report
+ *  credit the day the DMs actually went out, not the day they were logged. */
 export async function markBatchSent(ids, opts = {}) {
   const status = opts.status || 'Follow up Sent';
   const kind = opts.kind === 'followup' ? 'followup' : 'cold';
+  const whenDmy = opts.when && /^\d{2}\/\d{2}\/\d{4}$/.test(opts.when) ? opts.when : todayDmy();
   if (!ids || !ids.length) return { ok: true, marked: 0 };
   if (DEMO) {
     const s = new Set(ids);
     const prev = [];
     _demo.leads.forEach((l) => {
       if (s.has(l.id)) { prev.push({ id: l.id, lastContact: l.lastContact, status: l.status });
-        l.lastContact = todayDmy(); l.status = status; }
+        l.lastContact = whenDmy; l.status = status; }
     });
     return { ok: true, marked: prev.length, kind, undo: { _demo: true, outreach: prev } };
   }
@@ -914,16 +919,18 @@ export async function markBatchSent(ids, opts = {}) {
       .in('id', ids.slice(i, i + 500));
     before.push(...(data || []));
   }
-  const todayIso = dmyToIso(todayDmy());
+  const whenIso = dmyToIso(whenDmy);
   for (let i = 0; i < ids.length; i += 500) {
     const { error } = await supa.from('leads')
-      .update({ last_contact: todayIso, last_status: status })
+      .update({ last_contact: whenIso, last_status: status })
       .in('id', ids.slice(i, i + 500));
     if (error) throw new Error(error.message);
   }
+  // midday avoids any timezone slipping the row into a neighbouring Riga day
+  const atIso = whenDmy === todayDmy() ? null : whenIso + 'T12:00:00Z';
   await logActivity('leads', ids[0], 'update', { outreach_batch: ids.length },
-    { last_contact: todayIso, last_status: status, batch: ids.length, batch_kind: kind });
-  return { ok: true, marked: ids.length, kind, undo: { outreachIds: ids, before } };
+    { last_contact: whenIso, last_status: status, batch: ids.length, batch_kind: kind }, atIso);
+  return { ok: true, marked: ids.length, kind, when: whenDmy, undo: { outreachIds: ids, before } };
 }
 /** Back-compat wrapper: the outreach pool is always a first touch. */
 export async function markOutreachSent(ids, opts = {}) {

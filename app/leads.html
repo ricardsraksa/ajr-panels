@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260722i">
+<link rel="modulepreload" href="./crm-core.js?v=20260722j">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -298,7 +298,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260722i';
+import * as core from './crm-core.js?v=20260722j';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -459,7 +459,11 @@ function renderPool() {
         '<button data-kind="cold" aria-pressed="' + (state.kind === 'cold') + '">Cold DM</button>' +
       '</div>' +
       '<button class="v2-btn sm" id="poolSkip"' + (sel.size ? '' : ' disabled') + ' title="Friends, family, anyone who should never be contacted">Not a lead</button>' +
-      '<button class="v2-btn go sm" id="poolMark"' + (sel.size ? '' : ' disabled') + '>Mark batch sent today</button>' +
+      '<input class="v2-in" type="date" id="sentDate" value="' + esc(state.sentDate) + '" max="' + esc(core.dmyToIso(core.todayDmy())) + '" title="The day these DMs went out" style="width:auto;min-height:32px;padding:0 8px">' +
+      '<button class="v2-btn go sm" id="poolMark"' + (sel.size ? '' : ' disabled') + '>' +
+        (state.sentDate === core.dmyToIso(core.todayDmy())
+          ? 'Mark batch sent today'
+          : 'Mark batch sent ' + esc(core.isoToDmy(state.sentDate).slice(0, 5))) + '</button>' +
       (state.lastBatchUndo
         ? '<button class="v2-btn sm" id="poolUndo">Undo last batch (' + state.lastBatchUndo.count + ')</button>'
         : '') +
@@ -626,6 +630,7 @@ async function quickFu() {
 
 /* ---------- boot ---------- */
 async function load() {
+  if (!state.sentDate) state.sentDate = core.dmyToIso(core.todayDmy());
   $('refresh').classList.add('spin');
   try {
     const [leads, stale] = await Promise.all([core.loadLeads(), core.staleBatch({ limit: 500 })]);
@@ -676,6 +681,12 @@ core.pageListen(document, 'keydown', (e) => { if (e.key === 'Escape' && state.ed
 core.installPalette({ leads: () => state.leads, onLead: (l) => openDrawer(l.id) });
 /* ---------- pool interactions ---------- */
 $('table').addEventListener('change', (e) => {
+  const dt = e.target.closest('#sentDate');
+  if (dt) { // backdating a batch: keep the button label honest about the day
+    state.sentDate = dt.value || core.dmyToIso(core.todayDmy());
+    renderPool();
+    return;
+  }
   const cb = e.target.closest('input[type=checkbox][data-id]');
   if (!cb) return;
   const id = +cb.getAttribute('data-id');
@@ -791,6 +802,8 @@ $('table').addEventListener('click', async (e) => {
     renderPool();
     return;
   }
+  const sd = e.target.closest('#sentDate');
+  if (sd) return; // let the picker take the click without the row label eating it
   const pu = e.target.closest('#poolUndo');
   if (pu) {
     pu.disabled = true;
@@ -812,9 +825,9 @@ $('table').addEventListener('click', async (e) => {
     const ids = Array.from(state.sel);
     mark.disabled = true;
     try {
-      const res = await core.markBatchSent(ids, { kind: state.kind });
-      const today = core.todayDmy();
-      state.leads.forEach((l) => { if (state.sel.has(l.id)) { l.lastContact = today; l.status = 'Follow up Sent'; } });
+      const when = core.isoToDmy(state.sentDate);
+      const res = await core.markBatchSent(ids, { kind: state.kind, when });
+      state.leads.forEach((l) => { if (state.sel.has(l.id)) { l.lastContact = when; l.status = 'Follow up Sent'; } });
       if (state.stale) state.stale = state.stale.filter((l) => !state.sel.has(l.id));
       state.sel = new Set();
       // the toast's Undo dies in 10 seconds; the bar button stays until the
@@ -823,7 +836,8 @@ $('table').addEventListener('click', async (e) => {
       state.prevSel = null;
       renderSumbar(); renderPool();
       toast({ type: 'ok', ttl: 10000,
-        html: 'Marked <b>' + res.marked + '</b> as sent today — counted as ' +
+        html: 'Marked <b>' + res.marked + '</b> as sent ' +
+          (res.when === core.todayDmy() ? 'today' : 'on ' + esc(res.when)) + ' — counted as ' +
           (res.kind === 'followup' ? 'follow-ups' : 'cold DMs') + '.',
         action: res.undo ? { label: 'Undo', fn: async () => { await core.undoOutreachSent(res.undo); load(); } } : null });
     } catch (err) {
