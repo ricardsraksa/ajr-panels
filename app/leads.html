@@ -480,9 +480,11 @@ function renderPool() {
         '</label>';
       }
       const done = !!l.lastContact;
+      // every row is selectable — DMing someone with history is still a
+      // follow-up, and marking stamps last_contact + 'Follow up Sent' today.
+      // Only the AUTOMATIC selections (↑ here, Next N) skip messaged rows.
       return '<label class="poolcell' + (done ? ' done' : '') + '"' + (done ? ' title="sent ' + esc(l.lastContact) + '"' : '') + '>' +
-        (done ? '<span class="ckspace"></span>'
-              : '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>') +
+        '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>' +
         '<a href="' + esc(profileHref(l)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
         '<button class="uptobtn" data-upto="' + i + '" title="Select everyone above (not yet messaged) through this row">↑ here</button>' +
         '<button class="nalbtn" data-nal="' + l.id + '" title="Not a lead — dead account, friend, irrelevant. Archives it.">✕</button>' +
