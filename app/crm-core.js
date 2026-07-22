@@ -625,6 +625,7 @@ const HANDLE_RE = /^[a-z0-9._]{1,30}$/;
 function normHandle(s) {
   let h = String(s || '').trim().toLowerCase();
   h = h.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '');
+  h = h.replace(/^_u\//, ''); // app deep-link form: instagram.com/_u/<handle>
   h = h.split(/[/?#]/)[0].trim();
   return HANDLE_RE.test(h) ? h : '';
 }
@@ -674,6 +675,9 @@ export function parseFollowing(input) {
     if (!node || typeof node !== 'object') return;
     if (Array.isArray(node)) { node.forEach(walkPreferred); return; }
     if (Array.isArray(node.string_list_data)) {
+      // newer exports carry the handle in `title` and only a timestamped href
+      // in string_list_data; older ones carry it as `value`
+      if (node.title) push(node.title);
       for (const e of node.string_list_data) push((e && (e.value || e.href)) || '');
     }
     Object.keys(node).forEach((k) => walkPreferred(node[k]));
