@@ -516,16 +516,44 @@ async function attachLooseBooking(dealId, dealRow, leadId) {
 
 /** Unattached active Calendly bookings (for the closing page's link strip). */
 export async function looseBookings() {
-  if (DEMO) return _demo.calendly.filter((b) => !b.dealId && b.status === 'active').map(_clone);
+  if (DEMO) return _demo.calendly.filter((b) => !b.dealId && b.status === 'active' && !b.ignored).map(_clone);
   // only bookings whose call hasn't happened yet — a stale unlinked past call
   // is noise, not something to action
   const notPastIso = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
   const { data, error } = await supa.from('calendly_bookings')
     .select('id,name,email,phone,start_iso')
-    .is('deal_id', null).eq('status', 'active').gte('start_iso', notPastIso)
+    .is('deal_id', null).is('ignored_at', null).eq('status', 'active').gte('start_iso', notPastIso)
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return data;
+}
+
+/** Dismiss an unlinked booking that isn't a sales call (personal meeting,
+ *  other-agency call on the same Calendly). Stamped, not deleted — the row
+ *  and its Q&A survive, it just leaves the strip. Undoable. */
+export async function ignoreBooking(bookingId) {
+  if (DEMO) {
+    const b = _demo.calendly.find((x) => x.id === bookingId);
+    if (!b) throw new Error('booking not found');
+    b.ignored = true;
+    return { ok: true, name: b.name || b.email || 'Booking', undo: { _demoIgnore: bookingId } };
+  }
+  const { error } = await supa.from('calendly_bookings')
+    .update({ ignored_at: new Date().toISOString() }).eq('id', bookingId);
+  if (error) throw new Error(error.message);
+  return { ok: true, undo: { ignoreBookingId: bookingId } };
+}
+export async function unignoreBooking(undo) {
+  if (undo && undo._demoIgnore) {
+    const b = _demo.calendly.find((x) => x.id === undo._demoIgnore);
+    if (b) b.ignored = false;
+    return { ok: true };
+  }
+  const id = undo && undo.ignoreBookingId;
+  if (!id) return { ok: true };
+  const { error } = await supa.from('calendly_bookings').update({ ignored_at: null }).eq('id', id);
+  if (error) throw new Error(error.message);
+  return { ok: true };
 }
 
 /** Manually link a booking to a deal (the strip's one-click attach). */
