@@ -329,7 +329,7 @@ function daysSince(dmy) {
 function renderSumbar() {
   const counts = {};
   state.leads.forEach((l) => { const k = l.level || ''; counts[k] = (counts[k] || 0) + 1; });
-  const realCount = state.leads.length - (counts['Outreach'] || 0);
+  const realCount = state.leads.length - (counts['Outreach'] || 0) - (counts['Archive'] || 0);
   const chips = [['ALL', 'All', realCount]]
     .concat(STAGE_ORDER.filter((st) => counts[st]).map((st) => [st, st || 'No level', counts[st]]));
   $('sumbar').innerHTML = chips.map(([key, label, n]) => {
@@ -362,9 +362,9 @@ function cmp(a, b, key) {
 function visible() {
   const q = state.q.toLowerCase().trim();
   let list = state.leads.filter((l) => {
-    // the outreach pool is a bucket, not part of the lead book — only visible
-    // when its own chip is picked
-    if (state.filter === 'ALL' && l.level === 'Outreach') return false;
+    // Outreach and Archive are buckets, not the working book — each is only
+    // visible under its own chip. 'All' means the leads actually in play.
+    if (state.filter === 'ALL' && (l.level === 'Outreach' || l.level === 'Archive')) return false;
     if (state.filter !== 'ALL' && (l.level || '') !== state.filter) return false;
     if (q && !((l.h + ' ' + l.notes + ' ' + l.email + ' ' + l.status + ' ' + l.pains).toLowerCase().includes(q))) return false;
     return true;
@@ -496,7 +496,7 @@ function renderPool() {
 function renderTable() {
   if (state.filter === 'Outreach') { renderPool(); return; }
   const rows = visible();
-  const realTotal = state.leads.filter((l) => l.level !== 'Outreach').length;
+  const realTotal = state.leads.filter((l) => l.level !== 'Outreach' && l.level !== 'Archive').length;
   $('count').textContent = rows.length === realTotal
     ? realTotal + ' leads' : rows.length + ' of ' + realTotal;
   const head = '<div class="v2-thead l-thead l-min">' + COLS.map(([key, label]) =>
