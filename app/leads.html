@@ -56,7 +56,11 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .poolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid #f0ede6;font-size:13px;color:#4d4a42}
 .poolbar .sp{flex:1}
 .poolbar b{font-family:'IBM Plex Mono',monospace;color:#211f1b}
-.poolgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+/* ONE column, like Instagram's list. Three columns filled left-to-right,
+   so reading down a column skipped two accounts per line and the order
+   looked wrong against the phone — density is worthless if the sequence
+   can't be followed. */
+.poolgrid{display:grid;grid-template-columns:1fr}
 .poolcell{display:flex;align-items:center;gap:9px;padding:10px 18px;border-top:1px solid #f0ede6;min-width:0}
 .poolcell input{width:15px;height:15px;flex:none;cursor:pointer;accent-color:#2a6a4d}
 .poolcell a{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
