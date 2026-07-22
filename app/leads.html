@@ -249,9 +249,9 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
     <button class="v2-btn sm" id="refresh">Refresh</button>
   </header>
 
-  <div class="v2-chips" id="sumbar"></div>
 
   <div class="v2-chips" style="margin-bottom:14px">
+    <select class="v2-in" id="stageSel" style="width:auto;min-width:150px"></select>
     <input class="v2-in" id="search" type="text" placeholder="Search handle, notes, email…"
            autocomplete="off" spellcheck="false" style="flex:1;min-width:140px;max-width:260px">
   </div>
@@ -325,24 +325,23 @@ function daysSince(dmy) {
 
 /* ---------- summary bar ---------- */
 function renderSumbar() {
+  // one compact dropdown instead of a chip per stage — ten chips ate a full
+  // row of the screen; the counts live on inside the options
   const counts = {};
   state.leads.forEach((l) => { const k = l.level || ''; counts[k] = (counts[k] || 0) + 1; });
   const realCount = state.leads.length - (counts['Outreach'] || 0) - (counts['Archive'] || 0);
-  const chips = [['ALL', 'All', realCount]]
+  const opts = [['ALL', 'All', realCount]]
     .concat(STAGE_ORDER.filter((st) => counts[st]).map((st) => [st, st || 'No level', counts[st]]));
-  $('sumbar').innerHTML = chips.map(([key, label, n]) => {
-    const extra = key === 'Booked' ? ' green' : key === 'No Close' ? ' red' : '';
-    return `<button class="v2-chip${state.filter === key ? ' on' : extra}" data-f="${esc(key)}">${esc(label)}<span class="n">${n}</span></button>`;
-  }).join('');
-  Array.prototype.forEach.call($('sumbar').children, (b) => {
-    b.onclick = () => {
-      state.filter = b.getAttribute('data-f'); state.shown = 100;
-      // the Outreach chip IS the pool — landing on the follow-up queue instead
-      // showed a different list under the chip's own name
-      if (state.filter === 'Outreach') { state.src = 'pool'; state.kind = 'followup'; state.sel = new Set(); }
-      renderSumbar(); renderTable();
-    };
-  });
+  const sel = $('stageSel');
+  sel.innerHTML = opts.map(([key, label, n]) =>
+    `<option value="${esc(key)}">${esc(label)} (${n})</option>`).join('');
+  sel.value = state.filter;
+  sel.onchange = () => {
+    state.filter = sel.value; state.shown = 100;
+    // picking Outreach IS the pool — land on its tab, not the follow-up queue
+    if (state.filter === 'Outreach') { state.src = 'pool'; state.kind = 'followup'; state.sel = new Set(); }
+    renderSumbar(); renderTable();
+  };
 }
 
 /* ---------- table ---------- */
