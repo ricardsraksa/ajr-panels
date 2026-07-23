@@ -550,39 +550,51 @@ export async function noContact(ids) {
   const list = Array.isArray(ids) ? ids : [ids];
   if (!list.length) return { ok: true, marked: 0 };
   if (DEMO) {
-    const prev = [];
-    _demo.leads.forEach((l) => {
-      if (list.indexOf(l.id) >= 0) {
-        prev.push({ id: l.id, level: l.level, notes: l.notes, hidden: l.hidden,
-          lastContact: l.lastContact, status: l.status });
-        l.level = 'Archive';
-        l.hidden = true;
-        if (l.lastContact === todayDmy()) { l.lastContact = ''; l.status = ''; }
-        l.notes = (l.notes ? l.notes + '\n' : '') + '[no contact] not a lead';
-      }
+    const removed = [], set = new Set(list);
+    // a pure follow (or a same-day mis-mark) is DELETED; a lead with real
+    // older history is archived instead — deleting worked history is destructive
+    _demo.leads = _demo.leads.filter((l) => {
+      if (!set.has(l.id)) return true;
+      const older = l.lastContact && l.lastContact !== todayDmy();
+      if (older) { l.level = 'Archive'; l.hidden = true; return true; }
+      removed.push({ ...l });
+      return false;
     });
-    return { ok: true, marked: prev.length, undo: { _demoNoContact: prev } };
+    return { ok: true, deleted: removed.length, archived: 0, retracted: 0,
+      undo: { _demoDeleted: removed } };
   }
-  const { data: before, error: qErr } = await supa.from('leads')
-    .select('id,level,notes,outreach_hidden,last_contact,last_status').in('id', list);
+  // capture whole rows so a delete is reversible within the session
+  const { data: before, error: qErr } = await supa.from('leads').select('*').in('id', list);
   if (qErr) throw new Error(qErr.message);
   const todayIso = dmyToIso(todayDmy());
+  const del = [], arch = [];
   let retracted = 0;
   for (const b of before || []) {
-    const patch = { level: 'Archive', outreach_hidden: true,
-      notes: (b.notes ? b.notes + '\n' : '') + '[no contact] not a lead' };
-    if (b.last_contact === todayIso) { patch.last_contact = null; patch.last_status = null; retracted++; }
-    const { error } = await supa.from('leads').update(patch).eq('id', b.id);
+    // never messaged, or marked sent TODAY (a mis-click on a friend) -> delete;
+    // real older history -> archive, because deleting it destroys the record
+    const sameDay = b.last_contact === todayIso;
+    if (!b.last_contact || sameDay) { if (sameDay) retracted++; del.push(b); }
+    else arch.push(b);
+  }
+  if (del.length) {
+    const { error } = await supa.from('leads').delete().in('id', del.map((b) => b.id));
     if (error) throw new Error(error.message);
   }
-  // one summary row; 'no-contact' is invisible to the metrics on purpose
-  await logActivity('leads', list[0], 'no-contact', null, { marked: (before || []).length });
-  // ...but a retracted mark must come off today's count, so log the negative
+  for (const b of arch) {
+    const { error } = await supa.from('leads').update({ level: 'Archive', outreach_hidden: true,
+      notes: (b.notes ? b.notes + '\n' : '') + '[no contact] not a lead' }).eq('id', b.id);
+    if (error) throw new Error(error.message);
+  }
+  await logActivity('leads', list[0], 'no-contact', null,
+    { deleted: del.length, archived: arch.length });
   if (retracted) {
     await logActivity('leads', list[0], 'update', { retracted_batch: retracted },
       { batch: -retracted, batch_kind: 'followup' });
   }
-  return { ok: true, marked: (before || []).length, retracted, undo: { noContactPrev: before } };
+  dropBookCache();
+  return { ok: true, deleted: del.length, archived: arch.length, retracted,
+    undo: { deletedRows: del,
+      archivedPrev: arch.map((b) => ({ id: b.id, level: b.level, notes: b.notes, outreach_hidden: b.outreach_hidden })) } };
 }
 export async function undoNoContact(undo) {
   if (undo && undo._demoDeleted) {
