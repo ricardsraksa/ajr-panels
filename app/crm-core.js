@@ -551,16 +551,17 @@ export async function noContact(ids) {
   if (!list.length) return { ok: true, marked: 0 };
   if (DEMO) {
     const removed = [], set = new Set(list);
+    let archived = 0;
     // a pure follow (or a same-day mis-mark) is DELETED; a lead with real
     // older history is archived instead — deleting worked history is destructive
     _demo.leads = _demo.leads.filter((l) => {
       if (!set.has(l.id)) return true;
       const older = l.lastContact && l.lastContact !== todayDmy();
-      if (older) { l.level = 'Archive'; l.hidden = true; return true; }
+      if (older) { l.level = 'Archive'; l.hidden = true; archived++; return true; }
       removed.push({ ...l });
       return false;
     });
-    return { ok: true, deleted: removed.length, archived: 0, retracted: 0,
+    return { ok: true, deleted: removed.length, archived, retracted: 0,
       undo: { _demoDeleted: removed } };
   }
   // capture whole rows so a delete is reversible within the session
