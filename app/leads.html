@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260723e">
+<link rel="modulepreload" href="./crm-core.js?v=20260723f">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -61,7 +61,7 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
    looked wrong against the phone — density is worthless if the sequence
    can't be followed. */
 .poolgrid{display:grid;grid-template-columns:1fr}
-.poolcell{display:flex;align-items:center;gap:9px;padding:10px 18px;border-top:1px solid #f0ede6;min-width:0}
+.poolcell{display:flex;align-items:center;gap:9px;padding:10px 18px;border-top:1px solid #f0ede6;min-width:0;cursor:pointer}
 .poolcell input{width:15px;height:15px;flex:none;cursor:pointer;accent-color:#2a6a4d}
 .poolcell a{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sentbtn{flex:none;min-height:30px;padding:0 11px;border-radius:8px;border:1px solid #c9dfd2;
@@ -86,6 +86,8 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
   .poolcell a{font-size:15px}
   .poolcell input{width:20px;height:20px}
   .sentbtn{min-height:38px;padding:0 15px;font-size:13px}
+  .nalbtn{width:40px;min-height:38px;font-size:16px}
+  .uptobtn{min-height:38px;padding:0 12px}
   .poolbar{padding:10px 14px;gap:8px}
   .poolage{font-size:11.5px}
 }
@@ -302,7 +304,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260723e';
+import * as core from './crm-core.js?v=20260723f';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -509,29 +511,29 @@ function renderPool() {
       : '') +
     '<div class="poolgrid">' + (state.src === 'pool' ? todo : todo.slice(0, 300)).map((l, i) => {
       if (state.src === 'due') {
-        return '<label class="poolcell">' +
+        return '<div class="poolcell">' +
           '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>' +
           '<a href="' + esc(profileHref(l)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
           '<span class="poolage">' + esc(l.last || 'never') + '</span>' +
-          '<button class="sentbtn" data-sent="' + l.id + '" title="Mark just this one sent">Sent</button>' +
-        '</label>';
+          '<button type="button" class="sentbtn" data-sent="' + l.id + '" title="Mark just this one sent">Sent</button>' +
+        '</div>';
       }
       if (state.src === 'uncontacted') {
-        return '<label class="poolcell">' +
+        return '<div class="poolcell">' +
           '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>' +
           '<a href="' + esc(profileHref(l)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
           '<span class="poolage">added ' + esc(String(l.prospected).slice(8, 10) + '/' + String(l.prospected).slice(5, 7)) + '</span>' +
-          '<button class="sentbtn" data-sent="' + l.id + '" title="DM sent — stamps today">Sent</button>' +
-          '<button class="nalbtn" data-nal="' + l.id + '" title="Not a lead — deletes it.">✕</button>' +
-        '</label>';
+          '<button type="button" class="sentbtn" data-sent="' + l.id + '" title="DM sent — stamps today">Sent</button>' +
+          '<button type="button" class="nalbtn" data-nal="' + l.id + '" title="Not a lead — deletes it.">✕</button>' +
+        '</div>';
       }
       // pool rows are all still-to-DM; marking Sent moves them to the CRM
-      return '<label class="poolcell">' +
+      return '<div class="poolcell">' +
         '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>' +
         '<a href="' + esc(profileHref(l)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
-        '<button class="uptobtn" data-upto="' + i + '" title="Select everyone above through this row">↑ here</button>' +
-        '<button class="nalbtn" data-nal="' + l.id + '" title="Not a lead — friend, dead account, irrelevant. Deletes it.">✕</button>' +
-      '</label>';
+        '<button type="button" class="uptobtn" data-upto="' + i + '" title="Select everyone above through this row">↑ here</button>' +
+        '<button type="button" class="nalbtn" data-nal="' + l.id + '" title="Not a lead — friend, dead account, irrelevant. Deletes it.">✕</button>' +
+      '</div>';
     }).join('') + '</div>' +
     (state.src === 'due' && todo.length > 300 ? '<div class="v2-empty">+ ' + (todo.length - 300).toLocaleString() + ' more…</div>' : '');
   $('count').textContent = state.src === 'pool'
@@ -907,6 +909,19 @@ $('table').addEventListener('click', async (e) => {
 /* ---------- import the IG following export ---------- */
 $('importBtn').onclick = () => $('importFile').click();
 $('table').addEventListener('click', (e) => {
+  // rows are plain divs now (not labels) so a tap on ✕/↑here/@handle can never
+  // be swallowed by a label toggling the checkbox. Clicking the row BODY still
+  // selects it, via this explicit handler.
+  const cell = e.target.closest('.poolcell');
+  if (cell && !e.target.closest('a, button, input')) {
+    const cb = cell.querySelector('input[type=checkbox][data-id]');
+    if (cb) {
+      const id = +cb.getAttribute('data-id');
+      if (state.sel.has(id)) state.sel.delete(id); else state.sel.add(id);
+      renderPool();
+    }
+    return;
+  }
   if (e.target.closest('#poolImport') || e.target.closest('#poolImport2')) $('importFile').click();
   if (e.target.closest('#prospectAdd') || e.target.closest('#prospectAdd2')) scanner.openFile('prospect');
 });
