@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260722t">
+<link rel="modulepreload" href="./crm-core.js?v=20260723a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -224,7 +224,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260722t';
+import * as core from './crm-core.js?v=20260723a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'worklist' });
@@ -377,7 +377,9 @@ function leadScore(l) {
 // dead tail: cold Engaged-1, no qualification, silent 60+ days -> sweep, not queue
 function isSweepable(l) {
   var d = daysSince(l.lastContact);
-  return l.level === 'Engaged 1' && !l.qual && (d === null || d > 60);
+  // never-contacted is a legitimate pre-outreach state now (the prospect
+  // queue), not evidence of death — only real 60-day silence sweeps
+  return l.level === 'Engaged 1' && !l.qual && d !== null && d > 60;
 }
 // Filters are chips now. 'engaged' is one chip covering Engaged 1-3 (that's how
 // the setter thinks about the queue); the rest are opt-in buckets.

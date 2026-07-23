@@ -70,7 +70,9 @@ const _demo = {
     { id: 19, h: 'jaycollective', url: 'https://instagram.com/jaycollective', level: 'Following', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1), followed: _ago(90) },
     { id: 20, h: 'mirafitwear', url: 'https://instagram.com/mirafitwear', level: 'Following', status: '', qual: '', notes: '', lastContact: '', dateAdded: _ago(1), followed: _ago(2600) },
     { id: 21, h: 'oatly.fanpage', url: 'https://instagram.com/oatly.fanpage', level: 'Following', status: 'Follow up Sent', qual: '', notes: '', lastContact: _ago(0), dateAdded: _ago(1), followed: _ago(730) },
-    { id: 22, h: 'kettlebrandco', url: 'https://instagram.com/kettlebrandco', level: 'Following', status: 'Follow up Sent', qual: '', notes: '', lastContact: _ago(0), dateAdded: _ago(1), followed: _ago(45) }
+    { id: 22, h: 'kettlebrandco', url: 'https://instagram.com/kettlebrandco', level: 'Following', status: 'Follow up Sent', qual: '', notes: '', lastContact: _ago(0), dateAdded: _ago(1), followed: _ago(45) },
+    { id: 23, h: 'glowskin.co', url: 'https://instagram.com/glowskin.co', level: 'Engaged 1', status: '', qual: '', notes: 'skincare brand, 20k, runs own ads', lastContact: '', dateAdded: _ago(0), prospected: new Date().toISOString() },
+    { id: 24, h: 'peakform.fit', url: 'https://instagram.com/peakform.fit', level: 'Engaged 1', status: '', qual: '', notes: 'fitness apparel, big reels', lastContact: '', dateAdded: _ago(1), prospected: new Date(Date.now() - 86400000).toISOString() }
   ],
   deals: [
     { row: 101, id: 101, leadId: null, name: 'Oscar Wong', link: 'https://instagram.com/oscarwxng', status: 'Discovery Call', meeting: _ago(0), followup: '', qual: 'Qualified 2', cash: '', notes: 'supplement brand ~40k/mo', hasFF: true, fireflies_link: 'https://app.fireflies.ai/view/demo' },
@@ -209,7 +211,7 @@ export async function loadLeads() {
   const hit = _ttlGet(BOOK_KEY);
   if (hit) return hit;
   const out = await pagedSelect('leads',
-    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,followed_ts,ig_status,ig_last_post,ig_name,outreach_hidden,pain_points,email,phone,linkedin');
+    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,followed_ts,ig_status,ig_last_post,ig_name,outreach_hidden,prospected_at,pain_points,email,phone,linkedin');
   const mapped = out.map((l) => ({
     id: l.id, h: l.handle, url: l.ig_url || '',
     level: l.level || '', status: l.last_status || '',
@@ -219,6 +221,7 @@ export async function loadLeads() {
     followedTs: l.followed_ts || '', // exact instant — Instagram orders within a day too
     igStatus: l.ig_status || '', igLastPost: isoToDmy(l.ig_last_post), igName: l.ig_name || '',
     hidden: !!l.outreach_hidden,
+    prospected: l.prospected_at || '',
     pains: l.pain_points || '', email: l.email || '', phone: l.phone || '', linkedin: l.linkedin || '',
   }));
   _ttlSet(BOOK_KEY, mapped);
@@ -1179,7 +1182,15 @@ export async function bookedAlert(payload) {
 const DEFAULT_RULES = { overdueDays: 14, autoArchiveDays: 60, snoozeDays: 7, noCloseResurfaceDays: 30 };
 // 0 means "track it, but don't hold me to a number" — the metric still shows a
 // count, it just gets no progress bar and no say in the day's hit/miss.
-const DEFAULT_TARGETS = { outreach: 20, followups: 100, newLeads: 10, booked: 0, closed: 0 };
+const DEFAULT_TARGETS = { outreach: 20, followups: 100, newLeads: 20, booked: 0, closed: 0 };
+/* newLeads is '20 a day OR 100 a week' — a 5-workday framing, so windowed
+   views pace it at 100/7 per day instead of multiplying the daily by 7. */
+const WEEKLY_OVERRIDES = { newLeads: 100 };
+export function targetFor(k, targets, days = 1) {
+  const daily = Number(targets[k] || 0);
+  if (days <= 1 || !daily) return daily;
+  return k in WEEKLY_OVERRIDES ? Math.round(WEEKLY_OVERRIDES[k] * days / 7) : daily * days;
+}
 export const TARGET_KEYS = ['outreach', 'followups', 'newLeads', 'booked', 'closed'];
 
 /** Did a period meet its targets? `days` scales a daily target to the window
@@ -1188,7 +1199,7 @@ export const TARGET_KEYS = ['outreach', 'followups', 'newLeads', 'booked', 'clos
 export function targetsHit(stat, targets, days = 1) {
   const live = TARGET_KEYS.filter((k) => Number(targets[k]) > 0);
   if (!live.length) return null;
-  return live.every((k) => (stat[k] || 0) >= Number(targets[k]) * days);
+  return live.every((k) => (stat[k] || 0) >= targetFor(k, targets, days));
 }
 // the day report now lands the NEXT morning, like the call sheet
 const DEFAULT_TIMES = { morning: '08:00', report: '08:00' };
@@ -1351,6 +1362,68 @@ export async function setterStats(days = 14) {
     }
   }
   return dayKeys.map((k) => ({ day: k, ...byDay.get(k) }));
+}
+
+/* ---------- prospecting: profile screenshot -> uncontacted lead ----------
+   Distinct from logging a conversation: the setter FOUND this person and has
+   not messaged them yet, so the lead enters the book as Engaged 1 with NO
+   last_contact and a prospected_at stamp. The Uncontacted tab lists exactly
+   these; marking them sent stamps last_contact and they leave the queue. */
+export async function addProspects(cards) {
+  const list = (cards || []).map((c) => ({
+    h: String(c.handle || '').trim().toLowerCase().replace(/^@/, ''),
+    stage: c.stage || 'Engaged 1',
+    notes: String(c.notes || '').trim(),
+  })).filter((c) => c.h);
+  if (!list.length) return { added: 0, skipped: 0, ids: [] };
+  if (DEMO) {
+    const have = new Set(_demo.leads.map((l) => l.h));
+    const ids = [];
+    let skipped = 0;
+    for (const c of list) {
+      if (have.has(c.h)) { skipped++; continue; }
+      const id = Date.now() + Math.floor(Math.random() * 1e6);
+      _demo.leads.push({ id, h: c.h, url: 'https://instagram.com/' + c.h, level: c.stage,
+        status: '', qual: '', notes: c.notes, lastContact: '', dateAdded: todayDmy(),
+        prospected: new Date().toISOString() });
+      ids.push(id);
+    }
+    return { added: ids.length, skipped, ids, undo: { _demoProspects: ids } };
+  }
+  // one existence check over the whole batch, not one query per card
+  const { data: have } = await supa.from('leads').select('handle')
+    .in('handle', list.map((c) => c.h));
+  const taken = new Set((have || []).map((r) => String(r.handle).toLowerCase()));
+  const fresh = list.filter((c) => !taken.has(c.h));
+  const ids = [];
+  for (const c of fresh) {
+    const { data, error } = await supa.from('leads').insert({
+      handle: c.h, ig_url: 'https://www.instagram.com/' + c.h + '/',
+      level: c.stage, last_contact: null, prospected_at: new Date().toISOString(),
+      date_added: dmyToIso(todayDmy()), notes: c.notes || null,
+    }).select('id').single();
+    if (error) throw new Error(error.message);
+    ids.push(data.id);
+    // one create row per lead — this IS the newLeads KPI counter
+    await logActivity('leads', data.id, 'create', null,
+      { handle: c.h, level: c.stage, source: 'prospect-scan' });
+  }
+  return { added: ids.length, skipped: list.length - fresh.length, ids,
+    undo: { prospectIds: ids } };
+}
+export async function undoProspects(undo) {
+  if (undo && undo._demoProspects) {
+    _demo.leads = _demo.leads.filter((l) => undo._demoProspects.indexOf(l.id) < 0);
+    return { ok: true };
+  }
+  const ids = (undo && undo.prospectIds) || [];
+  if (!ids.length) return { ok: true, deleted: 0 };
+  // only rows still uncontacted — a prospect already messaged is real history
+  const { data, error } = await supa.from('leads').delete()
+    .in('id', ids).is('last_contact', null).select('id');
+  if (error) throw new Error(error.message);
+  dropBookCache();
+  return { ok: true, deleted: (data || []).length, kept: ids.length - (data || []).length };
 }
 
 /* ---------- state-derived numbers (stock, not flow) ----------
@@ -2081,6 +2154,7 @@ export function installScanner(opts = {}) {
   const $i = (id) => document.getElementById(id);
   const escH = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let items = [];
+  let mode = 'log'; // 'prospect' = add-only, no contact stamp; set per open
   const close = () => { $i('sc2-modal').classList.remove('on'); items = []; };
   $i('sc2-close').onclick = close; $i('sc2-cancel').onclick = close;
   $i('sc2-modal').addEventListener('mousedown', (e) => { if (e.target === $i('sc2-modal')) close(); });
@@ -2091,7 +2165,9 @@ export function installScanner(opts = {}) {
   }
   function render(leads) {
     items = leads;
-    $i('sc2-title').textContent = leads.length + ' lead' + (leads.length === 1 ? '' : 's') + ' found';
+    $i('sc2-title').textContent = leads.length + ' lead' + (leads.length === 1 ? '' : 's') + ' found' +
+      (mode === 'prospect' ? ' — adding as uncontacted' : '');
+    $i('sc2-add').textContent = mode === 'prospect' ? 'Add to uncontacted' : 'Add leads';
     $i('sc2-add').disabled = false;
     $i('sc2-body').innerHTML = leads.map((l, i) => {
       // NEVER fall back to the display name: an inbox screenshot shows names
@@ -2147,9 +2223,22 @@ export function installScanner(opts = {}) {
   $i('sc2-add').onclick = async () => {
     const cards = [].slice.call($i('sc2-body').querySelectorAll('.sc2-card'));
     $i('sc2-add').disabled = true; $i('sc2-add').textContent = 'Adding…';
+    const g2 = (card, f) => { const x = card.querySelector('[data-f="' + f + '"]'); return x ? x.value.trim() : ''; };
+    if (mode === 'prospect') {
+      // found, not messaged: create as uncontacted, never stamp a contact date
+      const batch = cards.map((card) => ({
+        handle: g2(card, 'handle'), stage: g2(card, 'stage') || 'Engaged 1', notes: g2(card, 'notes'),
+      })).filter((c) => c.handle);
+      let res = { added: 0, skipped: 0 };
+      try { res = await addProspects(batch); } catch (e) { /* surfaced via onDone(0) */ }
+      $i('sc2-add').disabled = false; $i('sc2-add').textContent = 'Add leads';
+      close();
+      if (opts.onDone) opts.onDone(res.added, { mode: 'prospect', res });
+      return;
+    }
     let n = 0;
     for (const card of cards) {
-      const g = (f) => { const x = card.querySelector('[data-f="' + f + '"]'); return x ? x.value.trim() : ''; };
+      const g = (f) => g2(card, f);
       const handle = g('handle').toLowerCase().replace(/^@/, '');
       if (!handle) continue;
       try {
@@ -2167,7 +2256,7 @@ export function installScanner(opts = {}) {
   // paste + drop
   pageListen(window, 'paste', (e) => {
     const its = (e.clipboardData && e.clipboardData.items) || [];
-    for (const it of its) if (it.type && it.type.indexOf('image/') === 0) { e.preventDefault(); handleImage(it.getAsFile()); return; }
+    for (const it of its) if (it.type && it.type.indexOf('image/') === 0) { e.preventDefault(); mode = 'log'; handleImage(it.getAsFile()); return; }
   });
   let depth = 0;
   pageListen(window, 'dragenter', (e) => { if (e.dataTransfer && [].indexOf.call(e.dataTransfer.types, 'Files') !== -1) { depth++; $i('sc2-drop').classList.add('on'); } });
@@ -2179,7 +2268,8 @@ export function installScanner(opts = {}) {
     const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
     if (f) handleImage(f);
   });
-  return { openFile: () => {
+  return { openFile: (m) => {
+    mode = m === 'prospect' ? 'prospect' : 'log';
     const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
     inp.onchange = () => { if (inp.files[0]) handleImage(inp.files[0]); };
     inp.click();
