@@ -1174,7 +1174,8 @@ export function targetsHit(stat, targets, days = 1) {
   if (!live.length) return null;
   return live.every((k) => (stat[k] || 0) >= Number(targets[k]) * days);
 }
-const DEFAULT_TIMES = { morning: '08:00', evening: '21:00' };
+// the day report now lands the NEXT morning, like the call sheet
+const DEFAULT_TIMES = { morning: '08:00', report: '08:00' };
 // deals.cash is a bare number; the symbol is the team's to choose
 const DEFAULT_CURRENCY = '\u20ac';
 const DEMO_ROLES = { 'reinis@agencyjr.com': 'closer' };
@@ -1200,7 +1201,10 @@ export async function loadSettings(force) {
       if (r.key === 'team_roles') out.team_roles = v;
       if (r.key === 'worklist_rules') out.worklist_rules = { ...DEFAULT_RULES, ...v };
       if (r.key === 'setter_targets') out.setter_targets = { ...DEFAULT_TARGETS, ...v };
-      if (r.key === 'alert_times') out.alert_times = { ...DEFAULT_TIMES, ...v };
+      if (r.key === 'alert_times') {
+        out.alert_times = { ...DEFAULT_TIMES, ...v };
+        if (!v.report && v.evening) out.alert_times.report = v.evening; // legacy key
+      }
       if (r.key === 'currency' && typeof v === 'string' && v.trim()) out.currency = v.trim().slice(0, 4);
     }
   } catch (e) { /* defaults are fine */ }
@@ -1232,7 +1236,18 @@ export function money(n, sym) {
   return (sym || DEFAULT_CURRENCY) + v.toLocaleString('en-US');
 }
 
-/* ---------- setter daily stats (dashboard + evening report) ----------
+/** Send the setter day report to Slack now, for TODAY, instead of waiting for
+ *  tomorrow morning's scheduled run. The function dedupes on the day being
+ *  described, so this cancels tomorrow's send rather than duplicating it. */
+export async function sendDayReport() {
+  if (DEMO) return { ok: true, demo: true, day: todayDmy() };
+  const { data, error } = await supa.functions.invoke('alerts', { body: { type: 'report', mode: 'now' } });
+  if (error) throw new Error(error.message);
+  if (data && data.ok === false) throw new Error(data.error || 'send failed');
+  return data || {};
+}
+
+/* ---------- setter daily stats (dashboard + daily report) ----------
    Everything the setter does already lands in `activity` with prev/next and a
    timestamp, so the tracker is pure aggregation — no new logging anywhere.
    Buckets are Europe/Riga calendar days. */

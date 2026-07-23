@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260722r">
+<link rel="modulepreload" href="./crm-core.js?v=20260722s">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f9f8f5}</style>
 <script type="module" blocking="render">
@@ -248,6 +248,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
       <button data-days="30" aria-pressed="false">30 days</button>
     </div>
     <a class="v2-btn sm" href="settings.html">Edit targets</a>
+    <button class="v2-btn sm" id="sendReport" title="Post today's numbers to Slack now instead of waiting for tomorrow morning">Send day report</button>
     <button class="v2-btn sm" id="refresh">Refresh</button>
   </header>
 
@@ -296,7 +297,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260722r';
+import * as core from './crm-core.js?v=20260722s';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'report' });
@@ -513,6 +514,22 @@ async function load() {
     $('skel').textContent = 'Couldn’t load: ' + e.message;
   } finally { $('refresh').disabled = false; }
 }
+$('sendReport').onclick = async () => {
+  const btn = $('sendReport');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const res = await core.sendDayReport();
+    // the scheduled run is keyed to the day being described, so an early send
+    // cancels tomorrow morning's rather than doubling up
+    toast({ type: 'ok', ttl: 9000,
+      html: res.demo ? 'Demo mode — nothing was sent.'
+        : res.skipped ? 'Already sent — ' + esc(res.skipped)
+        : res.sent === 'none' ? 'Nothing logged today, so nothing was sent.'
+        : 'Day report posted to Slack. Tomorrow morning\u2019s send is cancelled.' });
+  } catch (e) {
+    toast({ type: 'err', html: 'Send failed: ' + esc(e.message), sticky: true });
+  } finally { btn.disabled = false; btn.textContent = 'Send day report'; }
+};
 $('refresh').onclick = load;
 core.installPalette({});
 load();

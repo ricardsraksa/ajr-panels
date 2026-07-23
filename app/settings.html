@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260722r">
+<link rel="modulepreload" href="./crm-core.js?v=20260722s">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f9f8f5}</style>
 <script type="module" blocking="render">
@@ -255,7 +255,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
   <div class="card">
     <h2>Daily targets</h2>
-    <div class="sub">The Dashboard and the evening Slack report measure against these.</div>
+    <div class="sub">The Dashboard and the daily Slack report measure against these.</div>
     <div class="blk" id="targets"></div>
     <div class="blk"><div class="rule-row"><span class="k">Currency symbol<br>
       <span style="color:#98917f;font-size:11.5px">how deal values print on the Dashboard</span></span>
@@ -279,7 +279,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 
 <script type="module">
-import * as core from './crm-core.js?v=20260722r';
+import * as core from './crm-core.js?v=20260722s';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'settings' });
@@ -474,7 +474,7 @@ $('rules-save').onclick = async () => {
 /* ---------- alert times ---------- */
 const TIME_DEFS = [
   ['morning', 'Morning call sheet', 'today’s calls + follow-ups due'],
-  ['evening', 'Setter day report', 'cold DMs / follow-ups / new leads vs targets'],
+  ['report', 'Setter day report', 'yesterday’s numbers vs targets, the next morning'],
 ];
 let alertTimes = {};
 function renderTimes() {
@@ -498,7 +498,7 @@ $('times-save').onclick = async () => {
     await core.saveSetting('alert_times', next);
     alertTimes = next;
     $('times-msg').className = 'msg ok';
-    $('times-msg').textContent = 'Saved — morning ' + next.morning + ', evening ' + next.evening + '.';
+    $('times-msg').textContent = 'Saved — call sheet ' + next.morning + ', day report ' + next.report + '.';
   } catch (e) { $('times-msg').className = 'msg err'; $('times-msg').textContent = e.message; }
 };
 
@@ -543,7 +543,10 @@ $('targets-save').onclick = async () => {
   rules = Object.assign({}, st.worklist_rules);
   targets = Object.assign({}, st.setter_targets);
   $('currency').value = st.currency || '\u20ac';
-  alertTimes = Object.assign({ morning: '08:00', evening: '21:00' }, st.alert_times);
+  // 'evening' is the old key for the report's time; read it so a stale row
+  // can't leave the field blank, but save under the new name
+  alertTimes = Object.assign({ morning: '08:00', report: '08:00' }, st.alert_times);
+  if (!st.alert_times || !st.alert_times.report) alertTimes.report = (st.alert_times && st.alert_times.evening) || '08:00';
   renderTeam(); renderRules(); renderTargets(); renderTimes();
 })();
 
