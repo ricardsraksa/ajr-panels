@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260722s">
+<link rel="modulepreload" href="./crm-core.js?v=20260722t">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -302,7 +302,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260722s';
+import * as core from './crm-core.js?v=20260722t';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -725,7 +725,11 @@ $('table').addEventListener('click', async (e) => {
     try {
       const res = await core.markBatchSent([id], { kind: state.kind });
       const today = core.todayDmy();
-      state.leads.forEach((l) => { if (l.id === id) { l.lastContact = today; l.status = 'Follow up Sent'; } });
+      state.leads.forEach((l) => {
+        if (l.id !== id) return;
+        l.lastContact = today; l.status = 'Follow up Sent';
+        if (core.isPool(l.level)) l.level = 'Engaged 1';
+      });
       if (state.stale) state.stale = state.stale.filter((l) => l.id !== id);
       state.sel.delete(id);
       renderSumbar(); renderPool();
@@ -849,7 +853,11 @@ $('table').addEventListener('click', async (e) => {
     try {
       const when = core.isoToDmy(state.sentDate);
       const res = await core.markBatchSent(ids, { kind: state.kind, when });
-      state.leads.forEach((l) => { if (state.sel.has(l.id)) { l.lastContact = when; l.status = 'Follow up Sent'; } });
+      state.leads.forEach((l) => {
+        if (!state.sel.has(l.id)) return;
+        l.lastContact = when; l.status = 'Follow up Sent';
+        if (core.isPool(l.level)) l.level = 'Engaged 1'; // marked = in the book now
+      });
       if (state.stale) state.stale = state.stale.filter((l) => !state.sel.has(l.id));
       state.sel = new Set();
       // the toast's Undo dies in 10 seconds; the bar button stays until the

@@ -933,15 +933,18 @@ export async function markBatchSent(ids, opts = {}) {
     const s = new Set(ids);
     const prev = [];
     _demo.leads.forEach((l) => {
-      if (s.has(l.id)) { prev.push({ id: l.id, lastContact: l.lastContact, status: l.status });
-        l.lastContact = whenDmy; l.status = status; }
+      if (s.has(l.id)) {
+        prev.push({ id: l.id, lastContact: l.lastContact, status: l.status, level: l.level });
+        l.lastContact = whenDmy; l.status = status;
+        if (isPool(l.level)) l.level = 'Engaged 1'; // a messaged follow is a lead now
+      }
     });
     return { ok: true, marked: prev.length, kind, when: whenDmy, undo: { _demo: true, outreach: prev } };
   }
   // snapshot first — the update is destructive and undo has to be exact
   const before = [];
   for (let i = 0; i < ids.length; i += 500) {
-    const { data } = await supa.from('leads').select('id,last_contact,last_status')
+    const { data } = await supa.from('leads').select('id,last_contact,last_status,level')
       .in('id', ids.slice(i, i + 500));
     before.push(...(data || []));
   }
@@ -952,10 +955,22 @@ export async function markBatchSent(ids, opts = {}) {
       .in('id', ids.slice(i, i + 500));
     if (error) throw new Error(error.message);
   }
+  // a DM'd follow enters the book as Engaged 1; anyone already tracked keeps
+  // their stage. Done as its own targeted update so only pool rows move.
+  const poolIds = before.filter((b) => isPool(b.level)).map((b) => b.id);
+  for (let i = 0; i < poolIds.length; i += 500) {
+    const { error } = await supa.from('leads')
+      .update({ level: 'Engaged 1' })
+      .in('id', poolIds.slice(i, i + 500));
+    if (error) throw new Error(error.message);
+  }
   // midday avoids any timezone slipping the row into a neighbouring Riga day
   const atIso = whenDmy === todayDmy() ? null : whenIso + 'T12:00:00Z';
+  // promoted is a COUNT, deliberately not level fields — a level-change shape
+  // here would trip the funnel's replies metric on every batch
   await logActivity('leads', ids[0], 'update', { outreach_batch: ids.length },
-    { last_contact: whenIso, last_status: status, batch: ids.length, batch_kind: kind }, atIso);
+    { last_contact: whenIso, last_status: status, batch: ids.length, batch_kind: kind,
+      promoted: poolIds.length }, atIso);
   return { ok: true, marked: ids.length, kind, when: whenDmy, undo: { outreachIds: ids, before } };
 }
 /** Back-compat wrapper: the outreach pool is always a first touch. */
@@ -969,7 +984,7 @@ export async function undoOutreachSent(undo) {
   if (undo._demo) {
     undo.outreach.forEach((p) => {
       const l = _demo.leads.find((x) => x.id === p.id);
-      if (l) { l.lastContact = p.lastContact; l.status = p.status; }
+      if (l) { l.lastContact = p.lastContact; l.status = p.status; if (p.level !== undefined) l.level = p.level; }
     });
     return { ok: true };
   }
@@ -979,8 +994,9 @@ export async function undoOutreachSent(undo) {
     // put each lead back exactly as it was — a shared blanket update would wipe
     // the contact history of anyone who had been worked before this batch
     for (const b of before) {
-      await supa.from('leads')
-        .update({ last_contact: b.last_contact, last_status: b.last_status }).eq('id', b.id);
+      const patch = { last_contact: b.last_contact, last_status: b.last_status };
+      if (b.level !== undefined) patch.level = b.level; // un-promote if the mark promoted
+      await supa.from('leads').update(patch).eq('id', b.id);
     }
     return { ok: true, restored: before.length };
   }
