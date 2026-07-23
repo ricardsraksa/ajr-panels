@@ -423,6 +423,9 @@ function restoreFilters() {
 function queueLeads() {
   var f = activeFilters();
   var rows = state.unique.filter(function (l) {
+    // added-but-never-DMd prospects live in the Uncontacted queue, not here —
+    // this list is who to FOLLOW UP, and there's nothing to follow up yet
+    if (l.prospected && !l.lastContact) return false;
     // No-Close leads: show on demand (filter chip) OR auto-resurface once cooled
     if (l.level === 'No Close') {
       if (f['No Close']) return true;
