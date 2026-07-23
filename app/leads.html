@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260723a">
+<link rel="modulepreload" href="./crm-core.js?v=20260723b">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -302,7 +302,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260723a';
+import * as core from './crm-core.js?v=20260723b';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -400,7 +400,10 @@ function batchList() {
   // followed on IG, whatever its CRM stage, because his phone shows them all.
   // Only rows HE removed with ✕ (or dead accounts) drop out: archiving a lead
   // in the CRM doesn't unfollow them, so it must not hide them here.
-  const pool = state.leads.filter((l) => l.followed && !l.hidden);
+  // only accounts NOT yet messaged: marking one Follow-up Sent promotes it to
+  // a CRM lead (Engaged 1) and it leaves this list; ✕ deletes it. So the
+  // Following tab is purely the queue of people still to DM, shrinking as worked.
+  const pool = state.leads.filter((l) => l.followed && !l.hidden && !l.lastContact);
   // Sort by the EXACT follow instant, not the day: 2,673 of these accounts
   // share a date with another, so day precision reorders whole follow
   // sessions relative to what Instagram shows. Fall back to the day when a
@@ -416,10 +419,10 @@ function batchList() {
 }
 function renderPool() {
   const due = (state.stale || []).length;
-  const todo = batchList(); // pool: the full IG mirror; due: the stale queue
-  const fresh = state.src === 'pool' ? todo.filter((l) => !l.lastContact) : todo;
+  const todo = batchList(); // pool: still-to-DM follows; due: the stale queue
+  const fresh = todo; // pool rows are all unmessaged now
   const sentToday = state.src === 'pool'
-    ? todo.filter((l) => l.lastContact === core.todayDmy()) : [];
+    ? state.leads.filter((l) => l.followed && l.lastContact === core.todayDmy()) : [];
   const sel = state.sel;
   const t = $('table');
 
@@ -462,8 +465,7 @@ function renderPool() {
   t.innerHTML = tabs +
     '<div class="poolbar">' +
       (state.src === 'pool'
-        ? '<b>' + fresh.length.toLocaleString() + '</b><span>not yet messaged</span>' +
-          '<span style="color:#98917f">·</span><span>' + (todo.length - fresh.length).toLocaleString() + ' sent</span>'
+        ? '<b>' + fresh.length.toLocaleString() + '</b><span>still to DM</span>'
         : state.src === 'uncontacted'
         ? '<b>' + todo.length.toLocaleString() + '</b><span>waiting on a first DM</span>'
         : '<b>' + todo.length.toLocaleString() + '</b><span>waiting on a follow-up</span>') +
@@ -520,23 +522,20 @@ function renderPool() {
           '<a href="' + esc(profileHref(l)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
           '<span class="poolage">added ' + esc(String(l.prospected).slice(8, 10) + '/' + String(l.prospected).slice(5, 7)) + '</span>' +
           '<button class="sentbtn" data-sent="' + l.id + '" title="DM sent — stamps today">Sent</button>' +
-          '<button class="nalbtn" data-nal="' + l.id + '" title="Not a lead — archives it.">✕</button>' +
+          '<button class="nalbtn" data-nal="' + l.id + '" title="Not a lead — deletes it.">✕</button>' +
         '</label>';
       }
-      const done = !!l.lastContact;
-      // every row is selectable — DMing someone with history is still a
-      // follow-up, and marking stamps last_contact + 'Follow up Sent' today.
-      // Only the AUTOMATIC selections (↑ here, Next N) skip messaged rows.
-      return '<label class="poolcell' + (done ? ' done' : '') + '"' + (done ? ' title="sent ' + esc(l.lastContact) + '"' : '') + '>' +
+      // pool rows are all still-to-DM; marking Sent moves them to the CRM
+      return '<label class="poolcell">' +
         '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>' +
         '<a href="' + esc(profileHref(l)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
-        '<button class="uptobtn" data-upto="' + i + '" title="Select everyone above (not yet messaged) through this row">↑ here</button>' +
-        '<button class="nalbtn" data-nal="' + l.id + '" title="Not a lead — dead account, friend, irrelevant. Archives it.">✕</button>' +
+        '<button class="uptobtn" data-upto="' + i + '" title="Select everyone above through this row">↑ here</button>' +
+        '<button class="nalbtn" data-nal="' + l.id + '" title="Not a lead — friend, dead account, irrelevant. Deletes it.">✕</button>' +
       '</label>';
     }).join('') + '</div>' +
     (state.src === 'due' && todo.length > 300 ? '<div class="v2-empty">+ ' + (todo.length - 300).toLocaleString() + ' more…</div>' : '');
   $('count').textContent = state.src === 'pool'
-    ? todo.length.toLocaleString() + ' followed · ' + fresh.length.toLocaleString() + ' unmessaged'
+    ? todo.length.toLocaleString() + ' still to DM'
     : due.toLocaleString() + ' due a follow-up';
 }
 
@@ -706,13 +705,11 @@ $('d-nocontact').onclick = async () => {
   const btn = $('d-nocontact'); btn.disabled = true;
   try {
     const res = await core.noContact(l.id);
-    // the list filters on `hidden`, so the local copy must carry it too —
-    // setting only the level left removed rows on screen until a reload
-    l.level = 'Archive'; l.hidden = true;
-    if (l.lastContact === core.todayDmy()) { l.lastContact = ''; l.status = ''; }
+    const kept = res.archived > 0; // had older history -> archived, not deleted
+    if (!kept) state.leads = state.leads.filter((x) => x.id !== l.id);
     closeDrawer(); renderSumbar(); renderTable();
     toast({ type: 'ok', ttl: 10000,
-      html: '<span class="mono">@' + esc(l.h) + '</span> marked not a lead — archived, never contacted.',
+      html: '<span class="mono">@' + esc(l.h) + '</span> — not a lead, ' + (kept ? 'archived (has history).' : 'deleted.'),
       action: { label: 'Undo', fn: async () => { await core.undoNoContact(res.undo); load(); } } });
   } catch (err) {
     toast({ type: 'err', html: 'Failed: ' + esc(err.message), sticky: true });
@@ -782,15 +779,15 @@ $('table').addEventListener('click', async (e) => {
     nal.disabled = true;
     try {
       const l = state.leads.find((x) => x.id === id);
+      const h = l ? l.h : id;
       const res = await core.noContact([id]);
-      if (l) {
-        l.level = 'Archive'; l.hidden = true;
-        if (res.retracted) { l.lastContact = ''; l.status = ''; }
-      }
+      // deleted or archived, either way it's gone from view — drop it locally
+      state.leads = state.leads.filter((x) => x.id !== id);
+      if (state.stale) state.stale = state.stale.filter((x) => x.id !== id);
       state.sel.delete(id);
       renderSumbar(); renderPool();
       toast({ type: 'ok', ttl: 8000,
-        html: 'Removed <span class="mono">@' + esc(l ? l.h : id) + '</span> — not a lead.' +
+        html: 'Deleted <span class="mono">@' + esc(h) + '</span> — not a lead.' +
           (res.retracted ? ' Today\u2019s sent mark was taken back too.' : ''),
         action: { label: 'Undo', fn: async () => { await core.undoNoContact(res.undo); load(); } } });
     } catch (err) {
@@ -834,16 +831,15 @@ $('table').addEventListener('click', async (e) => {
     skip.disabled = true;
     try {
       const res = await core.noContact(ids);
-      state.leads.forEach((l) => {
-        if (!state.sel.has(l.id)) return;
-        l.level = 'Archive'; l.hidden = true;
-        if (l.lastContact === core.todayDmy()) { l.lastContact = ''; l.status = ''; }
-      });
-      if (state.stale) state.stale = state.stale.filter((l) => !state.sel.has(l.id));
+      const gone = new Set(state.sel);
+      state.leads = state.leads.filter((l) => !gone.has(l.id));
+      if (state.stale) state.stale = state.stale.filter((l) => !gone.has(l.id));
       state.sel = new Set();
       renderSumbar(); renderPool();
+      const n = res.deleted + res.archived;
       toast({ type: 'ok', ttl: 10000,
-        html: 'Marked <b>' + res.marked + '</b> as not a lead — archived, never contacted.',
+        html: 'Removed <b>' + n + '</b> — not leads' +
+          (res.archived ? ' (' + res.archived + ' with history kept in Archive)' : '') + '.',
         action: { label: 'Undo', fn: async () => { await core.undoNoContact(res.undo); load(); } } });
     } catch (err) {
       skip.disabled = false;

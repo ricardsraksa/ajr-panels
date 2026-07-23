@@ -585,21 +585,24 @@ export async function noContact(ids) {
   return { ok: true, marked: (before || []).length, retracted, undo: { noContactPrev: before } };
 }
 export async function undoNoContact(undo) {
-  if (undo && undo._demoNoContact) {
-    undo._demoNoContact.forEach((p) => {
-      const l = _demo.leads.find((x) => x.id === p.id);
-      if (l) { l.level = p.level; l.notes = p.notes; l.hidden = !!p.hidden;
-        l.lastContact = p.lastContact || ''; l.status = p.status || ''; }
-    });
-    return { ok: true };
+  if (undo && undo._demoDeleted) {
+    _demo.leads.push(...undo._demoDeleted.map((r) => ({ ...r })));
+    return { ok: true, restored: undo._demoDeleted.length };
   }
-  const prev = (undo && undo.noContactPrev) || [];
-  for (const p of prev) {
+  const del = (undo && undo.deletedRows) || [];
+  if (del.length) {
+    // re-insert the exact rows (original ids preserved — they were deleted,
+    // so no conflict, and any promoted-lead reference stays valid)
+    const { error } = await supa.from('leads').insert(del);
+    if (error) throw new Error(error.message);
+  }
+  const arch = (undo && undo.archivedPrev) || [];
+  for (const p of arch) {
     await supa.from('leads').update({ level: p.level, notes: p.notes,
-      outreach_hidden: !!p.outreach_hidden, last_contact: p.last_contact, last_status: p.last_status }).eq('id', p.id);
+      outreach_hidden: !!p.outreach_hidden }).eq('id', p.id);
   }
   dropBookCache();
-  return { ok: true, restored: prev.length };
+  return { ok: true, restored: del.length + arch.length };
 }
 
 /** Dismiss an unlinked booking that isn't a sales call (personal meeting,
