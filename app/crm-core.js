@@ -591,9 +591,10 @@ export async function undoNoContact(undo) {
   }
   const del = (undo && undo.deletedRows) || [];
   if (del.length) {
-    // re-insert the exact rows (original ids preserved — they were deleted,
-    // so no conflict, and any promoted-lead reference stays valid)
-    const { error } = await supa.from('leads').insert(del);
+    // re-insert the rows; id is GENERATED ALWAYS so it must be dropped (a fresh
+    // one is assigned — safe, these were uncontacted follows with no deal link)
+    const rows = del.map(({ id, ...rest }) => rest);
+    const { error } = await supa.from('leads').insert(rows);
     if (error) throw new Error(error.message);
   }
   const arch = (undo && undo.archivedPrev) || [];
