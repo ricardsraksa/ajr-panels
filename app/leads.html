@@ -17,7 +17,8 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 </script>
 <title>All leads · AJR</title>
 <style>
-.l-thead,.l-row{grid-template-columns:26px 116px 100px 120px 58px 50px minmax(0,1fr)}
+/* the column set is user-chosen, so the track list is computed per render */
+.l-thead,.l-row{grid-template-columns:var(--l-cols,26px 116px 100px 120px 58px 50px minmax(0,1fr))}
 .l-tick{width:15px;height:15px;flex:none;cursor:pointer;accent-color:#2a6a4d;align-self:center}
 /* sheet-style cells: plain text until hovered/focused, then obviously editable */
 .l-edit{width:100%;min-width:0;border:1px solid transparent;border-radius:6px;background:none;
@@ -33,6 +34,27 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .l-edit.busy{opacity:.5}
 .l-edit.booked{color:#2a6a4d;font-weight:600}
 .l-edit.noclose{color:#b4543e}
+.l-edit.q3{color:#2a6a4d;font-weight:600}
+.l-edit.qun{color:#a29a89}
+/* column picker */
+.colwrap{position:relative;display:inline-flex}
+.colpop{position:absolute;top:calc(100% + 6px);left:0;z-index:40;min-width:186px;padding:6px;
+  background:#fff;border:1px solid #e6e2da;border-radius:11px;
+  box-shadow:0 12px 30px rgba(33,31,27,.13),0 2px 6px rgba(33,31,27,.06);
+  animation:colpop .13s ease}
+@keyframes colpop{from{opacity:0;transform:translateY(-4px)}}
+.colpop .ttl{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;
+  color:#98917f;padding:6px 9px 7px}
+.colpop label{display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:7px;
+  font-size:13px;color:#211f1b;cursor:pointer;user-select:none}
+.colpop label:hover{background:#f4f1ea}
+.colpop label.lock{color:#a29a89;cursor:default}
+.colpop label.lock:hover{background:none}
+.colpop input{width:14px;height:14px;flex:none;accent-color:#211f1b;cursor:pointer}
+.colpop input:disabled{cursor:default}
+.colpop .foot{border-top:1px solid #f0ede6;margin-top:5px;padding:7px 9px 3px}
+.colpop .foot button{font:inherit;font-size:12px;color:#8a8375;background:none;border:0;padding:0;cursor:pointer}
+.colpop .foot button:hover{color:#211f1b;text-decoration:underline}
 .l-row{cursor:pointer}
 .lh{font-weight:600;font-size:13.5px;color:#211f1b;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lh:hover{color:#211f1b;text-decoration:underline;text-decoration-color:#ccc5b6}
@@ -300,6 +322,10 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
     <select class="v2-in" id="stageSel" style="width:auto;min-width:150px"></select>
     <input class="v2-in" id="search" type="text" placeholder="Search handle, notes, email…"
            autocomplete="off" spellcheck="false" style="flex:1;min-width:140px;max-width:260px">
+    <span class="colwrap" id="colWrap">
+      <button class="v2-btn sm" id="colsBtn" type="button" aria-expanded="false" aria-haspopup="true">Columns</button>
+      <div class="colpop" id="colPop" hidden></div>
+    </span>
   </div>
 
   <div class="v2-card" id="table"><div class="v2-empty" id="skel">Loading leads…</div></div>
@@ -363,7 +389,7 @@ const LEVEL_COLORS = {
 };
 const _ss = (k, d) => { try { return sessionStorage.getItem(k) || d; } catch (e) { return d; } };
 const state = { leads: [], sel: new Set(), src: 'due',
-  kind: _ss('ajr_kind', 'followup'), poolSort: _ss('ajr_poolsort', 'new'), stale: null, filter: 'ALL', q: '', sort: { key: 'lastContact', dir: -1 }, shown: 100, editing: null, busy: false };
+  kind: _ss('ajr_kind', 'followup'), poolSort: _ss('ajr_poolsort', 'new'), stale: null, filter: 'ALL', q: '', sort: { key: 'lastContact', dir: -1 }, shown: 100, editing: null, busy: false, cols: [] }; // cols filled in below, once COLS exists
 
 const toast = core.toast;
 
@@ -398,15 +424,50 @@ function renderSumbar() {
 }
 
 /* ---------- table ---------- */
+/* Every column the table can show. `lock` can't be turned off (it's the row's
+   identity), `off` starts hidden, `grow` takes the leftover width. */
 const COLS = [
-  ['h', 'Handle'], ['level', 'Stage'], ['status', 'Last status'],
-  ['lastContact', 'Since'], ['dateAdded', 'Added'], ['notes', 'Notes'],
+  { k: 'h', lab: 'Handle', w: '116px', lock: true },
+  { k: 'level', lab: 'Stage', w: '100px' },
+  { k: 'status', lab: 'Last status', w: '120px' },
+  { k: 'qual', lab: 'Qual', pick: 'Qualification', w: '104px' },
+  { k: 'lastContact', lab: 'Since', w: '58px' },
+  { k: 'dateAdded', lab: 'Added', w: '50px' },
+  { k: 'notes', lab: 'Notes', w: 'minmax(0,1fr)', grow: true },
+  { k: 'igName', lab: 'Name', pick: 'IG name', w: '120px', off: true },
+  { k: 'pains', lab: 'Pain points', w: 'minmax(0,1fr)', grow: true, off: true },
+  { k: 'email', lab: 'Email', w: '164px', off: true },
+  { k: 'phone', lab: 'Phone', w: '108px', off: true },
+  { k: 'followed', lab: 'Followed', w: '62px', off: true },
 ];
+const COL_KEY = 'ajr_cols_v1';
+const DEFAULT_COLS = COLS.filter((c) => !c.off).map((c) => c.k);
+function loadCols() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(COL_KEY) || 'null');
+    // drop keys from an older column set rather than rendering blank tracks
+    if (Array.isArray(raw)) {
+      const keep = raw.filter((k) => COLS.some((c) => c.k === k));
+      if (keep.length) return keep;
+    }
+  } catch (e) { /* unreadable pref: fall back to the default set */ }
+  return DEFAULT_COLS.slice();
+}
+function saveCols() { try { localStorage.setItem(COL_KEY, JSON.stringify(state.cols)); } catch (e) {} }
+// keeps the table's left-to-right order fixed no matter what order they were ticked
+function shownCols() { return COLS.filter((c) => c.lock || state.cols.includes(c.k)); }
+state.cols = loadCols();
+
+const QUAL_OPTS = ['', 'Qualified 1', 'Qualified 2', 'Qualified 3', 'Unqualified'];
+const QUAL_RANK = { 'Qualified 3': 4, 'Qualified 2': 3, 'Qualified 1': 2, 'Unqualified': 1 };
+const DATE_COLS = ['lastContact', 'dateAdded', 'followed'];
 function cmp(a, b, key) {
-  if (key === 'lastContact' || key === 'dateAdded') {
+  if (DATE_COLS.includes(key)) {
     const da = CRMParse.parseDMY(a[key]), db = CRMParse.parseDMY(b[key]);
     return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
   }
+  // alphabetical would read Qualified 1 as the best one — rank it properly
+  if (key === 'qual') return (QUAL_RANK[a.qual] || 0) - (QUAL_RANK[b.qual] || 0);
   return String(a[key] || '').localeCompare(String(b[key] || ''));
 }
 function visible() {
@@ -417,7 +478,7 @@ function visible() {
     if (state.filter === 'ALL' && (core.isPool(l.level) || l.level === 'Archive')) return false;
     if (state.filter === 'Following') { if (!core.isPool(l.level)) return false; }
     else if (state.filter !== 'ALL' && (l.level || '') !== state.filter) return false;
-    if (q && !((l.h + ' ' + l.notes + ' ' + l.email + ' ' + l.status + ' ' + l.pains).toLowerCase().includes(q))) return false;
+    if (q && !((l.h + ' ' + l.notes + ' ' + l.email + ' ' + l.status + ' ' + l.qual + ' ' + l.igName + ' ' + l.pains).toLowerCase().includes(q))) return false;
     return true;
   });
   list.sort((a, b) => cmp(a, b, state.sort.key) * state.sort.dir);
@@ -465,6 +526,8 @@ function batchList() {
   });
 }
 function renderPool() {
+  $('colWrap').hidden = true;   // the queue views draw their own single-column layout
+  openColPop(false);
   const due = (state.stale || []).length;
   const todo = batchList(); // pool: still-to-DM follows; due: the stale queue
   const fresh = todo; // pool rows are all unmessaged now
@@ -592,16 +655,24 @@ function rerender() { if (state.filter === 'Following') renderPool(); else rende
 
 function renderTable() {
   if (state.filter === 'Following') { renderPool(); return; }
+  $('colWrap').hidden = false;
   const rows = visible();
   const realTotal = state.leads.filter((l) => !core.isPool(l.level) && l.level !== 'Archive').length;
   $('count').textContent = rows.length === realTotal
     ? realTotal + ' leads' : rows.length + ' of ' + realTotal;
   const allShown = rows.slice(0, state.shown);
   const allTicked = allShown.length > 0 && allShown.every((l) => state.sel.has(l.id));
+  const cols = shownCols();
+  // when nothing flexible is on, a trailing filler keeps the columns at their
+  // own widths instead of stretching whichever one happens to be last
+  const filler = !cols.some((c) => c.grow);
   const head = '<div class="v2-thead l-thead l-min">' +
     '<input type="checkbox" class="l-tick" id="tickAll"' + (allTicked ? ' checked' : '') + ' title="Select everything shown">' +
-    COLS.map(([key, label]) =>
-    `<button data-s="${key}" style="text-align:left;font:inherit;letter-spacing:inherit;text-transform:uppercase;color:inherit">${label}${state.sort.key === key ? `<span class="arr"> ${state.sort.dir > 0 ? '↑' : '↓'}</span>` : ''}</button>`).join('') + '</div>';
+    cols.map((c) =>
+    `<button data-s="${c.k}" style="text-align:left;font:inherit;letter-spacing:inherit;text-transform:uppercase;color:inherit">${esc(c.lab)}${state.sort.key === c.k ? `<span class="arr"> ${state.sort.dir > 0 ? '↑' : '↓'}</span>` : ''}</button>`).join('') +
+    (filler ? '<span></span>' : '') + '</div>';
+  $('table').style.setProperty('--l-cols',
+    '26px ' + cols.map((c) => c.w).join(' ') + (filler ? ' minmax(0,1fr)' : ''));
   const t = $('table');
   if (!rows.length) { t.innerHTML = '<div class="v2-scroll">' + head + '</div><div class="v2-empty">No leads match.</div>'; bindHead(); return; }
   const page = rows.slice(0, state.shown);
@@ -621,19 +692,11 @@ function renderTable() {
           : 'Mark batch sent ' + esc(core.isoToDmy(state.sentDate).slice(0, 5))) + '</button>' +
       (state.lastBatchUndo ? '<button class="v2-btn sm" id="poolUndo">Undo last batch (' + state.lastBatchUndo.count + ')</button>' : '') +
     '</div>';
-  t.innerHTML = bar + '<div class="v2-scroll"><div class="l-min">' + head + page.map((l) => {
-    const ds = daysSince(l.lastContact);
-    const stageCls = l.level === 'Booked' ? ' booked' : l.level === 'No Close' ? ' noclose' : '';
-    return `<div class="v2-row l-row" data-id="${l.id}">
-      <input type="checkbox" class="l-tick" data-id="${l.id}"${state.sel.has(l.id) ? ' checked' : ''}>
-      <a class="lh" href="${esc(l.url || 'https://instagram.com/' + l.h)}" target="_blank" rel="noopener">@${esc(l.h)}</a>
-      <select class="l-edit${stageCls}" data-f="level" data-id="${l.id}" title="Change stage">${optHtml(STAGE_OPTS, l.level || '', 'no level')}</select>
-      <select class="l-edit" data-f="status" data-id="${l.id}" title="Change last status">${optHtml(STATUS_OPTS, l.status || '', '—')}</select>
-      <span class="v2-age ${core.ageClass(ds, RULES)}">${l.lastContact ? (ds <= 0 ? 'today' : ds + 'd') : '—'}</span>
-      <span class="l-mono">${esc((l.dateAdded || '').slice(0, 5))}</span>
-      <span class="l-cell dim" title="${esc(l.notes)}">${esc(l.notes || '')}</span>
-    </div>`;
-  }).join('') + '</div></div>' +
+  t.innerHTML = bar + '<div class="v2-scroll"><div class="l-min">' + head + page.map((l) =>
+    `<div class="v2-row l-row" data-id="${l.id}">` +
+    `<input type="checkbox" class="l-tick" data-id="${l.id}"${state.sel.has(l.id) ? ' checked' : ''}>` +
+    cols.map((c) => cellHtml(l, c.k)).join('') + (filler ? '<span></span>' : '') +
+    '</div>').join('') + '</div></div>' +
     (rows.length > state.shown
       ? `<div class="pager"><span>1–${Math.min(state.shown, rows.length)} of ${rows.length.toLocaleString()}</span><span class="sp"></span><button class="v2-btn sm" id="more">Show 100 more</button></div>`
       : `<div class="pager"><span>${rows.length.toLocaleString()} shown</span></div>`);
@@ -654,11 +717,70 @@ function renderTable() {
     renderTable();
   };
 }
+/* One cell, by column key. Stage/status/qualification stay inline-editable
+   the way the sheet was; the rest are read-only here and edited in the drawer. */
+function cellHtml(l, k) {
+  if (k === 'h') return `<a class="lh" href="${esc(l.url || 'https://instagram.com/' + l.h)}" target="_blank" rel="noopener">@${esc(l.h)}</a>`;
+  if (k === 'level') {
+    const cls = l.level === 'Booked' ? ' booked' : l.level === 'No Close' ? ' noclose' : '';
+    return `<select class="l-edit${cls}" data-f="level" data-id="${l.id}" title="Change stage">${optHtml(STAGE_OPTS, l.level || '', 'no level')}</select>`;
+  }
+  if (k === 'status') return `<select class="l-edit" data-f="status" data-id="${l.id}" title="Change last status">${optHtml(STATUS_OPTS, l.status || '', '—')}</select>`;
+  if (k === 'qual') {
+    const cls = l.qual === 'Qualified 3' ? ' q3' : l.qual === 'Unqualified' ? ' qun' : '';
+    return `<select class="l-edit${cls}" data-f="qual" data-id="${l.id}" title="Change qualification">${optHtml(QUAL_OPTS, l.qual || '', '—')}</select>`;
+  }
+  if (k === 'lastContact') {
+    const ds = daysSince(l.lastContact);
+    return `<span class="v2-age ${core.ageClass(ds, RULES)}">${l.lastContact ? (ds <= 0 ? 'today' : ds + 'd') : '—'}</span>`;
+  }
+  if (k === 'dateAdded' || k === 'followed') return `<span class="l-mono">${esc((l[k] || '').slice(0, 5))}</span>`;
+  if (k === 'email' || k === 'phone') return `<span class="l-mono" title="${esc(l[k])}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l[k] || '')}</span>`;
+  return `<span class="l-cell dim" title="${esc(l[k])}">${esc(l[k] || '')}</span>`;
+}
+
+/* ---------- column picker ---------- */
+function renderColPop() {
+  $('colPop').innerHTML = '<div class="ttl">Show columns</div>' + COLS.map((c) => {
+    const on = c.lock || state.cols.includes(c.k);
+    return `<label class="${c.lock ? 'lock' : ''}"><input type="checkbox" data-col="${c.k}"` +
+      `${on ? ' checked' : ''}${c.lock ? ' disabled' : ''}>${esc(c.pick || c.lab)}</label>`;
+  }).join('') + '<div class="foot"><button type="button" id="colReset">Reset to default</button></div>';
+}
+function openColPop(on) {
+  const pop = $('colPop');
+  if (on) renderColPop();
+  pop.hidden = !on;
+  $('colsBtn').setAttribute('aria-expanded', String(!!on));
+}
+$('colsBtn').onclick = () => openColPop($('colPop').hidden);
+$('colPop').addEventListener('change', (e) => {
+  const cb = e.target.closest('input[data-col]');
+  if (!cb) return;
+  const k = cb.getAttribute('data-col');
+  state.cols = cb.checked ? state.cols.concat([k]) : state.cols.filter((x) => x !== k);
+  // sorting by a column you just hid would leave the arrow nowhere to live
+  if (!shownCols().some((c) => c.k === state.sort.key)) state.sort = { key: shownCols()[0].k, dir: 1 };
+  saveCols(); renderTable();
+});
+$('colPop').addEventListener('click', (e) => {
+  if (!e.target.closest('#colReset')) return;
+  state.cols = DEFAULT_COLS.slice();
+  saveCols(); renderColPop(); renderTable();
+});
+core.pageListen(document, 'mousedown', (e) => {
+  if (!$('colPop').hidden && !e.target.closest('#colWrap')) openColPop(false);
+});
+core.pageListen(document, 'keydown', (e) => {
+  if (e.key === 'Escape' && !$('colPop').hidden) { openColPop(false); $('colsBtn').focus(); }
+});
+
 function bindHead() {
   Array.prototype.forEach.call($('table').querySelectorAll('.v2-thead button'), (b) => {
     b.onclick = () => {
       const k = b.getAttribute('data-s');
-      if (state.sort.key === k) state.sort.dir *= -1; else state.sort = { key: k, dir: k.includes('Contact') || k.includes('Added') ? -1 : 1 };
+      if (state.sort.key === k) state.sort.dir *= -1;
+      else state.sort = { key: k, dir: DATE_COLS.includes(k) || k === 'qual' ? -1 : 1 };
       renderTable();
     };
   });
