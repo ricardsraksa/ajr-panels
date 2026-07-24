@@ -968,7 +968,14 @@ export async function markBatchSent(ids, opts = {}) {
         if (isPool(l.level)) l.level = 'Engaged 1'; // a messaged follow is a lead now
       }
     });
-    return { ok: true, marked: prev.length, kind, when: whenDmy, undo: { _demo: true, outreach: prev } };
+    // demo parity: the batch has to be re-classifiable afterwards like a real
+    // one, so it joins the list the Dashboard card reads
+    await recentBatches(30); // seeds _demo.batches on first call
+    const actId = 9100 + _demo.batches.length;
+    _demo.batches.unshift({ id: actId, at: new Date(dmyToIso(whenDmy) + 'T12:00:00Z').toISOString(),
+      count: prev.length, kind, origKind: kind, promoted: 0 });
+    return { ok: true, marked: prev.length, kind, when: whenDmy, actId,
+      undo: { _demo: true, outreach: prev } };
   }
   // snapshot first — the update is destructive and undo has to be exact
   const before = [];
