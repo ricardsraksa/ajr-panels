@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260723g">
+<link rel="modulepreload" href="./crm-core.js?v=20260723h">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -19,6 +19,15 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 <style>
 .l-thead,.l-row{grid-template-columns:26px 118px 74px 100px 60px 52px minmax(0,1fr)}
 .l-tick{width:15px;height:15px;flex:none;cursor:pointer;accent-color:#2a6a4d;align-self:center}
+/* sheet-style cells: plain text until hovered/focused, then obviously editable */
+.l-edit{width:100%;min-width:0;border:1px solid transparent;border-radius:6px;background:none;
+  font:inherit;font-size:12.5px;color:#4d4a42;padding:2px 4px;cursor:pointer;appearance:none;
+  text-overflow:ellipsis}
+.l-edit:hover{border-color:#ddd8cd;background:#fff}
+.l-edit:focus{border-color:#8a8375;background:#fff;outline:none}
+.l-edit.busy{opacity:.5}
+.l-edit.booked{color:#2a6a4d;font-weight:600}
+.l-edit.noclose{color:#b4543e}
 .l-row{cursor:pointer}
 .lh{font-weight:600;font-size:13.5px;color:#211f1b;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lh:hover{color:#211f1b;text-decoration:underline;text-decoration-color:#ccc5b6}
@@ -305,7 +314,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260723g';
+import * as core from './crm-core.js?v=20260723h';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -313,6 +322,10 @@ const RULES = await core.worklistRules();
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
+const STAGE_OPTS = ['', 'Engaged 1', 'Engaged 2', 'Engaged 3', 'Booked', 'No Close', 'Following', 'Archive', 'No Reply', 'Closed'];
+const STATUS_OPTS = [''].concat(core.STATUSES);
+const optHtml = (list, sel, blank) => list.map((o) =>
+  `<option value="${esc(o)}"${o === sel ? ' selected' : ''}>${esc(o || blank)}</option>`).join('');
 const STAGE_ORDER = ['Engaged 3', 'Engaged 2', 'Engaged 1', 'Booked', 'No Close', 'No Reply', '', 'Archive', 'Closed', 'Following'];
 const LEVEL_COLORS = {
   'Engaged 1': '#a9a9b1', 'Engaged 2': '#c9c9cf', 'Engaged 3': '#e9e9ec',
@@ -580,13 +593,12 @@ function renderTable() {
     '</div>';
   t.innerHTML = bar + '<div class="v2-scroll"><div class="l-min">' + head + page.map((l) => {
     const ds = daysSince(l.lastContact);
-    const stageCls = l.level === 'Booked' ? 'color:#2a6a4d;font-weight:600'
-      : l.level === 'No Close' ? 'color:#b4543e' : '';
+    const stageCls = l.level === 'Booked' ? ' booked' : l.level === 'No Close' ? ' noclose' : '';
     return `<div class="v2-row l-row" data-id="${l.id}">
       <input type="checkbox" class="l-tick" data-id="${l.id}"${state.sel.has(l.id) ? ' checked' : ''}>
       <a class="lh" href="${esc(l.url || 'https://instagram.com/' + l.h)}" target="_blank" rel="noopener">@${esc(l.h)}</a>
-      <span class="l-cell" style="${stageCls}">${esc(l.level || 'no level')}</span>
-      <span class="l-cell">${esc(l.status || '')}</span>
+      <select class="l-edit${stageCls}" data-f="level" data-id="${l.id}" title="Change stage">${optHtml(STAGE_OPTS, l.level || '', 'no level')}</select>
+      <select class="l-edit" data-f="status" data-id="${l.id}" title="Change last status">${optHtml(STATUS_OPTS, l.status || '', '—')}</select>
       <span class="v2-age ${core.ageClass(ds, RULES)}">${l.lastContact ? (ds <= 0 ? 'today' : ds + 'd') : '—'}</span>
       <span class="l-mono">${esc((l.dateAdded || '').slice(0, 5))}</span>
       <span class="l-cell dim" title="${esc(l.notes)}">${esc(l.notes || '')}</span>
@@ -597,7 +609,7 @@ function renderTable() {
       : `<div class="pager"><span>${rows.length.toLocaleString()} shown</span></div>`);
   bindHead();
   Array.prototype.forEach.call(t.querySelectorAll('.l-row'), (r) => {
-    r.onclick = (e) => { if (e.target.closest('input')) return; openDrawer(+r.getAttribute('data-id')); };
+    r.onclick = (e) => { if (e.target.closest('input, select')) return; openDrawer(+r.getAttribute('data-id')); };
     const a = r.querySelector('.lh'); if (a) a.addEventListener('click', (e) => e.stopPropagation()); // @ opens IG, not the drawer
   });
   const more = $('more'); if (more) more.onclick = () => { state.shown += 100; renderTable(); };
@@ -764,6 +776,32 @@ $('table').addEventListener('change', (e) => {
   if (dt) { // backdating a batch: keep the button label honest about the day
     state.sentDate = dt.value || core.dmyToIso(core.todayDmy());
     rerender();
+    return;
+  }
+  const cell = e.target.closest('select.l-edit[data-f][data-id]');
+  if (cell) {
+    const id = +cell.getAttribute('data-id');
+    const field = cell.getAttribute('data-f');
+    const l = state.leads.find((x) => x.id === id);
+    if (!l) return;
+    const before = l[field] || '';
+    const after = cell.value;
+    if (before === after) return;
+    cell.classList.add('busy'); cell.disabled = true;
+    const y = window.scrollY;
+    core.setLead(id, { [field]: after }).then((res) => {
+      l[field] = after;
+      renderSumbar(); renderTable(); window.scrollTo(0, y);
+      toast({ type: 'ok', ttl: 7000,
+        html: '<span class="mono">@' + esc(l.h) + '</span> → ' + esc(after || '—') + '.',
+        action: res.undo ? { label: 'Undo', fn: async () => {
+          await core.undoWrite(res.undo); l[field] = before;
+          renderSumbar(); renderTable();
+        } } : null });
+    }).catch((err) => {
+      cell.classList.remove('busy'); cell.disabled = false; cell.value = before;
+      toast({ type: 'err', html: 'Save failed: ' + esc(err.message), sticky: true });
+    });
     return;
   }
   const cb = e.target.closest('input[type=checkbox][data-id]');
