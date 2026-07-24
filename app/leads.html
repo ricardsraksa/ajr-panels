@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260723f">
+<link rel="modulepreload" href="./crm-core.js?v=20260723g">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -17,7 +17,8 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 </script>
 <title>All leads · AJR</title>
 <style>
-.l-thead,.l-row{grid-template-columns:118px 74px 100px 60px 52px minmax(0,1fr)}
+.l-thead,.l-row{grid-template-columns:26px 118px 74px 100px 60px 52px minmax(0,1fr)}
+.l-tick{width:15px;height:15px;flex:none;cursor:pointer;accent-color:#2a6a4d;align-self:center}
 .l-row{cursor:pointer}
 .lh{font-weight:600;font-size:13.5px;color:#211f1b;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lh:hover{color:#211f1b;text-decoration:underline;text-decoration-color:#ccc5b6}
@@ -304,7 +305,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260723f';
+import * as core from './crm-core.js?v=20260723g';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -346,6 +347,7 @@ function renderSumbar() {
   sel.value = state.filter;
   sel.onchange = () => {
     state.filter = sel.value; state.shown = 100;
+    state.sel = new Set(); state.prevSel = null; // selections don't cross filters
     // picking Following IS the pool — land on its tab, not the follow-up queue
     if (state.filter === 'Following') { state.src = 'pool'; state.kind = 'followup'; state.sel = new Set(); }
     renderSumbar(); renderTable();
@@ -541,22 +543,47 @@ function renderPool() {
     : due.toLocaleString() + ' due a follow-up';
 }
 
+// the batch controls are shared by the pool view and the lead table, so the
+// handlers redraw through here instead of assuming one of them
+function rerender() { if (state.filter === 'Following') renderPool(); else renderTable(); }
+
 function renderTable() {
   if (state.filter === 'Following') { renderPool(); return; }
   const rows = visible();
   const realTotal = state.leads.filter((l) => !core.isPool(l.level) && l.level !== 'Archive').length;
   $('count').textContent = rows.length === realTotal
     ? realTotal + ' leads' : rows.length + ' of ' + realTotal;
-  const head = '<div class="v2-thead l-thead l-min">' + COLS.map(([key, label]) =>
+  const allShown = rows.slice(0, state.shown);
+  const allTicked = allShown.length > 0 && allShown.every((l) => state.sel.has(l.id));
+  const head = '<div class="v2-thead l-thead l-min">' +
+    '<input type="checkbox" class="l-tick" id="tickAll"' + (allTicked ? ' checked' : '') + ' title="Select everything shown">' +
+    COLS.map(([key, label]) =>
     `<button data-s="${key}" style="text-align:left;font:inherit;letter-spacing:inherit;text-transform:uppercase;color:inherit">${label}${state.sort.key === key ? `<span class="arr"> ${state.sort.dir > 0 ? '↑' : '↓'}</span>` : ''}</button>`).join('') + '</div>';
   const t = $('table');
   if (!rows.length) { t.innerHTML = '<div class="v2-scroll">' + head + '</div><div class="v2-empty">No leads match.</div>'; bindHead(); return; }
   const page = rows.slice(0, state.shown);
-  t.innerHTML = '<div class="v2-scroll"><div class="l-min">' + head + page.map((l) => {
+  const bar = '<div class="poolbar">' +
+      '<b>' + (state.sel.size || 0) + '</b><span>selected</span>' +
+      '<button class="v2-btn sm" id="tableSelAll">Select all ' + rows.length.toLocaleString() + '</button>' +
+      (state.sel.size ? '<button class="v2-btn sm" id="tableClear">Clear</button>' : '') +
+      '<span class="sp"></span>' +
+      '<span style="color:#8a8375">counts as</span>' +
+      '<div class="tf" id="kindTabs" role="group" aria-label="Counts as">' +
+        '<button type="button" data-kind="followup" aria-pressed="' + (state.kind === 'followup') + '">Follow-up</button>' +
+        '<button type="button" data-kind="cold" aria-pressed="' + (state.kind === 'cold') + '">Cold DM</button>' +
+      '</div>' +
+      '<input class="v2-in" type="date" id="sentDate" value="' + esc(state.sentDate) + '" max="' + esc(core.dmyToIso(core.todayDmy())) + '" title="The day these DMs went out" style="width:auto;min-height:32px;padding:0 8px">' +
+      '<button class="v2-btn go sm" id="poolMark"' + (state.sel.size ? '' : ' disabled') + '>' +
+        (state.sentDate === core.dmyToIso(core.todayDmy()) ? 'Mark batch sent today'
+          : 'Mark batch sent ' + esc(core.isoToDmy(state.sentDate).slice(0, 5))) + '</button>' +
+      (state.lastBatchUndo ? '<button class="v2-btn sm" id="poolUndo">Undo last batch (' + state.lastBatchUndo.count + ')</button>' : '') +
+    '</div>';
+  t.innerHTML = bar + '<div class="v2-scroll"><div class="l-min">' + head + page.map((l) => {
     const ds = daysSince(l.lastContact);
     const stageCls = l.level === 'Booked' ? 'color:#2a6a4d;font-weight:600'
       : l.level === 'No Close' ? 'color:#b4543e' : '';
     return `<div class="v2-row l-row" data-id="${l.id}">
+      <input type="checkbox" class="l-tick" data-id="${l.id}"${state.sel.has(l.id) ? ' checked' : ''}>
       <a class="lh" href="${esc(l.url || 'https://instagram.com/' + l.h)}" target="_blank" rel="noopener">@${esc(l.h)}</a>
       <span class="l-cell" style="${stageCls}">${esc(l.level || 'no level')}</span>
       <span class="l-cell">${esc(l.status || '')}</span>
@@ -570,10 +597,20 @@ function renderTable() {
       : `<div class="pager"><span>${rows.length.toLocaleString()} shown</span></div>`);
   bindHead();
   Array.prototype.forEach.call(t.querySelectorAll('.l-row'), (r) => {
-    r.onclick = () => openDrawer(+r.getAttribute('data-id'));
+    r.onclick = (e) => { if (e.target.closest('input')) return; openDrawer(+r.getAttribute('data-id')); };
     const a = r.querySelector('.lh'); if (a) a.addEventListener('click', (e) => e.stopPropagation()); // @ opens IG, not the drawer
   });
   const more = $('more'); if (more) more.onclick = () => { state.shown += 100; renderTable(); };
+  const selAll = $('tableSelAll');
+  if (selAll) selAll.onclick = () => { rows.forEach((l) => state.sel.add(l.id)); renderTable(); };
+  const clr = $('tableClear');
+  if (clr) clr.onclick = () => { state.sel = new Set(); renderTable(); };
+  const tickAll = $('tickAll');
+  if (tickAll) tickAll.onclick = () => {
+    if (tickAll.checked) allShown.forEach((l) => state.sel.add(l.id));
+    else allShown.forEach((l) => state.sel.delete(l.id));
+    renderTable();
+  };
 }
 function bindHead() {
   Array.prototype.forEach.call($('table').querySelectorAll('.v2-thead button'), (b) => {
@@ -726,14 +763,14 @@ $('table').addEventListener('change', (e) => {
   const dt = e.target.closest('#sentDate');
   if (dt) { // backdating a batch: keep the button label honest about the day
     state.sentDate = dt.value || core.dmyToIso(core.todayDmy());
-    renderPool();
+    rerender();
     return;
   }
   const cb = e.target.closest('input[type=checkbox][data-id]');
   if (!cb) return;
   const id = +cb.getAttribute('data-id');
   if (cb.checked) state.sel.add(id); else state.sel.delete(id);
-  renderPool();
+  rerender();
 });
 $('table').addEventListener('click', async (e) => {
   const src = e.target.closest('#srcTabs button');
@@ -746,7 +783,7 @@ $('table').addEventListener('click', async (e) => {
     return;
   }
   const kind = e.target.closest('#kindTabs button');
-  if (kind) { state.kind = kind.getAttribute('data-kind'); try { sessionStorage.setItem('ajr_kind', state.kind); } catch (x) {} renderPool(); return; }
+  if (kind) { state.kind = kind.getAttribute('data-kind'); try { sessionStorage.setItem('ajr_kind', state.kind); } catch (x) {} rerender(); return; }
   const one = e.target.closest('[data-sent]');
   if (one) {
     e.preventDefault(); // the row is a <label>; don't toggle its checkbox too
@@ -762,7 +799,7 @@ $('table').addEventListener('click', async (e) => {
       });
       if (state.stale) state.stale = state.stale.filter((l) => l.id !== id);
       state.sel.delete(id);
-      renderSumbar(); renderPool();
+      renderSumbar(); rerender();
       toast({ type: 'ok', ttl: 8000,
         html: 'Marked sent — counted as ' + (res.kind === 'followup' ? 'a follow-up' : 'a cold DM') + '.',
         action: res.undo ? { label: 'Undo', fn: async () => { await core.undoOutreachSent(res.undo); load(); } } : null });
@@ -787,7 +824,7 @@ $('table').addEventListener('click', async (e) => {
       state.leads = state.leads.filter((x) => x.id !== id);
       if (state.stale) state.stale = state.stale.filter((x) => x.id !== id);
       state.sel.delete(id);
-      renderSumbar(); renderPool();
+      renderSumbar(); rerender();
       toast({ type: 'ok', ttl: 8000,
         html: 'Deleted <span class="mono">@' + esc(h) + '</span> — not a lead.' +
           (res.retracted ? ' Today\u2019s sent mark was taken back too.' : ''),
@@ -837,7 +874,7 @@ $('table').addEventListener('click', async (e) => {
       state.leads = state.leads.filter((l) => !gone.has(l.id));
       if (state.stale) state.stale = state.stale.filter((l) => !gone.has(l.id));
       state.sel = new Set();
-      renderSumbar(); renderPool();
+      renderSumbar(); rerender();
       const n = res.deleted + res.archived;
       toast({ type: 'ok', ttl: 10000,
         html: 'Removed <b>' + n + '</b> — not leads' +
@@ -854,7 +891,7 @@ $('table').addEventListener('click', async (e) => {
     const cur = state.sel;
     state.sel = state.prevSel;
     state.prevSel = cur.size ? cur : null; // swap, so a second click swaps back
-    renderPool();
+    rerender();
     return;
   }
   const sd = e.target.closest('#sentDate');
@@ -871,7 +908,7 @@ $('table').addEventListener('click', async (e) => {
     } catch (err) {
       state.lastBatchUndo = u; // keep the chance to retry
       toast({ type: 'err', html: 'Undo failed: ' + esc(err.message), sticky: true });
-      renderPool();
+      rerender();
     }
     return;
   }
@@ -893,7 +930,7 @@ $('table').addEventListener('click', async (e) => {
       // next batch (or navigation) replaces it
       if (res.undo) state.lastBatchUndo = { undo: res.undo, count: res.marked };
       state.prevSel = null;
-      renderSumbar(); renderPool();
+      renderSumbar(); rerender();
       toast({ type: 'ok', ttl: 10000,
         html: 'Marked <b>' + res.marked + '</b> as sent ' +
           (res.when === core.todayDmy() ? 'today' : 'on ' + esc(res.when)) + ' — counted as ' +
