@@ -1621,7 +1621,11 @@ async function swapTo(href) {
       el.setAttribute('data-page-style', '');
       document.head.append(el);
     });
-    const keep = new Set([document.querySelector('.v2-side'), document.querySelector('.v2-toasts')]);
+    // #v2-menu is a singleton guarded by id — removing it here would let the
+    // next page's installChrome() stack a second set of document listeners
+    document.dispatchEvent(new Event('v2-menu-close'));
+    const keep = new Set([document.querySelector('.v2-side'), document.querySelector('.v2-toasts'),
+      document.getElementById('v2-menu')]);
     Array.from(document.body.children).forEach((el) => { if (!keep.has(el)) el.remove(); });
     Array.from(doc.body.children)
       .filter((el) => !el.classList.contains('v2-side') && el.tagName !== 'SCRIPT')
@@ -1973,6 +1977,7 @@ export function installSelectMenu() {
   // scrolling or resizing would leave the menu stranded next to nothing
   window.addEventListener('scroll', () => { if (cur) close(); }, true);
   window.addEventListener('resize', () => { if (cur) close(); });
+  document.addEventListener('v2-menu-close', close);   // SPA navigation
   document.addEventListener('keydown', (e) => {
     if (!cur) return;
     if (e.key === 'Escape') { e.preventDefault(); close(); return; }
