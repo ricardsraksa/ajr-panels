@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>AJR CRM</title>
+<!-- GitHub Pages serves this for any path it can't find. The app used to live
+     at the repo root (setter.html, closer.html) before it moved into /app/,
+     so old bookmarks land here — send them to the app rather than a dead end. -->
+<style>
+html{background:#f9f8f5}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+  font:13px 'Instrument Sans',system-ui,sans-serif;color:#8a8375}
+a{color:#2a6a4d}
+</style>
+<script>
+(function () {
+  // Only rescue page requests. A missing script or stylesheet also gets served
+  // this file, and bouncing those would turn a clear 404 into a silent mystery.
+  if (/\.(js|mjs|json|css|png|jpg|svg|webmanifest|map)$/i.test(location.pathname)) return;
+  location.replace('/ajr-panels/app/index.html' + location.search + location.hash);
+})();
+</script>
+</head>
+<body>
+<p>That page moved. <a href="/ajr-panels/app/index.html">Open AJR CRM</a></p>
+</body>
+</html>
