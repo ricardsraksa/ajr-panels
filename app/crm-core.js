@@ -1936,11 +1936,15 @@ export function installSelectMenu() {
     const r = sel.getBoundingClientRect();
     menu.style.minWidth = Math.max(r.width, 150) + 'px';
     const mh = menu.offsetHeight, mw = menu.offsetWidth;
+    // some embedded/preview contexts report innerHeight 0 — fall back rather
+    // than clamp the menu to the top-left corner
+    const vh = window.innerHeight || document.documentElement.clientHeight || 800;
+    const vw = window.innerWidth || document.documentElement.clientWidth || 1200;
     // below unless it would run off the bottom and there's more room above
-    const below = window.innerHeight - r.bottom;
+    const below = vh - r.bottom;
     const top = (below >= mh + 8 || r.top < mh + 8) ? r.bottom + 4 : r.top - mh - 4;
-    menu.style.top = Math.max(8, Math.min(top, window.innerHeight - mh - 8)) + 'px';
-    menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - mw - 8)) + 'px';
+    menu.style.top = Math.max(8, Math.min(top, Math.max(8, vh - mh - 8))) + 'px';
+    menu.style.left = Math.max(8, Math.min(r.left, Math.max(8, vw - mw - 8))) + 'px';
     const on = menu.querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest' });
     try { sel.focus({ preventScroll: true }); } catch (e) { sel.focus(); } // keep arrow keys working
   }
