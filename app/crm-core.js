@@ -1772,6 +1772,22 @@ select.v2-in{cursor:pointer;appearance:none;-webkit-appearance:none;padding-righ
   background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8375' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 9px center;background-size:14px}
 select.v2-in:hover{background-color:var(--rowsel)}
+/* the OPEN list of a native select is drawn by the OS (dark grey on macOS) and
+   cannot be styled — so on pointer devices we draw our own and keep the real
+   <select> underneath for state, change events and keyboard control */
+#v2-menu{position:fixed;z-index:200;background:var(--card);border:1px solid var(--line);border-radius:11px;
+  box-shadow:0 14px 38px -10px rgba(33,31,27,.32), 0 2px 6px rgba(33,31,27,.06);
+  padding:5px;max-height:min(58vh,340px);overflow-y:auto;min-width:150px;
+  animation:v2menu .13s ease-out}
+@keyframes v2menu{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+#v2-menu button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  padding:8px 10px 8px 8px;border-radius:8px;font:500 13px var(--font);color:var(--ink-2);
+  white-space:nowrap;cursor:pointer;transition:background-color .12s ease,color .12s ease}
+#v2-menu button:hover,#v2-menu button.cur{background:var(--divider);color:var(--ink)}
+#v2-menu button.on{color:var(--go-hi);font-weight:600}
+#v2-menu button.on:hover{background:var(--go-tint)}
+#v2-menu .tick{width:14px;height:14px;flex:none;opacity:0}
+#v2-menu button.on .tick{opacity:1}
 select.v2-in:disabled{opacity:.55;cursor:not-allowed}
 input[type=date].v2-in{cursor:pointer}
 textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
@@ -1894,8 +1910,83 @@ function perfBeacon() {
   }, 3000);
 }
 
+/** Replace the OS-drawn select popup with one that matches the app.
+ *  The native <select> stays in the DOM and keeps its value, so every existing
+ *  change handler works untouched; we only intercept the pointer that would
+ *  open the OS list. Touch devices keep their native picker — the iOS wheel is
+ *  better than anything we'd draw. */
+export function installSelectMenu() {
+  if (document.getElementById('v2-menu')) return;
+  if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+  const esc = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const TICK = '<svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg>';
+  const menu = document.createElement('div');
+  menu.id = 'v2-menu'; menu.hidden = true; menu.setAttribute('role', 'listbox');
+  document.body.appendChild(menu);
+  let cur = null;
+
+  const close = () => { menu.hidden = true; cur = null; };
+  function open(sel) {
+    cur = sel;
+    menu.innerHTML = [...sel.options].map((o, i) =>
+      `<button type="button" role="option" data-i="${i}" class="${o.value === sel.value ? 'on' : ''}">` +
+      TICK + esc(o.textContent) + '</button>').join('');
+    menu.style.top = '-9999px'; menu.hidden = false;      // measure before placing
+    const r = sel.getBoundingClientRect();
+    menu.style.minWidth = Math.max(r.width, 150) + 'px';
+    const mh = menu.offsetHeight, mw = menu.offsetWidth;
+    // below unless it would run off the bottom and there's more room above
+    const below = window.innerHeight - r.bottom;
+    const top = (below >= mh + 8 || r.top < mh + 8) ? r.bottom + 4 : r.top - mh - 4;
+    menu.style.top = Math.max(8, Math.min(top, window.innerHeight - mh - 8)) + 'px';
+    menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - mw - 8)) + 'px';
+    const on = menu.querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest' });
+    try { sel.focus({ preventScroll: true }); } catch (e) { sel.focus(); } // keep arrow keys working
+  }
+  function pick(i) {
+    if (!cur) return;
+    if (cur.selectedIndex !== i) {
+      cur.selectedIndex = i;
+      cur.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    close();
+  }
+
+  document.addEventListener('mousedown', (e) => {
+    const sel = e.target.closest('select');
+    if (sel && !sel.disabled && !sel.multiple) {
+      e.preventDefault();               // stops the OS popup
+      if (cur === sel) close(); else open(sel);
+      return;
+    }
+    if (!e.target.closest('#v2-menu')) close();
+  }, true);
+  menu.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-i]');
+    if (b) pick(+b.getAttribute('data-i'));
+  });
+  // scrolling or resizing would leave the menu stranded next to nothing
+  window.addEventListener('scroll', () => { if (cur) close(); }, true);
+  window.addEventListener('resize', () => { if (cur) close(); });
+  document.addEventListener('keydown', (e) => {
+    if (!cur) return;
+    if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+    const btns = [...menu.querySelectorAll('button[data-i]')];
+    let i = btns.findIndex((b) => b.classList.contains('cur'));
+    if (i < 0) i = btns.findIndex((b) => b.classList.contains('on'));
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      i = Math.max(0, Math.min(btns.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)));
+      btns.forEach((b) => b.classList.remove('cur'));
+      btns[i].classList.add('cur'); btns[i].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter' && i >= 0) { e.preventDefault(); pick(i); }
+  });
+}
+
 export async function installChrome(opts = {}) {
   installTheme();
+  installSelectMenu();
   perfBeacon();
   initRouter();
   try { navigator.serviceWorker && navigator.serviceWorker.register('./sw.js'); } catch (e) { /* optional */ }
