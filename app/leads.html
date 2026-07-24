@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260723m">
+<link rel="modulepreload" href="./crm-core.js?v=20260724a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -370,7 +370,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260723m';
+import * as core from './crm-core.js?v=20260724a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -604,12 +604,10 @@ function renderPool() {
       '<button class="v2-btn sm" id="poolSkip"' + (sel.size ? '' : ' disabled') + ' title="Friends, family, anyone who should never be contacted">Not a lead</button>' +
       '<input class="v2-in" type="date" id="sentDate" value="' + esc(state.sentDate) + '" max="' + esc(core.dmyToIso(core.todayDmy())) + '" title="The day these DMs went out" style="width:auto;min-height:32px;padding:0 8px">' +
       '<button class="v2-btn go sm" id="poolMark"' + (sel.size ? '' : ' disabled') + '>' +
-        (state.sentDate === core.dmyToIso(core.todayDmy())
-          ? 'Mark batch sent today'
-          : 'Mark batch sent ' + esc(core.isoToDmy(state.sentDate).slice(0, 5))) + '</button>' +
+        esc(markLabel()) + '</button>' +
       (state.lastBatchUndo
         ? '<button class="v2-btn sm" id="poolUndo">Undo last batch (' + state.lastBatchUndo.count + ')</button>'
-        : '') +
+        : '') + switchKindBtn() +
     '</div>' +
     (sentToday.length
       ? '<div class="poolbar senttoday"><span class="v2-lab" style="margin:0">Sent today ' + sentToday.length + '</span>' +
@@ -653,6 +651,25 @@ function renderPool() {
 // handlers redraw through here instead of assuming one of them
 function rerender() { if (state.filter === 'Following') renderPool(); else renderTable(); }
 
+/* The 'counts as' toggle is sticky across page loads, so the button has to say
+   which bucket it is about to write into — a silent one is how a whole day of
+   follow-ups ends up filed as cold DMs. */
+function markLabel() {
+  const bucket = state.kind === 'followup' ? 'follow-ups' : 'cold DMs';
+  const when = state.sentDate === core.dmyToIso(core.todayDmy())
+    ? 'today' : core.isoToDmy(state.sentDate).slice(0, 5);
+  return 'Mark ' + (state.sel.size || 'batch') + ' sent ' + when + ' as ' + bucket;
+}
+// offered while the batch is still the current one, same lifetime as its Undo
+function switchKindBtn() {
+  const u = state.lastBatchUndo;
+  if (!u || !u.actId) return '';
+  const to = u.kind === 'followup' ? 'cold' : 'followup';
+  return '<button class="v2-btn sm" id="poolKind" data-to="' + to + '">Counted as ' +
+    (u.kind === 'followup' ? 'follow-ups' : 'cold DMs') + ' — switch to ' +
+    (to === 'followup' ? 'follow-ups' : 'cold DMs') + '</button>';
+}
+
 function renderTable() {
   if (state.filter === 'Following') { renderPool(); return; }
   $('colWrap').hidden = false;
@@ -688,9 +705,9 @@ function renderTable() {
       '</div>' +
       '<input class="v2-in" type="date" id="sentDate" value="' + esc(state.sentDate) + '" max="' + esc(core.dmyToIso(core.todayDmy())) + '" title="The day these DMs went out" style="width:auto;min-height:32px;padding:0 8px">' +
       '<button class="v2-btn go sm" id="poolMark"' + (state.sel.size ? '' : ' disabled') + '>' +
-        (state.sentDate === core.dmyToIso(core.todayDmy()) ? 'Mark batch sent today'
-          : 'Mark batch sent ' + esc(core.isoToDmy(state.sentDate).slice(0, 5))) + '</button>' +
+        esc(markLabel()) + '</button>' +
       (state.lastBatchUndo ? '<button class="v2-btn sm" id="poolUndo">Undo last batch (' + state.lastBatchUndo.count + ')</button>' : '') +
+      switchKindBtn() +
     '</div>';
   t.innerHTML = bar + '<div class="v2-scroll"><div class="l-min">' + head + page.map((l) =>
     `<div class="v2-row l-row" data-id="${l.id}">` +
@@ -1102,6 +1119,24 @@ $('table').addEventListener('click', async (e) => {
     }
     return;
   }
+  const pk = e.target.closest('#poolKind');
+  if (pk) {
+    pk.disabled = true;
+    const u = state.lastBatchUndo;
+    const to = pk.getAttribute('data-to');
+    try {
+      const res = await core.setBatchKind(u.actId, to);
+      u.kind = to; // the button now offers the way back
+      rerender();
+      toast({ type: 'ok', ttl: 8000,
+        html: '<b>' + res.count + '</b> now counted as ' +
+          (to === 'followup' ? 'follow-ups' : 'cold DMs') + '.' });
+    } catch (err) {
+      pk.disabled = false;
+      toast({ type: 'err', html: 'Couldn’t change it: ' + esc(err.message), sticky: true });
+    }
+    return;
+  }
   const mark = e.target.closest('#poolMark');
   if (mark && !mark.disabled) {
     const ids = Array.from(state.sel);
@@ -1118,7 +1153,7 @@ $('table').addEventListener('click', async (e) => {
       state.sel = new Set();
       // the toast's Undo dies in 10 seconds; the bar button stays until the
       // next batch (or navigation) replaces it
-      if (res.undo) state.lastBatchUndo = { undo: res.undo, count: res.marked };
+      if (res.undo) state.lastBatchUndo = { undo: res.undo, count: res.marked, actId: res.actId, kind: res.kind };
       state.prevSel = null;
       renderSumbar(); rerender();
       toast({ type: 'ok', ttl: 10000,

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260723m">
+<link rel="modulepreload" href="./crm-core.js?v=20260724a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f9f8f5}</style>
 <script type="module" blocking="render">
@@ -86,6 +86,16 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .rz .tx{flex:1;font-size:12.5px;color:#4d4a42;line-height:1.5}
 .rz .dt{font:400 11px 'IBM Plex Mono',monospace;color:#ccc5b6}
 .rz-empty{font-size:12px;color:#8a8375;margin-top:10px;line-height:1.55}
+/* sent batches: re-classify a mis-toggled Cold DM / Follow-up */
+.bt-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid #f0ede6}
+.bt-row:first-child{border-top:0}
+.bt-day{font:500 12.5px 'IBM Plex Mono',monospace;color:#4d4a42;min-width:74px}
+.bt-n{font-size:13px;color:#211f1b;font-weight:600;min-width:66px}
+.bt-n span{font-weight:400;color:#8a8375}
+.bt-sp{flex:1}
+.bt-fix{font:400 11px 'IBM Plex Mono',monospace;color:#8a8375}
+.bt-row.busy{opacity:.5;pointer-events:none}
+.bt-empty{font-size:12.5px;color:#8a8375;margin-top:8px}
 /* history table */
 .h-thead,.h-row{grid-template-columns:96px 1fr 1fr 1fr 1fr 1fr 64px}
 .h-cell{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#4d4a42}
@@ -314,6 +324,11 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
       <div id="reasons"></div>
     </div>
 
+    <div class="chart-card" id="batchCard" hidden>
+      <span class="v2-lab">Sent batches — last 30 days</span>
+      <div id="batches"></div>
+    </div>
+
     <section class="v2-card">
       <div class="v2-thead h-thead"><span>Day</span><span>Follow-ups</span><span>Cold DMs</span><span>New leads</span><span>Booked</span><span>Closed</span><span>Target</span></div>
       <div id="hist"></div>
@@ -322,7 +337,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260723m';
+import * as core from './crm-core.js?v=20260724a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'report' });
@@ -516,17 +531,58 @@ function render(targets) {
   }).join('');
 }
 
+/* A batch's kind is metrics-only, and the toggle that sets it is sticky — so
+   the wrong bucket is easy to pick and, until now, impossible to correct.
+   Flipping one here appends a correction; the numbers above re-read on load. */
+function renderBatches(list) {
+  $('batchCard').hidden = !list.length;
+  if (!list.length) return;
+  $('batches').innerHTML = list.map((b) => `
+    <div class="bt-row" data-id="${esc(b.id)}">
+      <span class="bt-day">${esc(b.dmy.slice(0, 5))}</span>
+      <span class="bt-n">${b.count} <span>${b.count === 1 ? 'lead' : 'leads'}</span></span>
+      <span class="bt-sp"></span>
+      ${b.corrected ? '<span class="bt-fix">changed</span>' : ''}
+      <div class="tf" role="group" aria-label="Counted as">
+        <button type="button" data-kind="followup" aria-pressed="${b.kind === 'followup'}">Follow-up</button>
+        <button type="button" data-kind="cold" aria-pressed="${b.kind === 'cold'}">Cold DM</button>
+      </div>
+    </div>`).join('');
+}
+$('batches').onclick = async (e) => {
+  const btn = e.target.closest('button[data-kind]');
+  if (!btn || btn.getAttribute('aria-pressed') === 'true') return;
+  const row = btn.closest('.bt-row');
+  const id = row.getAttribute('data-id');
+  row.classList.add('busy');
+  try {
+    const res = await core.setBatchKind(id, btn.getAttribute('data-kind'));
+    await load();   // the cards, chart and history all move with it
+    toast({ type: 'ok', ttl: 9000,
+      html: '<b>' + res.count + '</b> moved to ' +
+        (res.to === 'followup' ? 'follow-ups' : 'cold DMs') + '.',
+      action: res.undo ? { label: 'Undo', fn: async () => {
+        await core.undoBatchKind(res.undo); await load();
+      } } : null });
+  } catch (err) {
+    row.classList.remove('busy');
+    toast({ type: 'err', html: 'Couldn’t change it: ' + esc(err.message), sticky: true });
+  }
+};
+
 async function load() {
   $('refresh').disabled = true;
   try {
-    const [stats, targets, cy, health, ft, reasons, trend] = await Promise.all([
+    const [stats, targets, cy, health, ft, reasons, trend, batches] = await Promise.all([
       core.setterStats(60), core.setterTargets(), core.currency(),
       core.pipelineHealth(), core.funnelAllTime(), core.noCloseReasons(), core.snapshotTrend(30),
+      core.recentBatches(30),
     ]);
     allStats = stats; cur = cy; allTime = ft;
     render(targets);
     renderPipeline(health, trend);
     renderReasons(reasons);
+    renderBatches(batches);
     $('seg').onclick = (e) => {
       const b = e.target.closest('button[data-days]');
       if (!b) return;

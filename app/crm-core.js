@@ -589,8 +589,17 @@ export async function noContact(ids) {
   await logActivity('leads', list[0], 'no-contact', null,
     { deleted: del.length, archived: arch.length });
   if (retracted) {
+    // credit the count back to the bucket it was actually counted into — a
+    // fixed 'followup' here would move a cold batch's retraction to the wrong
+    // side of the day's split
+    let kind = 'followup';
+    try {
+      const today = todayDmy();
+      const hit = (await recentBatches(2)).find((x) => x.dmy === today);
+      if (hit) kind = hit.kind;
+    } catch (e) { /* the walk-back matters more than picking the right bucket */ }
     await logActivity('leads', list[0], 'update', { retracted_batch: retracted },
-      { batch: -retracted, batch_kind: 'followup' });
+      { batch: -retracted, batch_kind: kind });
   }
   dropBookCache();
   return { ok: true, deleted: del.length, archived: arch.length, retracted,
@@ -988,14 +997,91 @@ export async function markBatchSent(ids, opts = {}) {
   const atIso = whenDmy === todayDmy() ? null : whenIso + 'T12:00:00Z';
   // promoted is a COUNT, deliberately not level fields — a level-change shape
   // here would trip the funnel's replies metric on every batch
-  await logActivity('leads', ids[0], 'update', { outreach_batch: ids.length },
+  const actId = await logActivity('leads', ids[0], 'update', { outreach_batch: ids.length },
     { last_contact: whenIso, last_status: status, batch: ids.length, batch_kind: kind,
       promoted: poolIds.length }, atIso);
-  return { ok: true, marked: ids.length, kind, when: whenDmy, undo: { outreachIds: ids, before } };
+  return { ok: true, marked: ids.length, kind, when: whenDmy, actId,
+    undo: { outreachIds: ids, before } };
 }
 /** Back-compat wrapper: the outreach pool is always a first touch. */
 export async function markOutreachSent(ids, opts = {}) {
   return markBatchSent(ids, { ...opts, kind: opts.kind || 'cold' });
+}
+
+/* ---------- re-classifying a batch: Cold DM <-> Follow-up ----------
+   The kind is metrics-only — the lead rows are identical either way — so a
+   wrong toggle is a reporting error, not data loss. It's fixed by APPENDING a
+   correction rather than rewriting the audit row: `activity` is append-only,
+   and the same walk-back shape is already used by noContact below. */
+
+const _batchKind = (x) => (x === 'followup' ? 'followup' : 'cold');
+
+/** Batches sent in the last `days`, newest first, with their effective kind. */
+export async function recentBatches(days = 30) {
+  if (DEMO) {
+    _demo.batches = _demo.batches || [
+      { id: 9001, at: new Date(Date.now() - 2 * 36e5).toISOString(), count: 34, kind: 'cold', origKind: 'cold', promoted: 12 },
+      { id: 9002, at: new Date(Date.now() - 5 * 36e5).toISOString(), count: 12, kind: 'cold', origKind: 'cold', promoted: 0 },
+      { id: 9003, at: new Date(Date.now() - 28 * 36e5).toISOString(), count: 28, kind: 'followup', origKind: 'followup', promoted: 3 },
+      { id: 9004, at: new Date(Date.now() - 74 * 36e5).toISOString(), count: 41, kind: 'followup', origKind: 'cold', promoted: 0 },
+    ];
+    return _demo.batches.map((b) => ({ ...b, dmy: isoToDmy(b.at), corrected: b.kind !== b.origKind }));
+  }
+  const start = new Date(); start.setDate(start.getDate() - Math.max(1, days)); start.setHours(0, 0, 0, 0);
+  const { data, error } = await supa.from('activity')
+    .select('id,actor,row_id,prev,next,created_at')
+    .eq('table_name', 'leads').eq('action', 'update')
+    .not('next->>batch', 'is', null)
+    .gte('created_at', start.toISOString())
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  const rows = data || [];
+  // the positive half of each correction pair carries the kind it moved TO;
+  // rows are newest-first, so the FIRST one seen per batch is the current kind
+  const fixed = new Map();
+  for (const r of rows) {
+    const nx = r.next || {};
+    if (!nx.corrects || (Number(nx.batch) || 0) <= 0) continue;
+    if (!fixed.has(nx.corrects)) fixed.set(nx.corrects, _batchKind(nx.batch_kind));
+  }
+  return rows.filter((r) => {
+    const nx = r.next || {}, pv = r.prev || {};
+    // corrections and ✕ walk-backs are adjustments, not batches anyone sent
+    return !nx.corrects && !pv.retracted_batch && (Number(nx.batch) || 0) > 0;
+  }).map((r) => {
+    const nx = r.next || {};
+    const origKind = _batchKind(nx.batch_kind);
+    const kind = fixed.has(r.id) ? fixed.get(r.id) : origKind;
+    return { id: r.id, at: r.created_at, dmy: isoToDmy(r.created_at), rowId: r.row_id,
+      count: Number(nx.batch) || 0, kind, origKind, corrected: kind !== origKind,
+      promoted: Number(nx.promoted) || 0, actor: r.actor || '' };
+  });
+}
+
+/** Move a sent batch between the two buckets. */
+export async function setBatchKind(activityId, kind) {
+  const to = _batchKind(kind);
+  const list = await recentBatches(90);
+  const b = list.find((x) => String(x.id) === String(activityId));
+  if (!b) throw new Error('batch not found — it may be older than 90 days');
+  if (b.kind === to) return { ok: true, noop: true, count: b.count, from: b.kind, to };
+  if (DEMO) {
+    const d = (_demo.batches || []).find((x) => String(x.id) === String(activityId));
+    if (d) d.kind = to;
+    return { ok: true, count: b.count, from: b.kind, to, undo: { id: b.id, kind: b.kind } };
+  }
+  // both halves are stamped at the original batch's instant so the move lands
+  // on the day it was actually sent, not today
+  await logActivity('leads', b.rowId, 'update', { kind_fix: b.id },
+    { batch: -b.count, batch_kind: b.kind, corrects: b.id }, b.at);
+  await logActivity('leads', b.rowId, 'update', { kind_fix: b.id },
+    { batch: b.count, batch_kind: to, corrects: b.id }, b.at);
+  return { ok: true, count: b.count, from: b.kind, to, undo: { id: b.id, kind: b.kind } };
+}
+
+export async function undoBatchKind(undo) {
+  if (!undo) return { ok: true };
+  return setBatchKind(undo.id, undo.kind);
 }
 
 export async function undoOutreachSent(undo) {
@@ -1307,6 +1393,20 @@ function rigaDay(ts) {
  *  booked:    leads moved to Booked (meetings handed to the closer)
  *  closed:    deals the closer marked Closed — counted on the deal, not the lead,
  *             so the mirrored lead update can't double-count it */
+/* One batch-shaped activity row into a day's bucket. Three shapes land here
+   and they all reduce to "add this signed count to this bucket":
+     a sent batch      { batch: 34, batch_kind: 'cold' }
+     a retraction      { batch: -2, batch_kind: 'followup' }
+     a kind correction { batch: -34, batch_kind: 'cold', corrects: <id> }
+                       { batch:  34, batch_kind: 'followup', corrects: <id> }
+   Rows written before the toggle existed carry no kind; those were all first
+   touches, so an absent kind means cold. Exported for the unit test. */
+export function tallyBatch(bucket, next) {
+  const n = Number(next.batch) || 0;
+  if (next.batch_kind === 'followup') bucket.followups += n; else bucket.outreach += n;
+  return bucket;
+}
+
 export async function setterStats(days = 14) {
   const n = Math.max(1, Math.min(days, 60));
   const dayKeys = [];
@@ -1365,11 +1465,7 @@ export async function setterStats(days = 14) {
       continue;
     }
     if (r.action !== 'update') continue; // import/restore don't count
-    if (next.batch) { // older rows carry no kind; those were all first touches
-      const n = Number(next.batch) || 0;
-      if (next.batch_kind === 'followup') b.followups += n; else b.outreach += n;
-      continue;
-    }
+    if (next.batch) { tallyBatch(b, next); continue; }
     if (human && next.last_contact) b.followups++;
     if (next.level && next.level !== prev.level) {
       if (next.level === 'Booked') b.booked++;
