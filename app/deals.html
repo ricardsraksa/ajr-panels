@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260723h">
+<link rel="modulepreload" href="./crm-core.js?v=20260723i">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -39,7 +39,9 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .calrow .lab{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7c56c9}
 .calrow .who{font-weight:700;color:#211f1b}
 .calrow .sp{flex:1}
-.calrow select{min-height:32px;padding:0 9px;border:1px solid #ddd8cd;border-radius:8px;background:#fff;font-size:12.5px;max-width:190px}
+.calrow select{min-height:32px;padding:0 9px;border:1px solid #ddd8cd;border-radius:8px;background:#fff;font-size:12.5px;max-width:190px;cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:28px;transition:border-color .16s ease, box-shadow .16s ease;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%238a8375%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27m6 9 6 6 6-6%27/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;background-size:13px}
+.calrow select:hover{border-color:#8a8375}
+.calrow select:focus{border-color:#211f1b;outline:none;box-shadow:0 0 0 3px rgba(33,31,27,.07)}
 .calrow .lnk{min-height:32px;padding:0 13px;border-radius:8px;border:1px solid #d5c8ef;background:#fff;color:#7c56c9;font-weight:600;font-size:12.5px}
 .calrow .lnk:hover{background:#f0eafb}
 .calrow .lnk.dim{border-color:#e6e2da;color:#8a8375}
@@ -202,9 +204,18 @@ input::placeholder,textarea::placeholder{color:var(--off)}
 
 /* inputs */
 .v2-in{min-height:34px;padding:7px 12px;background:#fff;border:1px solid var(--line-2);border-radius:8px;
-  color:var(--ink);font-size:13px;width:100%}
-.v2-in:focus{border-color:var(--muted-2)}
-select.v2-in{cursor:pointer}
+  color:var(--ink);font-size:13px;width:100%;
+  transition:border-color .16s ease, box-shadow .16s ease, background-color .16s ease}
+.v2-in:hover{border-color:var(--muted-2)}
+.v2-in:focus{border-color:var(--ink-3);box-shadow:0 0 0 3px rgba(33,31,27,.07)}
+/* native selects render differently on every OS — draw our own chevron so the
+   closed state matches the rest of the paper UI */
+select.v2-in{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:30px;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8375' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;background-size:14px}
+select.v2-in:hover{background-color:var(--rowsel)}
+select.v2-in:disabled{opacity:.55;cursor:not-allowed}
+input[type=date].v2-in{cursor:pointer}
 textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 /* cards + tables */
@@ -350,7 +361,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260723h';
+import * as core from './crm-core.js?v=20260723i';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
@@ -721,7 +732,7 @@ async function loadStrip() {
         '<span class="who">' + esc(b.name || b.email || 'Booking') + '</span>' +
         '<span>· ' + esc(slotLabel(b.start_iso)) + (b.email ? ' · ' + esc(b.email) : '') + '</span>' +
         '<span class="sp"></span>' +
-        '<select><option value="">Pick a deal ▾</option>' + opts + '</select>' +
+        '<select><option value="">Pick a deal</option>' + opts + '</select>' +
         '<button class="lnk">Link</button>' +
         '<button class="lnk dim" data-ignore>Ignore</button></div>';
     }).join('');

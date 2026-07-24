@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260723h">
+<link rel="modulepreload" href="./crm-core.js?v=20260723i">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -21,10 +21,15 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .l-tick{width:15px;height:15px;flex:none;cursor:pointer;accent-color:#2a6a4d;align-self:center}
 /* sheet-style cells: plain text until hovered/focused, then obviously editable */
 .l-edit{width:100%;min-width:0;border:1px solid transparent;border-radius:6px;background:none;
-  font:inherit;font-size:12.5px;color:#4d4a42;padding:2px 4px;cursor:pointer;appearance:none;
-  text-overflow:ellipsis}
-.l-edit:hover{border-color:#ddd8cd;background:#fff}
-.l-edit:focus{border-color:#8a8375;background:#fff;outline:none}
+  font:inherit;font-size:12.5px;color:#4d4a42;padding:2px 16px 2px 5px;cursor:pointer;
+  appearance:none;-webkit-appearance:none;text-overflow:ellipsis;
+  background-repeat:no-repeat;background-position:right 3px center;background-size:12px;
+  transition:border-color .16s ease, background-color .16s ease, box-shadow .16s ease}
+/* the chevron only appears on hover/focus, so the table still reads as text —
+   the space for it is always reserved, so nothing shifts */
+.l-edit:hover,.l-edit:focus{border-color:#ddd8cd;background-color:#fff;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8375' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")}
+.l-edit:focus{border-color:#8a8375;outline:none;box-shadow:0 0 0 3px rgba(33,31,27,.07)}
 .l-edit.busy{opacity:.5}
 .l-edit.booked{color:#2a6a4d;font-weight:600}
 .l-edit.noclose{color:#b4543e}
@@ -217,9 +222,18 @@ input::placeholder,textarea::placeholder{color:var(--off)}
 
 /* inputs */
 .v2-in{min-height:34px;padding:7px 12px;background:#fff;border:1px solid var(--line-2);border-radius:8px;
-  color:var(--ink);font-size:13px;width:100%}
-.v2-in:focus{border-color:var(--muted-2)}
-select.v2-in{cursor:pointer}
+  color:var(--ink);font-size:13px;width:100%;
+  transition:border-color .16s ease, box-shadow .16s ease, background-color .16s ease}
+.v2-in:hover{border-color:var(--muted-2)}
+.v2-in:focus{border-color:var(--ink-3);box-shadow:0 0 0 3px rgba(33,31,27,.07)}
+/* native selects render differently on every OS — draw our own chevron so the
+   closed state matches the rest of the paper UI */
+select.v2-in{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:30px;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8375' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;background-size:14px}
+select.v2-in:hover{background-color:var(--rowsel)}
+select.v2-in:disabled{opacity:.55;cursor:not-allowed}
+input[type=date].v2-in{cursor:pointer}
 textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 /* cards + tables */
@@ -314,7 +328,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260723h';
+import * as core from './crm-core.js?v=20260723i';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });

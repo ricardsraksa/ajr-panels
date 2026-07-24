@@ -1762,9 +1762,18 @@ input::placeholder,textarea::placeholder{color:var(--off)}
 
 /* inputs */
 .v2-in{min-height:34px;padding:7px 12px;background:#fff;border:1px solid var(--line-2);border-radius:8px;
-  color:var(--ink);font-size:13px;width:100%}
-.v2-in:focus{border-color:var(--muted-2)}
-select.v2-in{cursor:pointer}
+  color:var(--ink);font-size:13px;width:100%;
+  transition:border-color .16s ease, box-shadow .16s ease, background-color .16s ease}
+.v2-in:hover{border-color:var(--muted-2)}
+.v2-in:focus{border-color:var(--ink-3);box-shadow:0 0 0 3px rgba(33,31,27,.07)}
+/* native selects render differently on every OS — draw our own chevron so the
+   closed state matches the rest of the paper UI */
+select.v2-in{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:30px;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8375' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;background-size:14px}
+select.v2-in:hover{background-color:var(--rowsel)}
+select.v2-in:disabled{opacity:.55;cursor:not-allowed}
+input[type=date].v2-in{cursor:pointer}
 textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 /* cards + tables */
@@ -2153,6 +2162,9 @@ export function installScanner(opts = {}) {
       .sc2-card .x:hover{color:#b4543e}
       .sc2-card .g{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
       .sc2-card select,.sc2-card .nn{width:100%;min-height:32px;padding:5px 10px;background:#fff;border:1px solid #ddd8cd;border-radius:8px;color:#211f1b;font-size:12.5px}
+      .sc2-card select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:28px;transition:border-color .16s ease, box-shadow .16s ease;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%238a8375%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27m6 9 6 6 6-6%27/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;background-size:13px}
+      .sc2-card select:hover{border-color:#8a8375}
+      .sc2-card select:focus{border-color:#211f1b;outline:none;box-shadow:0 0 0 3px rgba(33,31,27,.07)}
       .sc2-card .low{font-size:11px;color:#a8762a;margin-top:6px}
       .sc2-card .ex{font-size:11px;color:#2a6a4d;margin-top:6px}
       #sc2-modal .f{padding:14px 20px;border-top:1px solid #e6e2da;display:flex;gap:10px;align-items:center}
