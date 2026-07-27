@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260724c">
+<link rel="modulepreload" href="./crm-core.js?v=20260724d">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -90,6 +90,29 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .dfoot{padding:13px 20px;border-top:1px solid #f0ede6;flex:none;display:flex;flex-direction:column;gap:8px}
 .dfoot .v2-btn{width:100%}
 /* outreach pool */
+/* floating batch bar: the real one sits at the top of the table and scrolls
+   away, so the count and the Mark button follow you down a 300-row list */
+.fbar{position:fixed;left:50%;transform:translateX(-50%) translateY(8px);
+  bottom:calc(18px + env(safe-area-inset-bottom));z-index:75;
+  display:flex;align-items:center;gap:12px;padding:9px 10px 9px 16px;
+  background:#fff;border:1px solid #e6e2da;border-radius:999px;
+  box-shadow:0 10px 30px rgba(33,31,27,.16),0 2px 6px rgba(33,31,27,.07);
+  font-size:13px;color:#4d4a42;max-width:calc(100vw - 24px);
+  opacity:0;pointer-events:none;transition:opacity .16s ease, transform .16s ease}
+.fbar.on{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+.fbar b{font-family:'IBM Plex Mono',monospace;color:#211f1b}
+.fbar .sent{color:#2a6a4d;font-weight:600;white-space:nowrap}
+.fbar .dot{color:#ddd8cd}
+.fbar .lab{white-space:nowrap}
+.fbar button{white-space:nowrap}
+/* toasts land bottom-centre too — lift them above the bar instead of under it */
+.v2-toasts{bottom:76px}
+@media (max-width:760px){
+  .fbar{left:12px;right:12px;transform:translateY(8px);max-width:none;
+    border-radius:14px;justify-content:space-between;padding:9px 10px 9px 14px}
+  .fbar.on{transform:translateY(0)}
+  .fbar .lab{display:none}
+}
 .poolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid #f0ede6;font-size:13px;color:#4d4a42}
 .poolbar .sp{flex:1}
 .poolbar b{font-family:'IBM Plex Mono',monospace;color:#211f1b}
@@ -329,6 +352,16 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
   </div>
 
   <div class="v2-card" id="table"><div class="v2-empty" id="skel">Loading leads…</div></div>
+  <!-- mirrors the batch bar while it's scrolled off; buttons forward to the
+       real ones so the marking logic lives in exactly one place -->
+  <div class="fbar" id="fbar" aria-live="polite">
+    <span class="sent" id="fbSent"></span>
+    <span class="dot" id="fbDot">·</span>
+    <span><b id="fbSel">0</b> <span class="lab">selected</span></span>
+    <span class="sp" style="flex:1"></span>
+    <button class="v2-btn sm" id="fbClear" type="button">Clear</button>
+    <button class="v2-btn go sm" id="fbMark" type="button">Mark sent</button>
+  </div>
 </main>
 
 <div class="scrim" id="scrim"></div>
@@ -370,7 +403,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260724c';
+import * as core from './crm-core.js?v=20260724d';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -645,11 +678,13 @@ function renderPool() {
   $('count').textContent = state.src === 'pool'
     ? todo.length.toLocaleString() + ' still to DM'
     : due.toLocaleString() + ' due a follow-up';
+  renderFloat();
 }
 
 // the batch controls are shared by the pool view and the lead table, so the
 // handlers redraw through here instead of assuming one of them
 function rerender() { if (state.filter === 'Following') renderPool(); else renderTable(); }
+// every path that redraws a list also refreshes the floating mirror
 
 /* The 'counts as' toggle is sticky across page loads, so the button has to say
    which bucket it is about to write into — a silent one is how a whole day of
@@ -669,6 +704,44 @@ function switchKindBtn() {
     (u.kind === 'followup' ? 'follow-ups' : 'cold DMs') + ' — switch to ' +
     (to === 'followup' ? 'follow-ups' : 'cold DMs') + '</button>';
 }
+
+/* ---------- floating batch bar ----------
+   The real bar is the first thing in the table card, so on a 300-row list it
+   scrolls away exactly when the selecting starts. This mirrors it: today's
+   sent count, the running selection, and a Mark button that forwards to the
+   real one — no second copy of the marking logic to drift out of sync. */
+function sentTodayCount() {
+  const today = core.todayDmy();
+  return state.leads.filter((l) => l.lastContact === today).length;
+}
+function renderFloat() {
+  const fb = $('fbar'); if (!fb) return;
+  const real = $('poolMark');
+  const n = state.sel.size;
+  const sent = sentTodayCount();
+  $('fbSent').textContent = sent ? sent + ' sent today' : '';
+  $('fbDot').hidden = !sent || !n;
+  $('fbSel').parentElement.hidden = !n;
+  $('fbClear').hidden = !n;
+  $('fbMark').hidden = !n;
+  $('fbSel').textContent = n;
+  // the real button owns the wording (kind + date) and the disabled state
+  if (real) { $('fbMark').textContent = real.textContent; $('fbMark').disabled = real.disabled; }
+  // nothing to say — no selection and nothing sent yet today
+  if (!n && !sent) { fb.classList.remove('on'); return; }
+  // only once the real bar has scrolled out of reach; a visible bar makes this
+  // one redundant clutter
+  const r = real ? real.getBoundingClientRect() : null;
+  fb.classList.toggle('on', !r || r.bottom < 8);
+}
+core.pageListen(window, 'scroll', renderFloat, { passive: true });
+core.pageListen(window, 'resize', renderFloat);
+$('fbMark').onclick = () => { const b = $('poolMark'); if (b && !b.disabled) b.click(); };
+$('fbClear').onclick = () => {
+  const b = $('tableClear') || $('poolClear');
+  if (b) { b.click(); return; }
+  state.sel = new Set(); state.prevSel = null; rerender();   // pool view has no Clear
+};
 
 function renderTable() {
   if (state.filter === 'Following') { renderPool(); return; }
@@ -733,6 +806,7 @@ function renderTable() {
     else allShown.forEach((l) => state.sel.delete(l.id));
     renderTable();
   };
+  renderFloat();
 }
 /* One cell, by column key. Stage/status/qualification stay inline-editable
    the way the sheet was; the rest are read-only here and edited in the drawer. */
