@@ -1250,13 +1250,19 @@ export async function interpret(text, mode, deal) {
   return data;
 }
 
+let _demoVisionCall = 0;
 export async function visionScan(imageB64, mediaType) {
   if (DEMO) {
-    await new Promise((r) => setTimeout(r, 700));
-    return { ok: true, leads: [
-      { handle: 'growthwithdan', name: 'Dan', stage: 'Engaged 3', status: 'Call Pitched', notes: 'runs a supplement brand ~40k/mo, asked about the audit', confidence: 'high' },
-      { handle: 'sara.ecom', name: 'Sara', stage: 'Engaged 2', status: 'Left on read', notes: 'talked about her email flows, sent audit offer', confidence: 'medium' },
-    ] };
+    await new Promise((r) => setTimeout(r, 600));
+    // rotate through a few results so a multi-screenshot batch shows leads
+    // accumulating, a duplicate being skipped, and a name-only inbox card
+    const sets = [
+      [{ handle: 'growthwithdan', name: 'Dan', stage: 'Engaged 3', status: 'Call Pitched', notes: 'supplement brand ~40k/mo, asked about the audit', confidence: 'high' }],
+      [{ handle: 'sara.ecom', name: 'Sara', stage: 'Engaged 2', status: 'Left on read', notes: 'email flows, sent audit offer', confidence: 'medium' },
+       { handle: 'growthwithdan', name: 'Dan', stage: 'Engaged 3', status: 'Mid convo', notes: 'same lead again — should be skipped', confidence: 'high' }],
+      [{ handle: '', name: 'Luka Vukoslavovic', stage: 'Engaged 1', status: 'Story reply', notes: 'inbox screenshot — name only, no handle', confidence: 'low' }],
+    ];
+    return { ok: true, leads: sets[_demoVisionCall++ % sets.length] };
   }
   const { data, error } = await supa.functions.invoke('vision', { body: { image: imageB64, media_type: mediaType } });
   if (error) throw new Error(error.message || 'Vision unreachable');
@@ -2385,9 +2391,13 @@ export function installScanner(opts = {}) {
   document.body.appendChild(el);
   const $i = (id) => document.getElementById(id);
   const escH = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  let items = [];
+  let items = [];        // the accumulated review list — the source of truth
+  let scanning = 0;      // >0 while an image in the current batch is being read
+  let scanTotal = 0, scanDone = 0; // for the "Reading 2 of 5…" progress line
+  let msg = '';          // muted line under the header: dupes / unreadable images
   let mode = 'log'; // 'prospect' = add-only, no contact stamp; set per open
-  const close = () => { $i('sc2-modal').classList.remove('on'); items = []; };
+  const g2 = (card, f) => { const x = card.querySelector('[data-f="' + f + '"]'); return x ? x.value.trim() : ''; };
+  const close = () => { $i('sc2-modal').classList.remove('on'); items = []; scanning = 0; scanTotal = 0; scanDone = 0; msg = ''; };
   $i('sc2-close').onclick = close; $i('sc2-cancel').onclick = close;
   $i('sc2-modal').addEventListener('mousedown', (e) => { if (e.target === $i('sc2-modal')) close(); });
 
@@ -2395,13 +2405,62 @@ export function installScanner(opts = {}) {
     return (blank ? '<option value="">' + blank + '</option>' : '') +
       list.map((o) => '<option' + (o === sel ? ' selected' : '') + '>' + escH(o) + '</option>').join('');
   }
-  function render(leads) {
-    items = leads;
-    $i('sc2-title').textContent = leads.length + ' lead' + (leads.length === 1 ? '' : 's') + ' found' +
-      (mode === 'prospect' ? ' — adding as uncontacted' : '');
+  // the handle a card resolves to: a real @handle wins; failing that, an inbox
+  // display name mapped back through the names we hold. Blank if neither — we
+  // never invent a handle from a name we can't match.
+  function itemHandle(it) {
+    const raw = (it.handle || '').trim().toLowerCase().replace(/^@/, '');
+    if (raw) return raw;
+    const nm = (it.name || '').trim();
+    return nm && opts.resolveName ? (opts.resolveName(nm) || '') : '';
+  }
+  // pull the user's in-progress edits back into items before any re-render, so
+  // a screenshot finishing in the background can't wipe what they just typed
+  function syncFromDom() {
+    Array.prototype.forEach.call($i('sc2-body').querySelectorAll('.sc2-card'), (card) => {
+      const it = items[+card.getAttribute('data-i')];
+      if (!it) return;
+      it.handle = g2(card, 'handle'); it.stage = g2(card, 'stage');
+      it.status = g2(card, 'status'); it.notes = g2(card, 'notes');
+    });
+  }
+  function scanLabel() {
+    if (scanning <= 0) return '';
+    return scanTotal > 1 ? 'Reading ' + (scanDone + 1) + ' of ' + scanTotal + '…' : 'Reading screenshot…';
+  }
+  // one screenshot's leads onto the pile, skipping anyone already queued
+  function addLeads(leads) {
+    syncFromDom();
+    const have = new Set(items.map(itemHandle).filter(Boolean));
+    let dupes = 0;
+    for (const l of leads) {
+      const h = itemHandle(l);
+      if (h && have.has(h)) { dupes++; continue; }
+      if (h) have.add(h);
+      items.push(l);
+    }
+    return dupes;
+  }
+  // spinner only before the first card exists; once cards are up, an incoming
+  // scan updates the header but leaves the reviewed cards on screen
+  function refresh() {
+    if (scanning > 0 && !items.length) {
+      $i('sc2-title').textContent = scanLabel();
+      $i('sc2-add').disabled = true;
+      $i('sc2-body').innerHTML = '<div class="think">Claude is reading the image…</div>';
+      return;
+    }
+    render();
+  }
+  function render() {
+    syncFromDom();
+    const busy = scanning > 0;
+    $i('sc2-title').textContent = (busy ? scanLabel() + ' · ' : '') +
+      items.length + ' lead' + (items.length === 1 ? '' : 's') + (mode === 'prospect' ? ' to add' : ' found');
     $i('sc2-add').textContent = mode === 'prospect' ? 'Add to uncontacted' : 'Add leads';
-    $i('sc2-add').disabled = false;
-    $i('sc2-body').innerHTML = leads.map((l, i) => {
+    $i('sc2-add').disabled = busy || items.length === 0;
+    const note = msg ? '<div style="margin:6px 4px 2px;font-size:11.5px;color:#8a8375">' + escH(msg) + '</div>' : '';
+    $i('sc2-body').innerHTML = note + items.map((l, i) => {
       // NEVER fall back to the display name: an inbox screenshot shows names
       // ('Luka Vukoslavovic'), and turning one into a handle invents a lead
       // that matches nobody. Leave it blank so the card asks for the real one.
@@ -2428,42 +2487,69 @@ export function installScanner(opts = {}) {
       '</div>';
     }).join('');
     Array.prototype.forEach.call($i('sc2-body').querySelectorAll('[data-rm]'), (b) => {
-      b.onclick = () => { b.closest('.sc2-card').remove(); if (!$i('sc2-body').querySelector('.sc2-card')) close(); };
+      b.onclick = () => {
+        syncFromDom();
+        items.splice(+b.closest('.sc2-card').getAttribute('data-i'), 1);
+        if (!items.length && scanning <= 0) close(); else render();
+      };
     });
     $i('sc2-modal').classList.add('on');
   }
-  async function handleImage(file) {
-    if (!file || (file.type || '').indexOf('image/') !== 0) return;
+  const toB64 = (file) => new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => { const v = String(r.result); res(v.slice(v.indexOf(',') + 1)); };
+    r.onerror = rej; r.readAsDataURL(file);
+  });
+  // read a whole batch of screenshots one at a time, piling their leads into
+  // the same review list — the setter drops the day's screenshots in at once
+  async function scanFiles(fileList) {
+    const imgs = [].slice.call(fileList || []).filter((f) => f && (f.type || '').indexOf('image/') === 0);
+    if (!imgs.length) return;
     $i('sc2-modal').classList.add('on');
-    $i('sc2-title').textContent = 'Reading screenshot…';
-    $i('sc2-add').disabled = true;
-    $i('sc2-body').innerHTML = '<div class="think">Claude is reading the image…</div>';
-    try {
-      const b64 = await new Promise((res, rej) => {
-        const r = new FileReader();
-        r.onload = () => { const v = String(r.result); res(v.slice(v.indexOf(',') + 1)); };
-        r.onerror = rej; r.readAsDataURL(file);
-      });
-      const out = await visionScan(b64, file.type || 'image/jpeg');
-      const leads = (out.leads || []).filter((l) => (l.handle || l.name || '').trim());
-      if (!leads.length) { $i('sc2-body').innerHTML = '<div class="think">No leads found in that image.</div>'; return; }
-      render(leads);
-    } catch (e) {
-      $i('sc2-body').innerHTML = '<div class="think">Couldn’t read that: ' + escH(e.message) + '</div>';
+    scanTotal = imgs.length; scanDone = 0;
+    let dupes = 0, errs = 0;
+    for (const f of imgs) {
+      scanning = 1; refresh();
+      try {
+        const out = await visionScan(await toB64(f), f.type || 'image/jpeg');
+        const leads = (out.leads || []).filter((l) => (l.handle || l.name || '').trim());
+        if (leads.length) dupes += addLeads(leads);
+      } catch (e) { errs++; }
+      scanDone++; scanning = 0;
     }
+    scanTotal = 0;
+    const bits = [];
+    if (dupes) bits.push(dupes + ' duplicate' + (dupes === 1 ? '' : 's') + ' skipped');
+    if (errs) bits.push(errs + ' image' + (errs === 1 ? '' : 's') + ' couldn’t be read');
+    msg = bits.join(' · ');
+    if (!items.length) {
+      $i('sc2-title').textContent = 'Screenshot';
+      $i('sc2-body').innerHTML = '<div class="think">No leads found' +
+        (errs ? ' — ' + errs + ' image' + (errs === 1 ? '' : 's') + ' couldn’t be read' :
+          ' in ' + (imgs.length === 1 ? 'that image' : 'those images')) + '.</div>';
+      return;
+    }
+    render();
   }
   $i('sc2-add').onclick = async () => {
+    syncFromDom();
     const cards = [].slice.call($i('sc2-body').querySelectorAll('.sc2-card'));
     $i('sc2-add').disabled = true; $i('sc2-add').textContent = 'Adding…';
-    const g2 = (card, f) => { const x = card.querySelector('[data-f="' + f + '"]'); return x ? x.value.trim() : ''; };
+    // one batch can hold the same handle twice (the same lead across two
+    // screenshots the user edited to match) — first card wins, rest skipped
+    const seen = new Set();
     if (mode === 'prospect') {
       // found, not messaged: create as uncontacted, never stamp a contact date
-      const batch = cards.map((card) => ({
-        handle: g2(card, 'handle'), stage: g2(card, 'stage') || 'Engaged 1', notes: g2(card, 'notes'),
-      })).filter((c) => c.handle);
+      const batch = [];
+      cards.forEach((card) => {
+        const handle = g2(card, 'handle').toLowerCase().replace(/^@/, '');
+        if (!handle || seen.has(handle)) return;
+        seen.add(handle);
+        batch.push({ handle, stage: g2(card, 'stage') || 'Engaged 1', notes: g2(card, 'notes') });
+      });
       let res = { added: 0, skipped: 0 };
       try { res = await addProspects(batch); } catch (e) { /* surfaced via onDone(0) */ }
-      $i('sc2-add').disabled = false; $i('sc2-add').textContent = 'Add leads';
+      $i('sc2-add').disabled = false; $i('sc2-add').textContent = 'Add to uncontacted';
       close();
       if (opts.onDone) opts.onDone(res.added, { mode: 'prospect', res });
       return;
@@ -2472,7 +2558,8 @@ export function installScanner(opts = {}) {
     for (const card of cards) {
       const g = (f) => g2(card, f);
       const handle = g('handle').toLowerCase().replace(/^@/, '');
-      if (!handle) continue;
+      if (!handle || seen.has(handle)) continue;
+      seen.add(handle);
       try {
         await setterUpdate({ handle, stage: g('stage'), status: g('status'), note: g('notes') });
         const orig = items[+card.getAttribute('data-i')];
@@ -2485,10 +2572,12 @@ export function installScanner(opts = {}) {
     close();
     if (opts.onDone) opts.onDone(n);
   };
-  // paste + drop
+  // paste + drop — both take everything at once, not just the first image
   pageListen(window, 'paste', (e) => {
     const its = (e.clipboardData && e.clipboardData.items) || [];
-    for (const it of its) if (it.type && it.type.indexOf('image/') === 0) { e.preventDefault(); mode = 'log'; handleImage(it.getAsFile()); return; }
+    const files = [];
+    for (const it of its) if (it.type && it.type.indexOf('image/') === 0) { const f = it.getAsFile(); if (f) files.push(f); }
+    if (files.length) { e.preventDefault(); mode = 'log'; scanFiles(files); }
   });
   let depth = 0;
   pageListen(window, 'dragenter', (e) => { if (e.dataTransfer && [].indexOf.call(e.dataTransfer.types, 'Files') !== -1) { depth++; $i('sc2-drop').classList.add('on'); } });
@@ -2497,13 +2586,13 @@ export function installScanner(opts = {}) {
   pageListen(window, 'drop', (e) => {
     if (!$i('sc2-drop').classList.contains('on')) return;
     e.preventDefault(); depth = 0; $i('sc2-drop').classList.remove('on');
-    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-    if (f) handleImage(f);
+    const fs = e.dataTransfer && e.dataTransfer.files;
+    if (fs && fs.length) scanFiles(fs);
   });
   return { openFile: (m) => {
     mode = m === 'prospect' ? 'prospect' : 'log';
-    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
-    inp.onchange = () => { if (inp.files[0]) handleImage(inp.files[0]); };
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+    inp.onchange = () => { if (inp.files && inp.files.length) scanFiles(inp.files); };
     inp.click();
   } };
 }
