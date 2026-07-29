@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260724g">
+<link rel="modulepreload" href="./crm-core.js?v=20260725a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f9f8f5}</style>
 <script type="module" blocking="render">
@@ -215,7 +215,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 <!--/baked:head-->
 </head>
 <body class="v2-shell">
-<!--baked:side--><nav class="v2-side"><div class="grp">SETTER</div><a class="nav" href="worklist.html" data-nav="worklist">Worklist<span class="slot" data-slot="worklist"></span></a><a class="nav" href="log-lead.html" data-nav="log-lead">Log a lead<span class="slot" data-slot="log-lead"></span></a><a class="nav" href="leads.html" data-nav="leads">All leads<span class="slot" data-slot="leads"></span></a><a class="nav" href="report.html" data-nav="report">Dashboard<span class="slot" data-slot="report"></span></a><div class="grp gap">CLOSER</div><a class="nav" href="deals.html" data-nav="deals">Deals<span class="slot" data-slot="deals"></span></a><a class="nav" href="close-call.html" data-nav="close-call">Voice log<span class="slot" data-slot="close-call"></span></a><div class="sp"></div><a class="nav on" href="settings.html">Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
+<!--baked:side--><nav class="v2-side"><div class="grp">SETTER</div><a class="nav" href="worklist.html" data-nav="worklist">Worklist<span class="slot" data-slot="worklist"></span></a><a class="nav" href="log-lead.html" data-nav="log-lead">Log a lead<span class="slot" data-slot="log-lead"></span></a><a class="nav" href="leads.html" data-nav="leads">All leads<span class="slot" data-slot="leads"></span></a><a class="nav" href="assistant.html" data-nav="assistant">Assistant<span class="slot" data-slot="assistant"></span></a><a class="nav" href="report.html" data-nav="report">Dashboard<span class="slot" data-slot="report"></span></a><div class="grp gap">CLOSER</div><a class="nav" href="deals.html" data-nav="deals">Deals<span class="slot" data-slot="deals"></span></a><a class="nav" href="close-call.html" data-nav="close-call">Voice log<span class="slot" data-slot="close-call"></span></a><div class="sp"></div><a class="nav on" href="settings.html">Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
 <main class="v2-main colw">
   <div class="demo-banner" id="demoBanner" hidden>DEMO — writes go nowhere</div>
   <header class="v2-h">
@@ -300,11 +300,28 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
       <span class="msg" id="rules-msg" style="margin-left:10px"></span>
     </div>
   </div>
+
+  <div class="card" id="training">
+    <h2>AI training</h2>
+    <div class="sub">What the Assistant knows. The playbook is pre-loaded; add scripts, objection docs, anything — it reads every enabled doc on each reply.</div>
+    <ul class="rows" id="kn-list"><li><span class="k">Loading…</span></li></ul>
+    <div class="blk">
+      <div class="ff-row" style="margin-bottom:8px">
+        <input class="v2-in" id="kn-title" placeholder="doc title, e.g. Objection scripts v2" spellcheck="false">
+      </div>
+      <textarea class="v2-in" id="kn-content" rows="6" placeholder="paste the content…" style="width:100%;font-size:12.5px;font-family:'IBM Plex Mono',monospace;resize:vertical"></textarea>
+      <div class="ff-row" style="margin-top:8px">
+        <button class="v2-btn dark" id="kn-save">Add doc</button>
+        <button class="v2-btn" id="kn-cancel" hidden>Cancel edit</button>
+        <span class="msg" id="kn-msg"></span>
+      </div>
+    </div>
+  </div>
 </main>
 
 
 <script type="module">
-import * as core from './crm-core.js?v=20260724g';
+import * as core from './crm-core.js?v=20260725a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'settings' });
@@ -574,6 +591,68 @@ $('targets-save').onclick = async () => {
   if (!st.alert_times || !st.alert_times.report) alertTimes.report = (st.alert_times && st.alert_times.evening) || '08:00';
   renderTeam(); renderRules(); renderTargets(); renderTimes();
 })();
+
+/* ---------- AI training (the Assistant's knowledge) ---------- */
+let knEditing = null; // id being edited, or null = adding
+async function renderKn() {
+  const ul = $('kn-list');
+  try {
+    const docs = await core.knowledgeList();
+    ul.innerHTML = docs.length ? docs.map((d) =>
+      '<li><span class="k">' + esc(d.title) + '</span>' +
+      '<span class="v">' + Math.round(d.size / 1000) + 'k · ' + esc(String(d.updated_at || '').slice(0, 10)) + '</span>' +
+      '<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#6d675b;cursor:pointer">' +
+        '<input type="checkbox" data-kn-on="' + d.id + '"' + (d.enabled ? ' checked' : '') + ' style="accent-color:#2a6a4d">on</label>' +
+      '<button class="v2-btn sm" data-kn-edit="' + d.id + '">Edit</button>' +
+      '<button class="v2-btn sm" data-kn-del="' + d.id + '" style="color:#b4543e">Delete</button></li>').join('')
+      : '<li><span class="k" style="color:#8a8375">No docs yet — the assistant runs on the built-in playbook definitions only.</span></li>';
+  } catch (e) { ul.innerHTML = '<li><span class="k">Couldn’t load: ' + esc(e.message) + '</span></li>'; }
+}
+$('kn-list').addEventListener('click', async (e) => {
+  const ed = e.target.closest('[data-kn-edit]');
+  if (ed) {
+    try {
+      const doc = await core.knowledgeGet(+ed.getAttribute('data-kn-edit'));
+      knEditing = doc.id;
+      $('kn-title').value = doc.title; $('kn-content').value = doc.content;
+      $('kn-save').textContent = 'Save changes'; $('kn-cancel').hidden = false;
+      $('kn-title').scrollIntoView({ block: 'center' });
+    } catch (err) { $('kn-msg').textContent = err.message; }
+    return;
+  }
+  const del = e.target.closest('[data-kn-del]');
+  if (del) {
+    // deleting training is destructive and rare — one confirm is not clutter
+    if (!confirm('Delete this training doc? The assistant forgets it immediately.')) return;
+    try { await core.knowledgeDelete(+del.getAttribute('data-kn-del')); renderKn(); }
+    catch (err) { $('kn-msg').textContent = err.message; }
+  }
+});
+$('kn-list').addEventListener('change', async (e) => {
+  const cb = e.target.closest('[data-kn-on]'); if (!cb) return;
+  try { await core.knowledgeToggle(+cb.getAttribute('data-kn-on'), cb.checked); }
+  catch (err) { cb.checked = !cb.checked; $('kn-msg').textContent = err.message; }
+});
+$('kn-save').onclick = async () => {
+  const title = $('kn-title').value.trim(), content = $('kn-content').value.trim();
+  if (!title || !content) { $('kn-msg').textContent = 'Title and content required.'; return; }
+  $('kn-save').disabled = true; $('kn-msg').textContent = '';
+  try {
+    await core.knowledgeSave({ id: knEditing, title, content });
+    knEditing = null;
+    $('kn-title').value = ''; $('kn-content').value = '';
+    $('kn-save').textContent = 'Add doc'; $('kn-cancel').hidden = true;
+    $('kn-msg').textContent = 'Saved.';
+    renderKn();
+  } catch (err) { $('kn-msg').textContent = err.message; }
+  finally { $('kn-save').disabled = false; }
+};
+$('kn-cancel').onclick = () => {
+  knEditing = null;
+  $('kn-title').value = ''; $('kn-content').value = '';
+  $('kn-save').textContent = 'Add doc'; $('kn-cancel').hidden = true; $('kn-msg').textContent = '';
+};
+renderKn();
 
 health();
 }

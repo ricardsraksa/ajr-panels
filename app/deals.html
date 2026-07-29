@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260724g">
+<link rel="modulepreload" href="./crm-core.js?v=20260725a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -22,6 +22,8 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .d-row{cursor:pointer}
 .d-min{min-width:600px}
 .dname{font-weight:600;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:7px}
+.dname a.ig{color:#211f1b;text-decoration:none;overflow:hidden;text-overflow:ellipsis}
+.dname a.ig:hover{text-decoration:underline;text-decoration-color:#ccc5b6}
 .d-cell{font-size:12.5px;color:#4d4a42;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .d-cell.dim{color:#8a8375}
 .st-amber{color:#a8762a}
@@ -271,7 +273,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 <!--/baked:head-->
 </head>
 <body class="v2-shell">
-<!--baked:side--><nav class="v2-side"><div class="grp">SETTER</div><a class="nav" href="worklist.html" data-nav="worklist">Worklist<span class="slot" data-slot="worklist"></span></a><a class="nav" href="log-lead.html" data-nav="log-lead">Log a lead<span class="slot" data-slot="log-lead"></span></a><a class="nav" href="leads.html" data-nav="leads">All leads<span class="slot" data-slot="leads"></span></a><a class="nav" href="report.html" data-nav="report">Dashboard<span class="slot" data-slot="report"></span></a><div class="grp gap">CLOSER</div><a class="nav on" href="deals.html" data-nav="deals">Deals<span class="slot" data-slot="deals"></span></a><a class="nav" href="close-call.html" data-nav="close-call">Voice log<span class="slot" data-slot="close-call"></span></a><div class="sp"></div><a class="nav" href="settings.html">Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
+<!--baked:side--><nav class="v2-side"><div class="grp">SETTER</div><a class="nav" href="worklist.html" data-nav="worklist">Worklist<span class="slot" data-slot="worklist"></span></a><a class="nav" href="log-lead.html" data-nav="log-lead">Log a lead<span class="slot" data-slot="log-lead"></span></a><a class="nav" href="leads.html" data-nav="leads">All leads<span class="slot" data-slot="leads"></span></a><a class="nav" href="assistant.html" data-nav="assistant">Assistant<span class="slot" data-slot="assistant"></span></a><a class="nav" href="report.html" data-nav="report">Dashboard<span class="slot" data-slot="report"></span></a><div class="grp gap">CLOSER</div><a class="nav on" href="deals.html" data-nav="deals">Deals<span class="slot" data-slot="deals"></span></a><a class="nav" href="close-call.html" data-nav="close-call">Voice log<span class="slot" data-slot="close-call"></span></a><div class="sp"></div><a class="nav" href="settings.html">Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
 <main class="v2-main">
   <header class="v2-h">
     <h1>Deals</h1>
@@ -301,7 +303,10 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
     <span class="lab">Selected deal</span>
     <h2 id="d-name">Deal</h2>
     <button class="v2-btn sm" id="d-close" style="float:right;min-height:24px;padding:0 8px">×</button>
-    <div id="f-ff-wrap" hidden style="margin-top:4px"><a id="f-ff" target="_blank" rel="noopener" style="font-size:12.5px">View call transcript ↗</a></div>
+    <div id="f-ff-wrap" hidden style="margin-top:4px">
+      <span class="lab" style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#98917f;display:block;margin-bottom:4px">Calls</span>
+      <div id="f-calls" style="display:flex;flex-direction:column;gap:4px;font-size:12.5px"></div>
+    </div>
   </div>
 
   <div class="pick" id="pick" hidden>
@@ -383,7 +388,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260724g';
+import * as core from './crm-core.js?v=20260725a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
@@ -479,7 +484,9 @@ function render() {
   if (!rows.length) { t.innerHTML = '<div class="v2-scroll">' + head + '</div><div class="v2-empty">No deals here.</div>'; return; }
   t.innerHTML = '<div class="v2-scroll"><div class="d-min">' + head + rows.map((d) => `
     <div class="v2-row d-row${d.status === 'Closed' ? ' row-won' : ''}" data-id="${d.row}">
-      <span class="dname">${esc(displayName(d))}${d.hasFF ? '<span title="Call transcript attached" style="color:#2a6a4d">◆</span>' : ''}</span>
+      <span class="dname">${d.link
+        ? `<a class="ig" href="${esc(d.link)}" target="_blank" rel="noopener" title="Open Instagram">${esc(displayName(d))}</a>`
+        : esc(displayName(d))}${d.hasFF ? '<span title="Call transcript attached" style="color:#2a6a4d">◆</span>' : ''}</span>
       <span>${statusBadge(d.status)}</span>
       ${dateCell(d.meeting)}
       ${dateCell(d.followup, true)}
@@ -488,6 +495,9 @@ function render() {
     </div>`).join('') + '</div></div>';
   Array.prototype.forEach.call(t.querySelectorAll('.d-row'), (r) => {
     r.onclick = () => openDrawer(+r.getAttribute('data-id'));
+    // the name goes to Instagram, not the drawer
+    const a2 = r.querySelector('.dname a.ig');
+    if (a2) a2.addEventListener('click', (e) => e.stopPropagation());
   });
 }
 
@@ -525,9 +535,21 @@ function openDrawer(id) {
   $('ai-in').value = '';
   $('cash-warn').hidden = true;
   $('cash-confirm').hidden = true;
+  // every recorded call, newest first — loads async so the drawer opens instantly
   const ffWrap = $('f-ff-wrap');
-  if (d.hasFF && d.fireflies_link) { ffWrap.hidden = false; $('f-ff').href = d.fireflies_link; }
-  else ffWrap.hidden = true;
+  ffWrap.hidden = true; $('f-calls').innerHTML = '';
+  core.dealCalls(d.row).then((calls) => {
+    if (state.editing !== d.row) return; // drawer moved on to another deal
+    if (!calls.length && d.fireflies_link) calls = [{ id: 'legacy', title: 'Call transcript', url: d.fireflies_link, at: '' }];
+    if (!calls.length) return;
+    $('f-calls').innerHTML = calls.map((c) => {
+      const day = c.at ? esc(String(c.at).slice(8, 10) + '/' + String(c.at).slice(5, 7)) : '';
+      return '<a href="' + esc(c.url) + '" target="_blank" rel="noopener">' +
+        (day ? '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11.5px;color:#8a8375">' + day + '</span> · ' : '') +
+        esc(c.title) + ' ↗</a>';
+    }).join('');
+    ffWrap.hidden = false;
+  }).catch(() => { /* the drawer works without the log */ });
   $('scrim').classList.add('on'); $('drawer').classList.add('on');
   checkFuNudge();
   loadHist(d.row);
@@ -745,22 +767,22 @@ function slotLabel(iso) {
    ensureDealForLead in a catch so a failure can't block the write that already
    landed, and anything booked before that automation existed never had one at
    all. Either way the closer never sees them — so check on every load. */
-async function missingRows() {
-  let miss = [];
-  try { miss = await core.bookedWithoutDeal(); } catch (e) { return ''; }
-  if (!miss.length) return '';
-  return miss.map((l) => '<div class="calrow miss" data-miss="' + esc(l.id) + '">' +
-    '<span class="lab">BOOKED, NOT IN DEALS</span>' +
-    '<span class="who">@' + esc(l.h) + '</span>' +
-    (l.qual ? '<span>· ' + esc(l.qual) + '</span>' : '') +
-    (l.lastContact ? '<span>· last touch ' + esc(l.lastContact) + '</span>' : '') +
-    '<span class="sp"></span>' +
-    '<button class="lnk" data-addmiss>Add to deals</button></div>').join('');
+// booked leads with no deal live on their own page — here it's ONE quiet
+// line, and only when there's something to fix
+async function missingChip() {
+  try {
+    const miss = await core.bookedWithoutDeal();
+    if (!miss.length) return '';
+    return '<a class="calrow miss" href="handover.html" style="text-decoration:none">' +
+      '<span class="lab">HANDOVER</span>' +
+      '<span class="who">' + miss.length + ' booked lead' + (miss.length === 1 ? '' : 's') + ' not in deals</span>' +
+      '<span class="sp"></span><span style="color:#a8762a;font-weight:600">Review →</span></a>';
+  } catch (e) { return ''; }
 }
 async function loadStrip() {
   const el = $('calstrip');
   try {
-    const missHtml = await missingRows();
+    const missHtml = await missingChip();
     const loose = await core.looseBookings();
     if ((!loose || !loose.length) && !missHtml) { el.hidden = true; el.innerHTML = ''; return; }
     const open = state.deals.filter((d) => d.status !== 'Closed' && d.status !== 'No Close');
@@ -781,22 +803,6 @@ async function loadStrip() {
 $('calstrip').addEventListener('click', async (e) => {
   const btn = e.target.closest('.lnk'); if (!btn) return;
   const rowEl = btn.closest('.calrow');
-  if (btn.hasAttribute('data-addmiss')) {
-    btn.disabled = true; btn.textContent = 'Adding…';
-    try {
-      const who = rowEl.querySelector('.who').textContent;
-      const miss = await core.bookedWithoutDeal();
-      const lead = miss.find((l) => String(l.id) === rowEl.getAttribute('data-miss'));
-      if (!lead) { loadStrip(); return; }   // someone else just added it
-      await core.createMissingDeal(lead);
-      await load();                          // the new deal joins the board
-      toast({ type: 'ok', html: '<span class="mono">' + esc(who) + '</span> added to deals.' });
-    } catch (err) {
-      btn.disabled = false; btn.textContent = 'Add to deals';
-      toast({ type: 'err', html: 'Couldn’t add it: ' + esc(err.message), sticky: true });
-    }
-    return;
-  }
   if (btn.hasAttribute('data-ignore')) {
     btn.disabled = true;
     try {

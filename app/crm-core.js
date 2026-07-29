@@ -286,6 +286,8 @@ export async function setterUpdate(args) {
       if (args.stage) hit.level = args.stage;
       if (args.status) hit.status = args.status;
       if (args.note) hit.notes = hit.notes ? hit.notes + '\n' + args.note : args.note;
+      if (args.qual) hit.qual = args.qual;
+      if (args.pains && !hit.pains) hit.pains = args.pains;
       hit.lastContact = todayDmy();
       let deal = null;
       if (args.stage === 'Booked') deal = await ensureDealForLead(hit, { meeting: args.meeting, time: args.meetingTime });
@@ -308,6 +310,9 @@ export async function setterUpdate(args) {
     if (args.stage) patch.level = args.stage;
     if (args.status) patch.last_status = args.status;
     if (args.note) patch.notes = hit.notes ? hit.notes + '\n' + args.note : args.note;
+    // scanner extras — a blank from the AI never wipes what a human wrote
+    if (args.qual) { prev.qualification = hit.qualification; patch.qualification = args.qual; }
+    if (args.pains && !hit.pain_points) { prev.pain_points = hit.pain_points; patch.pain_points = args.pains; }
     const { error } = await supa.from('leads').update(patch).eq('id', hit.id);
     if (error) throw new Error(error.message);
     const actId = await logActivity('leads', hit.id, 'update', prev, patch);
@@ -324,6 +329,7 @@ export async function setterUpdate(args) {
     handle, ig_url: 'https://www.instagram.com/' + handle + '/',
     level: args.stage, last_status: args.status || null,
     notes: args.note || null, last_contact: todayIso, date_added: todayIso,
+    qualification: args.qual || null, pain_points: args.pains || null,
   };
   const { data: created, error: cErr } = await supa.from('leads')
     .insert(rowNew).select('id').single();
@@ -500,19 +506,39 @@ export async function ensureDealForLead(lead, when = {}) {
    plus anything booked before this automation existed, which can never
    self-heal (setLead only creates on the level CHANGE to Booked).
    The closing page checks for them on every load. */
+// A deal belongs to a lead whether or not it carries lead_id: rows imported
+// from the old sheet were never linked, so fall back to name / ig-link handle.
+function _dealMatches(d, l) {
+  const h = String(l.h || l.handle || '').toLowerCase();
+  if (d.leadId != null && d.leadId === l.id) return true;
+  if (!h) return false;
+  return String(d.name || '').toLowerCase().replace(/^@/, '') === h ||
+    String(d.link || d.ig_link || '').toLowerCase().includes('/' + h);
+}
+
+/** The deal (from the loaded deals list) belonging to this lead, or null. */
+export function dealForLead(deals, lead) {
+  return (deals || []).find((d) => _dealMatches(d, lead)) || null;
+}
+
+/** Every recorded call for a deal, newest first — the Fireflies call log. */
+export async function dealCalls(dealId) {
+  if (DEMO) {
+    if (dealId !== 101) return [];
+    return [
+      { id: 'demo-ff-2', title: 'Oscar <> Reinis — closing call', url: 'https://app.fireflies.ai/view/demo2', at: new Date(Date.now() - 2 * 864e5).toISOString() },
+      { id: 'demo-ff-1', title: 'Oscar Wong discovery call', url: 'https://app.fireflies.ai/view/demo', at: new Date(Date.now() - 9 * 864e5).toISOString() },
+    ];
+  }
+  const { data, error } = await supa.from('pending_calls')
+    .select('id,title,url,call_at').eq('deal_id', dealId)
+    .not('url', 'is', null).order('call_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data || []).map((c) => ({ id: c.id, title: c.title || 'Call', url: c.url, at: c.call_at }));
+}
+
 export async function bookedWithoutDeal() {
-  // A deal counts as "reached the closer" whether or not it carries lead_id:
-  // rows imported from the old sheet were never linked, and matching on the id
-  // alone would offer to create a second deal for someone who already has one.
-  const hasDeal = (deals, l) => {
-    const h = String(l.h || l.handle || '').toLowerCase();
-    return deals.some((d) => {
-      if (d.leadId != null && d.leadId === l.id) return true;
-      if (!h) return false;
-      return String(d.name || '').toLowerCase().replace(/^@/, '') === h ||
-        String(d.link || d.ig_link || '').toLowerCase().includes('/' + h);
-    });
-  };
+  const hasDeal = (deals, l) => deals.some((d) => _dealMatches(d, l));
   if (DEMO) {
     return _demo.leads.filter((l) => l.level === 'Booked' && !hasDeal(_demo.deals, l))
       .map((l) => ({ id: l.id, h: l.h, url: l.url || '', qual: l.qual || '', notes: l.notes || '',
@@ -1308,6 +1334,105 @@ export async function interpret(text, mode, deal) {
   return data;
 }
 
+/* ---------- sales assistant ---------- */
+
+const DEMO_KNOWLEDGE = [
+  { id: 1, title: 'DM Playbook — Ch2: Target audience', enabled: true, size: 4200, updated_at: new Date().toISOString() },
+  { id: 2, title: 'DM Playbook — Ch5: First message framework', enabled: true, size: 6100, updated_at: new Date().toISOString() },
+  { id: 3, title: 'DM Playbook — Ch8: Objection handling', enabled: true, size: 5300, updated_at: new Date().toISOString() },
+];
+
+/** Training docs the assistant runs on. List is metadata-only (content can be big). */
+export async function knowledgeList() {
+  if (DEMO) return DEMO_KNOWLEDGE.map((k) => ({ ...k }));
+  const { data, error } = await supa.from('knowledge')
+    .select('id,title,enabled,updated_at,content').order('id');
+  if (error) throw new Error(error.message);
+  return (data || []).map((k) => ({ id: k.id, title: k.title, enabled: k.enabled,
+    size: (k.content || '').length, updated_at: k.updated_at }));
+}
+export async function knowledgeGet(id) {
+  if (DEMO) return { id, title: 'Demo doc', content: 'Demo content — writes go nowhere.', enabled: true };
+  const { data, error } = await supa.from('knowledge').select('*').eq('id', id).single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+export async function knowledgeSave(row) {
+  if (DEMO) return { ok: true };
+  const patch = { title: row.title, content: row.content, enabled: row.enabled !== false,
+    updated_at: new Date().toISOString() };
+  const q = row.id
+    ? supa.from('knowledge').update(patch).eq('id', row.id)
+    : supa.from('knowledge').insert(patch);
+  const { error } = await q;
+  if (error) throw new Error(error.message);
+  return { ok: true };
+}
+export async function knowledgeToggle(id, enabled) {
+  if (DEMO) { const k = DEMO_KNOWLEDGE.find((x) => x.id === id); if (k) k.enabled = enabled; return { ok: true }; }
+  const { error } = await supa.from('knowledge').update({ enabled, updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) throw new Error(error.message);
+  return { ok: true };
+}
+export async function knowledgeDelete(id) {
+  if (DEMO) return { ok: true };
+  const { error } = await supa.from('knowledge').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+  return { ok: true };
+}
+
+/** What the CRM knows about one lead, as a text block for the assistant. */
+export async function leadContextBlock(lead, deals) {
+  const bits = [
+    'Handle: @' + lead.h,
+    lead.level ? 'Stage: ' + lead.level : '',
+    lead.status ? 'Last status: ' + lead.status : '',
+    lead.qual ? 'Qualification: ' + lead.qual : '',
+    lead.lastContact ? 'Last contact: ' + lead.lastContact : '',
+    lead.pains ? 'Pain points: ' + lead.pains : '',
+    lead.notes ? 'Notes:\n' + lead.notes : '',
+  ].filter(Boolean);
+  const deal = dealForLead(deals || [], lead);
+  if (deal) {
+    bits.push('Deal: ' + (deal.name || '@' + lead.h) + ' — ' + (deal.status || 'open') +
+      (deal.meeting ? ', meeting ' + deal.meeting : '') + (deal.cash ? ', cash ' + deal.cash : ''));
+    try {
+      const calls = await dealCalls(deal.row);
+      if (calls.length) bits.push('Calls: ' + calls.map((c) => (c.at || '').slice(0, 10) + ' ' + c.title).join('; '));
+    } catch (e) { /* context, not critical */ }
+  }
+  try {
+    const acts = await loadActivity('leads', lead.id, 20);
+    if (acts.length) {
+      bits.push('Recent history:\n' + acts.map((a) => {
+        const day = String(a.created_at || '').slice(0, 10);
+        const what = a.action === 'create' ? 'created'
+          : Object.entries(a.next || {}).map(([k, v]) => k + '→' + String(v).slice(0, 60)).join(', ');
+        return day + ' [' + (a.actor || '?') + '] ' + (what || a.action);
+      }).join('\n'));
+    }
+  } catch (e) { /* same */ }
+  return bits.join('\n');
+}
+
+/** One assistant turn. messages: Anthropic-shaped [{role, content:[...]}]. */
+export async function assistChat(messages, leadContext) {
+  if (DEMO) {
+    await new Promise((r) => setTimeout(r, 900));
+    return { ok: true,
+      reply: "He's price-anchoring before you've shown value — classic Engaged 2 stall. Don't defend the price in DMs; pull it to a call. Reply something like: \"honestly depends on the store — that's why we do a free audit first, worst case you get a teardown of your flows. got 15 min this week?\" His note from April says he was launching a second store; ask how that launch went first, it reopens the convo warm.",
+      lead_handle: 'ecom.aiden',
+      updates: { qual: 'Qualified 2', level: 'Engaged 3', status: 'Mid convo',
+        pains: 'Email barely converts, under 10% of revenue. No time to manage flows himself.',
+        note: 'launching second store (mentioned April)', angle: 'weak flows, ~10%/mo from email' } };
+  }
+  const { data, error } = await supa.functions.invoke('assist',
+    { body: { messages, leadContext: leadContext || '' } });
+  if (error) throw new Error(error.message || 'Assistant unreachable');
+  if (!data || !data.ok) throw new Error((data && data.error) || 'Assistant error');
+  return data;
+}
+
 let _demoVisionCall = 0;
 export async function visionScan(imageB64, mediaType) {
   if (DEMO) {
@@ -1558,6 +1683,7 @@ export async function addProspects(cards) {
     h: String(c.handle || '').trim().toLowerCase().replace(/^@/, ''),
     stage: c.stage || 'Engaged 1',
     notes: String(c.notes || '').trim(),
+    qual: String(c.qual || '').trim(), pains: String(c.pains || '').trim(),
   })).filter((c) => c.h);
   if (!list.length) return { added: 0, skipped: 0, ids: [] };
   if (DEMO) {
@@ -1585,6 +1711,7 @@ export async function addProspects(cards) {
       handle: c.h, ig_url: 'https://www.instagram.com/' + c.h + '/',
       level: c.stage, last_contact: null, prospected_at: new Date().toISOString(),
       date_added: dmyToIso(todayDmy()), notes: c.notes || null,
+      qualification: c.qual || null, pain_points: c.pains || null,
     }).select('id').single();
     if (error) throw new Error(error.message);
     ids.push(data.id);
@@ -1999,6 +2126,7 @@ const NAV_ITEMS = [
   { id: 'worklist', label: 'Worklist', href: 'worklist.html' },
   { id: 'log-lead', label: 'Log a lead', href: 'log-lead.html' },
   { id: 'leads', label: 'All leads', href: 'leads.html' },
+  { id: 'assistant', label: 'Assistant', href: 'assistant.html' },
   { id: 'report', label: 'Dashboard', href: 'report.html' },
   { grp: 'CLOSER', gap: true },
   { id: 'deals', label: 'Deals', href: 'deals.html' },
@@ -2483,6 +2611,7 @@ export function installScanner(opts = {}) {
       if (!it) return;
       it.handle = g2(card, 'handle'); it.stage = g2(card, 'stage');
       it.status = g2(card, 'status'); it.notes = g2(card, 'notes');
+      it.qual = g2(card, 'qual'); it.pains = g2(card, 'pains');
     });
   }
   function scanLabel() {
@@ -2531,7 +2660,7 @@ export function installScanner(opts = {}) {
       // full names we hold for these accounts
       const matched = !handle && shownName && opts.resolveName ? opts.resolveName(shownName) : '';
       if (matched) handle = matched;
-      l._suggested = { handle, stage: l.stage || 'Engaged 1', status: l.status || '', notes: l.notes || '' };
+      l._suggested = { handle, stage: l.stage || 'Engaged 1', status: l.status || '', notes: l.notes || '', qual: l.qual || '', pains: l.pains || '' };
       const exists = opts.exists ? opts.exists(handle) : null;
       return '<div class="sc2-card" data-i="' + i + '">' +
         '<div class="t"><input class="hh" data-f="handle" value="' + escH(handle) + '" placeholder="' + (shownName ? escH(shownName) + ' — type their @handle' : 'handle') + '">' +
@@ -2540,7 +2669,11 @@ export function installScanner(opts = {}) {
           '<select data-f="stage">' + optHtml(['Engaged 1','Engaged 2','Engaged 3','Booked','No Reply'], l.stage || 'Engaged 1') + '</select>' +
           '<select data-f="status">' + optHtml(statuses, l.status, 'Status —') + '</select>' +
         '</div>' +
-        '<input class="nn" data-f="notes" value="' + escH(l.notes || '') + '" placeholder="note">' +
+        '<div class="g">' +
+          '<select data-f="qual">' + optHtml(['Qualified 1','Qualified 2','Qualified 3','Unqualified'], l.qual || '', 'Qual —') + '</select>' +
+          '<input class="nn" data-f="pains" value="' + escH(l.pains || '') + '" placeholder="pain points" style="margin:0">' +
+        '</div>' +
+        '<input class="nn" data-f="notes" value="' + escH(l.notes || '') + '" placeholder="note / sellable angle">' +
         (matched ? '<div class="ex">matched “' + escH(shownName) + '” to @' + escH(matched) + '</div>' : '') +
         (!handle ? '<div class="low">only a display name was visible — add the @handle or this one is skipped</div>' : '') +
         (l.confidence && l.confidence !== 'high' ? '<div class="low">low confidence — double-check this one</div>' : '') +
@@ -2609,7 +2742,8 @@ export function installScanner(opts = {}) {
         const handle = g2(card, 'handle').toLowerCase().replace(/^@/, '');
         if (!handle || seen.has(handle)) return;
         seen.add(handle);
-        batch.push({ handle, stage: g2(card, 'stage') || 'Engaged 1', notes: g2(card, 'notes') });
+        batch.push({ handle, stage: g2(card, 'stage') || 'Engaged 1', notes: g2(card, 'notes'),
+          qual: g2(card, 'qual'), pains: g2(card, 'pains') });
       });
       let res = { added: 0, skipped: 0 };
       try { res = await addProspects(batch); } catch (e) { /* surfaced via onDone(0) */ }
@@ -2625,10 +2759,12 @@ export function installScanner(opts = {}) {
       if (!handle || seen.has(handle)) continue;
       seen.add(handle);
       try {
-        await setterUpdate({ handle, stage: g('stage'), status: g('status'), note: g('notes') });
+        await setterUpdate({ handle, stage: g('stage'), status: g('status'), note: g('notes'),
+          qual: g('qual'), pains: g('pains') });
         const orig = items[+card.getAttribute('data-i')];
         if (orig && orig._suggested) logAiFeedback('vision', handle, orig._suggested,
-          { handle, stage: g('stage'), status: g('status'), notes: g('notes') });
+          { handle, stage: g('stage'), status: g('status'), notes: g('notes'),
+            qual: g('qual'), pains: g('pains') });
         n++;
       } catch (e) { /* count only successes */ }
     }

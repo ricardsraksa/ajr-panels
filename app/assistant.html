@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
+<link rel="modulepreload" href="./crm-core.js?v=20260725a">
+<link rel="modulepreload" href="./supabase-js.mjs?v=1">
+<style>html{background:#f9f8f5}</style>
+<script type="module" blocking="render">
+await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
+</script>
+<title>Assistant · AJR</title>
+<style>
+.colw{max-width:820px;display:flex;flex-direction:column;min-height:calc(100vh - 96px)}
+/* thread */
+.thread{flex:1;display:flex;flex-direction:column;gap:14px;padding:4px 2px 18px}
+.msg{max-width:86%;border-radius:14px;padding:11px 15px;font-size:13.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+.msg.me{align-self:flex-end;background:#211f1b;color:#f9f8f5;border-bottom-right-radius:5px}
+.msg.ai{align-self:flex-start;background:#fff;border:1px solid #e6e2da;color:#211f1b;border-bottom-left-radius:5px}
+.msg.ai.think{color:#8a8375;font-style:normal}
+.msg img{max-width:200px;max-height:260px;border-radius:9px;display:block;margin:4px 0;border:1px solid rgba(0,0,0,.12)}
+.msg .imgs{display:flex;gap:6px;flex-wrap:wrap}
+/* proposal card under an AI reply */
+.prop{align-self:flex-start;max-width:86%;border:1px solid #e0cba0;background:#faf3e6;border-radius:12px;padding:12px 14px}
+.prop .ttl{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#a8762a;margin-bottom:9px}
+.prop .ttl b{color:#211f1b;font-family:'Instrument Sans',system-ui,sans-serif;font-size:12.5px;letter-spacing:0;text-transform:none}
+.prop .grid{display:grid;grid-template-columns:auto 1fr;gap:7px 10px;align-items:center;margin-bottom:11px}
+.prop .k{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#98917f;display:flex;align-items:center;gap:6px}
+.prop .k input[type=checkbox]{width:13px;height:13px;accent-color:#2a6a4d;cursor:pointer}
+.prop select,.prop input[type=text]{width:100%;min-height:30px;padding:3px 9px;border:1px solid #ddd8cd;border-radius:8px;background:#fff;font-size:12.5px}
+.prop select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8375' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center;background-size:12px}
+.prop .row{display:flex;gap:8px}
+.prop .row button{min-height:32px;padding:0 14px;border-radius:8px;font-weight:600;font-size:12.5px;cursor:pointer}
+.prop .apply{background:#2a6a4d;border:1px solid #2a6a4d;color:#fff}
+.prop .apply:disabled{opacity:.5}
+.prop .deny{background:#fff;border:1px solid #ddd8cd;color:#8a8375}
+.prop.done{opacity:.65}
+.prop .verdict{font-size:12px;color:#2a6a4d;font-weight:600}
+/* lead chip */
+.leadchip{display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border:1px solid #c9dfd2;background:#eef5f0;
+  border-radius:999px;font-size:12.5px;color:#2a6a4d;font-weight:600}
+.leadchip .x{cursor:pointer;color:#8a8375;font-weight:400}
+.leadchip .x:hover{color:#b4543e}
+/* composer */
+.composer{position:sticky;bottom:0;background:#f9f8f5;padding:10px 0 16px;border-top:1px solid #f0ede6}
+.crow{display:flex;gap:8px;align-items:flex-end}
+.cbox{flex:1;background:#fff;border:1px solid #ddd8cd;border-radius:13px;padding:9px 12px;display:flex;flex-direction:column;gap:7px;
+  transition:border-color .16s ease, box-shadow .16s ease}
+.cbox:focus-within{border-color:#8a8375;box-shadow:0 0 0 3px rgba(33,31,27,.07)}
+.cbox textarea{border:none;background:none;resize:none;font:inherit;font-size:13.5px;min-height:22px;max-height:140px;outline:none}
+.pend{display:flex;gap:6px;flex-wrap:wrap}
+.pend .p{position:relative}
+.pend img{width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid #e6e2da}
+.pend .rm{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#211f1b;color:#fff;
+  font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;padding:0}
+.cbtn{width:40px;height:40px;flex:none;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.cbtn.attach{background:#fff;border:1px solid #ddd8cd;color:#6d675b}
+.cbtn.attach:hover{border-color:#8a8375;color:#211f1b}
+.cbtn.send{background:#211f1b;border:1px solid #211f1b;color:#f9f8f5}
+.cbtn.send:disabled{opacity:.4;cursor:default}
+.cbtn svg{width:17px;height:17px}
+/* header training dropdown */
+.twrap{position:relative;display:inline-flex}
+.tpop{position:absolute;top:calc(100% + 6px);right:0;z-index:40;min-width:250px;padding:6px;
+  background:#fff;border:1px solid #e6e2da;border-radius:11px;
+  box-shadow:0 12px 30px rgba(33,31,27,.13),0 2px 6px rgba(33,31,27,.06)}
+.tpop .ttl{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#98917f;padding:6px 9px 7px}
+.tpop label{display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:7px;font-size:12.5px;color:#211f1b;cursor:pointer}
+.tpop label:hover{background:#f4f1ea}
+.tpop input{width:13px;height:13px;flex:none;accent-color:#211f1b;cursor:pointer}
+.tpop .sz{margin-left:auto;font:400 10.5px 'IBM Plex Mono',monospace;color:#98917f}
+.tpop .foot{border-top:1px solid #f0ede6;margin-top:5px;padding:7px 9px 3px;font-size:12px}
+.empty-hint{align-self:center;text-align:center;color:#8a8375;font-size:13px;max-width:420px;margin:auto 0;line-height:1.7}
+.empty-hint b{color:#4d4a42}
+@media (max-width:760px){ .msg{max-width:94%} .prop{max-width:94%} }
+</style>
+<!--baked:head-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style id="v2-theme">
+@view-transition{navigation:auto}
+:root{
+  --bg:#f9f8f5; --side:#f4f2ed; --card:#fff; --rowsel:#fdfcf9;
+  --line:#e6e2da; --line-2:#ddd8cd; --divider:#f0ede6;
+  --ink:#211f1b; --ink-2:#4d4a42; --ink-3:#6d675b; --muted:#8a8375; --muted-2:#98917f; --off:#ccc5b6;
+  --go:#2a6a4d; --go-hi:#1d4d37; --go-tint:#eef5f0; --go-line:#c9dfd2; --done:#f7faf7;
+  --red:#b4543e; --amber:#a8762a; --amber-tint:#faf3e6;
+  --ai:#7c56c9; --ai-line:#e2d9f4; --ai-tint:#f6f2fb;
+  --font:'Instrument Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:var(--go);text-decoration:none}
+a:hover{color:var(--go-hi)}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+input::placeholder,textarea::placeholder{color:var(--off)}
+
+/* layout */
+.v2-shell{display:flex;min-height:100vh}
+.v2-side{width:206px;flex:none;border-right:1px solid var(--line);background:var(--side);padding:20px 14px;
+  display:flex;flex-direction:column;gap:3px;position:sticky;top:0;height:100vh;
+  align-self:flex-start} /* flex would stretch it and break position:sticky */
+.v2-side .wm{font-weight:700;font-size:14px;letter-spacing:.02em;padding:2px 10px 16px}
+.v2-side .grp{font:600 10.5px var(--font);letter-spacing:.1em;color:var(--muted-2);padding:4px 10px}
+.v2-side .grp.gap{padding-top:14px}
+.v2-side a.nav{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;color:var(--ink-2);font-size:13.5px}
+.v2-side a.nav:hover{background:rgba(33,31,27,.05);color:var(--ink)}
+.v2-side a.nav.on{background:var(--ink);color:var(--bg);font-weight:600}
+.v2-side a.nav.on:hover{background:var(--ink);color:var(--bg)}
+.v2-side .badge-n{margin-left:auto;font:600 11px var(--mono);background:rgba(255,255,255,.18);border-radius:99px;padding:1px 7px}
+.v2-side a.nav:not(.on) .badge-n{background:transparent;color:var(--muted);padding:0}
+.v2-side .badge-red{margin-left:auto;font-size:11px;color:var(--red);font-weight:600}
+.v2-side .sp{flex:1}
+.v2-side .krow{display:flex;align-items:center;gap:8px;padding:8px 10px;color:var(--muted-2);font-size:12px;cursor:pointer}
+.v2-side .krow kbd{margin-left:auto;font:600 11px var(--mono);border:1px solid var(--line-2);border-radius:5px;padding:1px 6px;background:#fff;color:var(--ink-3)}
+.v2-side .me{display:flex;align-items:center;gap:9px;padding:10px 10px 2px;border-top:1px solid var(--line);margin-top:6px}
+.v2-side .me .av{width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--bg);display:inline-flex;
+  align-items:center;justify-content:center;font:600 11px var(--mono);flex:none}
+.v2-side .me .nm{display:block;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v2-side .me .rl{display:block;font-size:11px;color:var(--muted-2)}
+.v2-side .me .out{margin-left:auto;color:var(--muted-2);font-size:11px}
+.v2-main{flex:1;min-width:0;padding:26px 30px 60px}
+@media(max-width:900px) and (min-width:761px){.v2-side{width:64px;padding:16px 8px}.v2-side .wm,.v2-side .grp,.v2-side .krow,.v2-side .me .nm,.v2-side .me .rl{display:none}}
+/* phone: the sidebar becomes a scrolling top strip. As a 64px rail it ate a
+   third of the screen and wrapped every label onto three lines. */
+@media(max-width:760px){
+  .v2-shell{display:block}
+  .v2-side{flex-direction:row;width:auto;height:auto;align-items:center;gap:6px;padding:8px 10px;
+    border-right:none;border-bottom:1px solid var(--line);overflow-x:auto;-webkit-overflow-scrolling:touch;
+    position:sticky;top:0;z-index:20}
+  .v2-side::-webkit-scrollbar{display:none}
+  .v2-side .wm,.v2-side .grp,.v2-side .krow,.v2-side .sp,.v2-side .me .nm,.v2-side .me .rl{display:none}
+  .v2-side a.nav{white-space:nowrap;padding:9px 13px;min-height:40px;font-size:13px}
+  .v2-side .badge-n,.v2-side .badge-red{margin-left:6px}
+  .v2-side .me{border-top:none;margin:0 0 0 auto;padding:0 0 0 6px}
+  .v2-main{padding:16px 14px 60px}
+  .v2-h{flex-wrap:wrap;gap:8px}
+  .v2-h h1{font-size:20px}
+}
+
+/* headers */
+.v2-h{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.v2-h h1{font-size:21px;font-weight:700;letter-spacing:-.01em}
+.v2-h .sub{color:var(--muted);font-size:13px}
+.v2-h .sp{flex:1}
+.v2-lab{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2)}
+
+/* chips */
+.v2-chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.v2-chip{min-height:32px;padding:0 14px;border-radius:99px;border:1px solid var(--line-2);background:#fff;
+  color:var(--ink-2);font-size:12.5px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.v2-chip:hover{border-color:var(--muted-2)}
+.v2-chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
+.v2-chip .n{font-family:var(--mono);font-size:11.5px;opacity:.75}
+.v2-chip.green{background:var(--go-tint);border-color:var(--go-line);color:var(--go)}
+.v2-chip.red{background:#fbf0ed;border-color:#e8cec6;color:var(--red)}
+
+/* buttons */
+.v2-btn{min-height:34px;padding:0 14px;border-radius:8px;border:1px solid var(--line-2);background:#fff;
+  color:var(--ink-2);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.v2-btn:hover:not(:disabled){border-color:var(--muted-2);color:var(--ink)}
+.v2-btn:disabled{opacity:.45;cursor:not-allowed}
+.v2-btn.go{background:var(--go);border-color:var(--go);color:#fff}
+.v2-btn.go:hover:not(:disabled){background:var(--go-hi);border-color:var(--go-hi);color:#fff}
+.v2-btn.goline{background:#fff;border-color:var(--go-line);color:var(--go)}
+.v2-btn.goline:hover:not(:disabled){background:var(--go-tint);color:var(--go)}
+.v2-btn.dark{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.v2-btn.dark:hover:not(:disabled){filter:brightness(1.35)}
+.v2-btn.dash{border-style:dashed;color:var(--muted);font-weight:500;background:transparent}
+.v2-btn.dash:hover{color:var(--ink-2)}
+.v2-btn.sm{min-height:28px;padding:0 10px;font-size:11.5px}
+
+/* inputs */
+.v2-in{min-height:34px;padding:7px 12px;background:#fff;border:1px solid var(--line-2);border-radius:8px;
+  color:var(--ink);font-size:13px;width:100%;
+  transition:border-color .16s ease, box-shadow .16s ease, background-color .16s ease}
+.v2-in:hover{border-color:var(--muted-2)}
+.v2-in:focus{border-color:var(--ink-3);box-shadow:0 0 0 3px rgba(33,31,27,.07)}
+/* native selects render differently on every OS — draw our own chevron so the
+   closed state matches the rest of the paper UI */
+select.v2-in{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:30px;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8375' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;background-size:14px}
+select.v2-in:hover{background-color:var(--rowsel)}
+/* the OPEN list of a native select is drawn by the OS (dark grey on macOS) and
+   cannot be styled — so on pointer devices we draw our own and keep the real
+   <select> underneath for state, change events and keyboard control */
+#v2-menu{position:fixed;z-index:200;background:var(--card);border:1px solid var(--line);border-radius:11px;
+  box-shadow:0 14px 38px -10px rgba(33,31,27,.32), 0 2px 6px rgba(33,31,27,.06);
+  padding:5px;max-height:min(58vh,340px);overflow-y:auto;min-width:150px;
+  animation:v2menu .13s ease-out}
+@keyframes v2menu{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+#v2-menu button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  padding:8px 10px 8px 8px;border-radius:8px;font:500 13px var(--font);color:var(--ink-2);
+  white-space:nowrap;cursor:pointer;transition:background-color .12s ease,color .12s ease}
+#v2-menu button:hover,#v2-menu button.cur{background:var(--divider);color:var(--ink)}
+#v2-menu button.on{color:var(--go-hi);font-weight:600}
+#v2-menu button.on:hover{background:var(--go-tint)}
+#v2-menu .tick{width:14px;height:14px;flex:none;opacity:0}
+#v2-menu button.on .tick{opacity:1}
+select.v2-in:disabled{opacity:.55;cursor:not-allowed}
+input[type=date].v2-in{cursor:pointer}
+textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
+
+/* cards + tables */
+.v2-card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+.v2-thead{display:grid;gap:10px;padding:9px 18px;font:600 10px var(--mono);letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted-2);border-bottom:1px solid var(--divider)}
+.v2-row{display:grid;gap:10px;padding:13px 18px;align-items:center;border-top:1px solid var(--divider)}
+.v2-row:first-of-type{border-top:none}
+.v2-row:hover{background:var(--rowsel)}
+.v2-scroll{overflow-x:auto}
+.v2-empty{padding:30px 18px;text-align:center;color:var(--muted)}
+
+/* semantic bits */
+.v2-age{font-family:var(--mono);font-size:12.5px;color:var(--ink-3)}
+.v2-age.warn{color:var(--amber);font-weight:600}
+.v2-age.late{color:var(--red);font-weight:600}
+.v2-ai{display:inline-flex;align-items:center;gap:4px;font:600 10.5px var(--mono);color:var(--ai);
+  border:1px solid var(--ai-line);border-radius:99px;padding:1px 7px;white-space:nowrap}
+.v2-money{font-family:var(--mono);font-weight:600;color:var(--go)}
+
+/* toasts */
+.v2-toasts{position:fixed;z-index:80;bottom:20px;left:50%;transform:translateX(-50%);display:flex;
+  flex-direction:column;gap:9px;width:min(460px,calc(100vw - 32px))}
+.v2-toast{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);
+  border-radius:10px;padding:12px 15px;font-size:13px;box-shadow:0 8px 24px -12px rgba(33,31,27,.25)}
+.v2-toast.err{border-color:#e8cec6;background:#fbf0ed;color:var(--red)}
+.v2-toast .sp{flex:1}
+.v2-toast button{color:var(--go);font-weight:600;font-size:12.5px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<!--/baked:head-->
+</head>
+<body class="v2-shell">
+<!--baked:side--><nav class="v2-side"><div class="grp">SETTER</div><a class="nav" href="worklist.html" data-nav="worklist">Worklist<span class="slot" data-slot="worklist"></span></a><a class="nav" href="log-lead.html" data-nav="log-lead">Log a lead<span class="slot" data-slot="log-lead"></span></a><a class="nav" href="leads.html" data-nav="leads">All leads<span class="slot" data-slot="leads"></span></a><a class="nav on" href="assistant.html" data-nav="assistant">Assistant<span class="slot" data-slot="assistant"></span></a><a class="nav" href="report.html" data-nav="report">Dashboard<span class="slot" data-slot="report"></span></a><div class="grp gap">CLOSER</div><a class="nav" href="deals.html" data-nav="deals">Deals<span class="slot" data-slot="deals"></span></a><a class="nav" href="close-call.html" data-nav="close-call">Voice log<span class="slot" data-slot="close-call"></span></a><div class="sp"></div><a class="nav" href="settings.html">Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
+<main class="v2-main">
+  <div class="colw">
+    <header class="v2-h">
+      <h1>Assistant</h1>
+      <span class="sub" id="leadslot"></span>
+      <span class="sp"></span>
+      <span class="twrap" id="twrap">
+        <button class="v2-btn sm" id="trainBtn" type="button" aria-haspopup="true" aria-expanded="false">Training</button>
+        <div class="tpop" id="tpop" hidden></div>
+      </span>
+      <button class="v2-btn sm" id="clearBtn" type="button" title="Start a fresh conversation">New chat</button>
+    </header>
+
+    <div class="thread" id="thread">
+      <div class="empty-hint" id="hint">
+        <b>Send a conversation, get the next move.</b><br>
+        Paste or drop screenshots of any IG convo — the assistant coaches the reply
+        using the playbook and whatever the CRM already knows about the lead, and
+        proposes CRM updates you confirm or dismiss.
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="crow">
+        <button class="cbtn attach" id="attachBtn" type="button" title="Add screenshots">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        </button>
+        <div class="cbox">
+          <div class="pend" id="pend" hidden></div>
+          <textarea id="input" rows="1" placeholder="Ask anything, or just drop the convo screenshots…"></textarea>
+        </div>
+        <button class="cbtn send" id="sendBtn" type="button" title="Send" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 14 0M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+import * as core from './crm-core.js?v=20260725a';
+const session = await core.requireAuth();
+if (session) {
+await core.installChrome({ active: 'assistant' });
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const toast = core.toast;
+
+/* ---------- state ----------
+   The thread survives SPA navigation within the session (sessionStorage) but
+   deliberately not across sign-ins — long-term memory lives in the CRM, not
+   in a chat log. Pending images are kept only in memory (too big to persist). */
+const SS_KEY = 'ajr_assist_v1';
+let turns = [];           // [{role:'user'|'assistant', text, imgs:[dataUrl], updates?, handle?, fb?}]
+let pending = [];         // [{dataUrl, b64, mediaType}]
+let lead = null;          // the lead whose CRM context rides along
+let book = { leads: [], deals: [] };
+let busy = false;
+try { const s = JSON.parse(sessionStorage.getItem(SS_KEY) || 'null'); if (s && Array.isArray(s.turns)) { turns = s.turns; lead = s.lead || null; } } catch (e) {}
+const persist = () => { try { sessionStorage.setItem(SS_KEY, JSON.stringify({ turns: turns.map((t) => ({ ...t, imgs: [] })), lead })); } catch (e) {} };
+
+core.bootstrap().then((b) => { book = b; if (lead) setLeadChip(lead.h); }).catch(() => {});
+
+/* ---------- rendering ---------- */
+const STAGE_OPTS = ['', 'Engaged 1', 'Engaged 2', 'Engaged 3', 'Booked'];
+const QUAL_OPTS = ['', 'Qualified 1', 'Qualified 2', 'Qualified 3', 'Unqualified'];
+const STATUS_OPTS = [''].concat(core.STATUSES);
+const optHtml = (list, sel, blank) => list.map((o) =>
+  `<option value="${esc(o)}"${o === sel ? ' selected' : ''}>${esc(o || blank)}</option>`).join('');
+
+const FIELD_DEFS = [
+  ['level', 'Stage', 'select', STAGE_OPTS],
+  ['qual', 'Qual', 'select', QUAL_OPTS],
+  ['status', 'Status', 'select', STATUS_OPTS],
+  ['pains', 'Pains', 'text'],
+  ['angle', 'Angle', 'text'],
+  ['note', 'Note', 'text'],
+];
+
+function propHtml(t, i) {
+  const u = t.updates || {};
+  const rows = FIELD_DEFS.filter(([k]) => u[k]).map(([k, lab, kind, opts]) =>
+    `<span class="k"><input type="checkbox" data-on="${k}" checked>${lab}</span>` +
+    (kind === 'select'
+      ? `<select data-f="${k}">${optHtml(opts, u[k], '—')}</select>`
+      : `<input type="text" data-f="${k}" value="${esc(u[k])}">`)).join('');
+  if (!rows) return '';
+  if (t.fb) {
+    return `<div class="prop done" data-i="${i}"><div class="ttl">CRM update — <b>@${esc(t.handle)}</b></div>` +
+      `<span class="verdict">${t.fb === 'applied' ? '✓ Applied' : 'Dismissed'}</span></div>`;
+  }
+  return `<div class="prop" data-i="${i}">` +
+    `<div class="ttl">Proposed CRM update — <b>@${esc(t.handle)}</b></div>` +
+    `<div class="grid">${rows}</div>` +
+    `<div class="row"><button class="apply" data-apply>Apply</button><button class="deny" data-deny>Dismiss</button></div></div>`;
+}
+
+function render() {
+  const th = $('thread');
+  $('hint').hidden = turns.length > 0;
+  th.querySelectorAll('.msg,.prop').forEach((e) => e.remove());
+  turns.forEach((t, i) => {
+    const div = document.createElement('div');
+    div.className = 'msg ' + (t.role === 'user' ? 'me' : 'ai') + (t.think ? ' think' : '');
+    let html = '';
+    if (t.imgs && t.imgs.length) html += '<div class="imgs">' + t.imgs.map((u) => `<img src="${u}" alt="screenshot">`).join('') + '</div>';
+    if (t.text) html += esc(t.text);
+    div.innerHTML = html || '&nbsp;';
+    th.appendChild(div);
+    if (t.role === 'assistant' && t.handle && t.updates) {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = propHtml(t, i);
+      if (wrap.firstChild) th.appendChild(wrap.firstChild);
+    }
+  });
+  th.lastElementChild && th.lastElementChild.scrollIntoView({ block: 'end' });
+  $('sendBtn').disabled = busy || (!$('input').value.trim() && !pending.length);
+}
+
+function renderPending() {
+  const el = $('pend');
+  el.hidden = !pending.length;
+  el.innerHTML = pending.map((p, i) =>
+    `<span class="p"><img src="${p.dataUrl}" alt=""><button class="rm" data-rm="${i}" type="button">×</button></span>`).join('');
+}
+
+function setLeadChip(h) {
+  const hit = book.leads.find((l) => l.h === String(h || '').toLowerCase().replace(/^@/, ''));
+  lead = hit || (h ? { h: String(h).toLowerCase().replace(/^@/, ''), id: 0 } : null);
+  $('leadslot').innerHTML = lead
+    ? `<span class="leadchip">@${esc(lead.h)}${hit ? '' : ' (not in CRM)'}<span class="x" id="leadX" title="Detach">×</span></span>`
+    : '';
+  const x = $('leadX'); if (x) x.onclick = () => { lead = null; $('leadslot').innerHTML = ''; persist(); };
+  persist();
+}
+
+/* ---------- sending ---------- */
+async function contextBlock() {
+  if (!lead || !lead.id) return '';
+  try { return await core.leadContextBlock(lead, book.deals); } catch (e) { return ''; }
+}
+
+function apiMessages() {
+  // resend the visible thread (minus proposals) so the model keeps the convo;
+  // images ride only on the turn they were sent with
+  return turns.filter((t) => !t.think).map((t) => ({
+    role: t.role,
+    content: (t.b64s || []).map((im) => ({ type: 'image', source: { type: 'base64', media_type: im.mediaType, data: im.b64 } }))
+      .concat(t.text ? [{ type: 'text', text: t.text }] : []),
+  })).filter((m) => m.content.length);
+}
+
+async function send() {
+  const text = $('input').value.trim();
+  if (busy || (!text && !pending.length)) return;
+  // "@handle" anywhere in the message pins that lead's context
+  const m = text.match(/@([a-z0-9._]{2,})/i);
+  if (m) setLeadChip(m[1]);
+  turns.push({ role: 'user', text, imgs: pending.map((p) => p.dataUrl), b64s: pending.map((p) => ({ b64: p.b64, mediaType: p.mediaType })) });
+  $('input').value = ''; pending = []; renderPending();
+  busy = true;
+  turns.push({ role: 'assistant', text: 'Thinking…', think: true });
+  render();
+  try {
+    const res = await core.assistChat(apiMessages(), await contextBlock());
+    turns.pop();
+    const t = { role: 'assistant', text: res.reply || '' };
+    const u = res.updates || {};
+    const hasU = Object.values(u).some((v) => String(v || '').trim());
+    if (res.lead_handle && !lead) setLeadChip(res.lead_handle);
+    if (hasU) { t.handle = (res.lead_handle || (lead && lead.h) || '').replace(/^@/, ''); t.updates = u; }
+    if (t.handle === '') delete t.updates;
+    turns.push(t);
+  } catch (e) {
+    turns.pop();
+    turns.push({ role: 'assistant', text: 'That didn’t go through: ' + e.message, think: true });
+  }
+  busy = false;
+  persist(); render();
+}
+
+/* ---------- proposal apply / dismiss ---------- */
+$('thread').addEventListener('click', async (e) => {
+  const box = e.target.closest('.prop'); if (!box) return;
+  const t = turns[+box.getAttribute('data-i')]; if (!t || t.fb) return;
+  const suggested = { ...t.updates, handle: t.handle };
+  if (e.target.closest('[data-deny]')) {
+    t.fb = 'dismissed';
+    core.logAiFeedback('assist', t.handle, suggested, null);
+    persist(); render();
+    return;
+  }
+  if (!e.target.closest('[data-apply]')) return;
+  const g = (k) => { const el = box.querySelector(`[data-f="${k}"]`); return el ? el.value.trim() : ''; };
+  const on = (k) => { const el = box.querySelector(`[data-on="${k}"]`); return !el || el.checked; };
+  const final = {};
+  FIELD_DEFS.forEach(([k]) => { if ((t.updates || {})[k] && on(k) && g(k)) final[k] = g(k); });
+  if (!Object.keys(final).length) { t.fb = 'dismissed'; core.logAiFeedback('assist', t.handle, suggested, null); persist(); render(); return; }
+  const btn = box.querySelector('[data-apply]'); btn.disabled = true;
+  try {
+    const hit = book.leads.find((l) => l.h === t.handle);
+    const day = core.todayDmy().slice(0, 5);
+    const noteBits = [final.note, final.angle ? '[angle] ' + final.angle : ''].filter(Boolean);
+    if (hit) {
+      const fields = {};
+      if (final.level) fields.level = final.level;
+      if (final.status) fields.status = final.status;
+      if (final.qual) fields.qual = final.qual;
+      if (final.pains) fields.pains = final.pains;
+      if (noteBits.length) fields.notes = (hit.notes ? hit.notes + '\n' : '') + '[' + day + '] ' + noteBits.join(' · ');
+      const res = await core.setLead(hit.id, fields);
+      Object.entries(fields).forEach(([k, v]) => { hit[k] = v; });
+      toast({ type: 'ok', ttl: 9000, html: '<span class="mono">@' + esc(t.handle) + '</span> updated.',
+        action: res.undo ? { label: 'Undo', fn: async () => { await core.undoWrite(res.undo); core.bootstrap().then((b) => { book = b; }); } } : null });
+    } else {
+      // not in the book yet — the same path the scanner uses creates them
+      await core.setterUpdate({ handle: t.handle, stage: final.level || 'Engaged 1',
+        status: final.status || '', note: noteBits.map((x) => '[' + day + '] ' + x).join(' · '),
+        qual: final.qual || '', pains: final.pains || '' });
+      toast({ type: 'ok', html: '<span class="mono">@' + esc(t.handle) + '</span> added to the CRM.' });
+      core.bootstrap().then((b) => { book = b; });
+    }
+    t.fb = 'applied';
+    core.logAiFeedback('assist', t.handle, suggested, final);
+    persist(); render();
+  } catch (err) {
+    btn.disabled = false;
+    toast({ type: 'err', html: 'Couldn’t apply: ' + esc(err.message), sticky: true });
+  }
+});
+
+/* ---------- images in ---------- */
+const toB64 = (file) => new Promise((res, rej) => {
+  const r = new FileReader();
+  r.onload = () => { const v = String(r.result); res({ dataUrl: v, b64: v.slice(v.indexOf(',') + 1), mediaType: file.type || 'image/jpeg' }); };
+  r.onerror = rej; r.readAsDataURL(file);
+});
+async function addFiles(list) {
+  const imgs = [].slice.call(list || []).filter((f) => f && (f.type || '').indexOf('image/') === 0);
+  for (const f of imgs) pending.push(await toB64(f));
+  renderPending(); render();
+}
+$('attachBtn').onclick = () => {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+  inp.onchange = () => addFiles(inp.files);
+  inp.click();
+};
+$('pend').addEventListener('click', (e) => {
+  const rm = e.target.closest('[data-rm]'); if (!rm) return;
+  pending.splice(+rm.getAttribute('data-rm'), 1); renderPending(); render();
+});
+core.pageListen(window, 'paste', (e) => {
+  const its = (e.clipboardData && e.clipboardData.items) || [];
+  const files = [];
+  for (const it of its) if (it.type && it.type.indexOf('image/') === 0) { const f = it.getAsFile(); if (f) files.push(f); }
+  if (files.length) { e.preventDefault(); addFiles(files); }
+});
+core.pageListen(window, 'dragover', (e) => e.preventDefault());
+core.pageListen(window, 'drop', (e) => { e.preventDefault(); if (e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
+
+/* ---------- composer ---------- */
+const inp = $('input');
+inp.addEventListener('input', () => {
+  inp.style.height = 'auto'; inp.style.height = Math.min(inp.scrollHeight, 140) + 'px';
+  $('sendBtn').disabled = busy || (!inp.value.trim() && !pending.length);
+});
+inp.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+});
+$('sendBtn').onclick = send;
+$('clearBtn').onclick = () => { turns = []; pending = []; lead = null; $('leadslot').innerHTML = ''; renderPending(); persist(); render(); };
+
+/* ---------- training dropdown ---------- */
+async function renderTpop() {
+  let docs = [];
+  try { docs = await core.knowledgeList(); } catch (e) { docs = []; }
+  $('tpop').innerHTML = '<div class="ttl">The assistant knows</div>' +
+    (docs.length ? docs.map((d) =>
+      `<label><input type="checkbox" data-k="${d.id}"${d.enabled ? ' checked' : ''}>${esc(d.title)}<span class="sz">${Math.round(d.size / 1000)}k</span></label>`).join('')
+      : '<div style="padding:6px 9px;color:#8a8375;font-size:12.5px">No training docs yet.</div>') +
+    '<div class="foot"><a href="settings.html#training">Manage in Settings →</a></div>';
+}
+$('trainBtn').onclick = async () => {
+  const pop = $('tpop');
+  if (pop.hidden) { await renderTpop(); pop.hidden = false; $('trainBtn').setAttribute('aria-expanded', 'true'); }
+  else { pop.hidden = true; $('trainBtn').setAttribute('aria-expanded', 'false'); }
+};
+$('tpop').addEventListener('change', async (e) => {
+  const cb = e.target.closest('input[data-k]'); if (!cb) return;
+  try { await core.knowledgeToggle(+cb.getAttribute('data-k'), cb.checked); }
+  catch (err) { cb.checked = !cb.checked; toast({ type: 'err', html: esc(err.message) }); }
+});
+core.pageListen(document, 'mousedown', (e) => {
+  if (!$('tpop').hidden && !e.target.closest('#twrap')) { $('tpop').hidden = true; $('trainBtn').setAttribute('aria-expanded', 'false'); }
+});
+
+core.installPalette({});
+render();
+}
+</script>
+</body>
+</html>

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260724g">
+<link rel="modulepreload" href="./crm-core.js?v=20260725a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -328,7 +328,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 <!--/baked:head-->
 </head>
 <body class="v2-shell">
-<!--baked:side--><nav class="v2-side"><div class="grp">SETTER</div><a class="nav" href="worklist.html" data-nav="worklist">Worklist<span class="slot" data-slot="worklist"></span></a><a class="nav" href="log-lead.html" data-nav="log-lead">Log a lead<span class="slot" data-slot="log-lead"></span></a><a class="nav on" href="leads.html" data-nav="leads">All leads<span class="slot" data-slot="leads"></span></a><a class="nav" href="report.html" data-nav="report">Dashboard<span class="slot" data-slot="report"></span></a><div class="grp gap">CLOSER</div><a class="nav" href="deals.html" data-nav="deals">Deals<span class="slot" data-slot="deals"></span></a><a class="nav" href="close-call.html" data-nav="close-call">Voice log<span class="slot" data-slot="close-call"></span></a><div class="sp"></div><a class="nav" href="settings.html">Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
+<!--baked:side--><nav class="v2-side"><div class="grp">SETTER</div><a class="nav" href="worklist.html" data-nav="worklist">Worklist<span class="slot" data-slot="worklist"></span></a><a class="nav" href="log-lead.html" data-nav="log-lead">Log a lead<span class="slot" data-slot="log-lead"></span></a><a class="nav on" href="leads.html" data-nav="leads">All leads<span class="slot" data-slot="leads"></span></a><a class="nav" href="assistant.html" data-nav="assistant">Assistant<span class="slot" data-slot="assistant"></span></a><a class="nav" href="report.html" data-nav="report">Dashboard<span class="slot" data-slot="report"></span></a><div class="grp gap">CLOSER</div><a class="nav" href="deals.html" data-nav="deals">Deals<span class="slot" data-slot="deals"></span></a><a class="nav" href="close-call.html" data-nav="close-call">Voice log<span class="slot" data-slot="close-call"></span></a><div class="sp"></div><a class="nav" href="settings.html">Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
 <main class="v2-main">
   <header class="v2-h">
     <h1>All leads</h1>
@@ -390,6 +390,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
     <div class="fld"><label>Pain points</label><textarea class="v2-in" id="f-pains"></textarea></div>
     <div class="fld"><label>Notes</label><textarea class="v2-in mono" id="f-notes" style="font-size:12px"></textarea></div>
     <div class="fld"><label>LinkedIn</label><input class="v2-in" id="f-linkedin" type="text"></div>
+    <div class="hist" id="d-calls-wrap" hidden><h3>Calls</h3><div id="d-calls" style="display:flex;flex-direction:column;gap:4px;font-size:12.5px"></div></div>
     <div class="hist" id="hist" hidden><h3>History</h3><ul id="hist-list"></ul></div>
   </div>
   <div class="dfoot">
@@ -403,7 +404,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260724g';
+import * as core from './crm-core.js?v=20260725a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -892,6 +893,24 @@ async function openDrawer(id) {
   $('f-qual').value = ['Qualified 1','Qualified 2','Qualified 3','Unqualified'].includes(l.qual) ? l.qual : '';
   $('f-notes').value = l.notes || '';
   $('f-pains').value = l.pains || '';
+  // the closer's call log, right on the lead — loads async, hidden when none
+  $('d-calls-wrap').hidden = true; $('d-calls').innerHTML = '';
+  (async () => {
+    try {
+      const deal = core.dealForLead(state.deals || [], l);
+      if (!deal) return;
+      const calls = await core.dealCalls(deal.row);
+      const list = calls.length ? calls
+        : (deal.fireflies_link ? [{ id: 'legacy', title: 'Call transcript', url: deal.fireflies_link, at: '' }] : []);
+      if (!list.length || state.editing !== id) return;
+      $('d-calls').innerHTML = list.map((c) => {
+        const day = c.at ? esc(String(c.at).slice(8, 10) + '/' + String(c.at).slice(5, 7)) : '';
+        return '<a href="' + esc(c.url) + '" target="_blank" rel="noopener">' +
+          (day ? '<span class="l-mono" style="font-size:11.5px">' + day + '</span> · ' : '') + esc(c.title) + ' ↗</a>';
+      }).join('');
+      $('d-calls-wrap').hidden = false;
+    } catch (e) { /* the drawer works without the log */ }
+  })();
   $('f-email').value = l.email || '';
   $('f-phone').value = l.phone || '';
   $('f-linkedin').value = l.linkedin || '';
@@ -967,6 +986,8 @@ async function load() {
   $('refresh').classList.add('spin');
   try {
     const [leads, stale] = await Promise.all([core.loadLeads(), core.staleBatch({ limit: 500 })]);
+    // deals ride along for the drawer's call log; never block the list on them
+    core.loadDeals().then((d) => { state.deals = d; }).catch(() => { state.deals = []; });
     state.leads = leads;
     state.stale = stale;
     renderSumbar(); renderTable();
