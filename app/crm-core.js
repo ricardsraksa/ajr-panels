@@ -2396,8 +2396,11 @@ export function installScanner(opts = {}) {
   let scanTotal = 0, scanDone = 0; // for the "Reading 2 of 5…" progress line
   let msg = '';          // muted line under the header: dupes / unreadable images
   let mode = 'log'; // 'prospect' = add-only, no contact stamp; set per open
+  let batchId = 0;   // bumped on close/new batch; a stale loop sees the change and stops
   const g2 = (card, f) => { const x = card.querySelector('[data-f="' + f + '"]'); return x ? x.value.trim() : ''; };
-  const close = () => { $i('sc2-modal').classList.remove('on'); items = []; scanning = 0; scanTotal = 0; scanDone = 0; msg = ''; };
+  // closing has to abandon a batch still being read — the loop is async and
+  // would otherwise finish into a closed modal and pop it back open
+  const close = () => { batchId++; $i('sc2-modal').classList.remove('on'); items = []; scanning = 0; scanTotal = 0; scanDone = 0; msg = ''; };
   $i('sc2-close').onclick = close; $i('sc2-cancel').onclick = close;
   $i('sc2-modal').addEventListener('mousedown', (e) => { if (e.target === $i('sc2-modal')) close(); });
 
@@ -2505,16 +2508,19 @@ export function installScanner(opts = {}) {
   async function scanFiles(fileList) {
     const imgs = [].slice.call(fileList || []).filter((f) => f && (f.type || '').indexOf('image/') === 0);
     if (!imgs.length) return;
+    const mine = ++batchId;          // dropping a new batch supersedes the old
     $i('sc2-modal').classList.add('on');
     scanTotal = imgs.length; scanDone = 0;
     let dupes = 0, errs = 0;
     for (const f of imgs) {
+      if (mine !== batchId) return;  // cancelled (or superseded) mid-read
       scanning = 1; refresh();
       try {
         const out = await visionScan(await toB64(f), f.type || 'image/jpeg');
+        if (mine !== batchId) return;   // closed while this one was in flight
         const leads = (out.leads || []).filter((l) => (l.handle || l.name || '').trim());
         if (leads.length) dupes += addLeads(leads);
-      } catch (e) { errs++; }
+      } catch (e) { if (mine !== batchId) return; errs++; }
       scanDone++; scanning = 0;
     }
     scanTotal = 0;
