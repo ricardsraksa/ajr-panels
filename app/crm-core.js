@@ -501,9 +501,20 @@ export async function ensureDealForLead(lead, when = {}) {
    self-heal (setLead only creates on the level CHANGE to Booked).
    The closing page checks for them on every load. */
 export async function bookedWithoutDeal() {
+  // A deal counts as "reached the closer" whether or not it carries lead_id:
+  // rows imported from the old sheet were never linked, and matching on the id
+  // alone would offer to create a second deal for someone who already has one.
+  const hasDeal = (deals, l) => {
+    const h = String(l.h || l.handle || '').toLowerCase();
+    return deals.some((d) => {
+      if (d.leadId != null && d.leadId === l.id) return true;
+      if (!h) return false;
+      return String(d.name || '').toLowerCase().replace(/^@/, '') === h ||
+        String(d.link || d.ig_link || '').toLowerCase().includes('/' + h);
+    });
+  };
   if (DEMO) {
-    const withDeal = new Set(_demo.deals.map((d) => d.leadId).filter(Boolean));
-    return _demo.leads.filter((l) => l.level === 'Booked' && !withDeal.has(l.id))
+    return _demo.leads.filter((l) => l.level === 'Booked' && !hasDeal(_demo.deals, l))
       .map((l) => ({ id: l.id, h: l.h, url: l.url || '', qual: l.qual || '', notes: l.notes || '',
         lastContact: l.lastContact || '' }));
   }
@@ -512,19 +523,17 @@ export async function bookedWithoutDeal() {
     .eq('level', 'Booked');
   if (error) throw new Error(error.message);
   if (!booked || !booked.length) return [];
-  // ANY deal counts as "reached the closer" — one that's already Closed or a
-  // No Close is history, not a lead to hand over again
-  const ids = booked.map((l) => l.id);
-  const seen = new Set();
-  for (let i = 0; i < ids.length; i += 500) {
-    const { data } = await supa.from('deals').select('lead_id').in('lead_id', ids.slice(i, i + 500));
-    (data || []).forEach((d) => { if (d.lead_id != null) seen.add(d.lead_id); });
-  }
-  return booked.filter((l) => !seen.has(l.id)).map((l) => ({
-    id: l.id, h: l.handle, url: l.ig_url || '', qual: l.qualification || '',
-    notes: l.notes || '', email: l.email || '', phone: l.phone || '',
-    lastContact: isoToDmy(l.last_contact),
-  }));
+  // ANY deal counts, including Closed / No Close — those are history, not a
+  // lead to hand over a second time
+  const { data: deals } = await supa.from('deals').select('lead_id,name,ig_link');
+  const all = (deals || []).map((d) => ({ leadId: d.lead_id, name: d.name, link: d.ig_link }));
+  return booked
+    .filter((l) => !hasDeal(all, { id: l.id, h: l.handle }))
+    .map((l) => ({
+      id: l.id, h: l.handle, url: l.ig_url || '', qual: l.qualification || '',
+      notes: l.notes || '', email: l.email || '', phone: l.phone || '',
+      lastContact: isoToDmy(l.last_contact),
+    }));
 }
 
 /** Hand one of them to the closer. Silent: no "new booking" ping for history. */
