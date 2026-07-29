@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260724e">
+<link rel="modulepreload" href="./crm-core.js?v=20260724f">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -46,6 +46,12 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .calrow .lnk:hover{background:#f0eafb}
 .calrow .lnk.dim{border-color:#e6e2da;color:#8a8375}
 .calrow .lnk.dim:hover{background:#f4f2ed;color:#4d4a42}
+/* booked leads that never got a deal — amber, so it reads as "needs fixing"
+   rather than the purple "needs linking" of an unattached Calendly slot */
+.calrow.miss{border-color:#e8d9b4;background:#faf3e6}
+.calrow.miss .lab{color:#a8762a}
+.calrow.miss .lnk{border-color:#e0cba0;color:#a8762a}
+.calrow.miss .lnk:hover{background:#f5ead2}
 /* drawer */
 .scrim{position:fixed;inset:0;background:rgba(33,31,27,.45);opacity:0;pointer-events:none;transition:opacity .18s;z-index:60}
 .scrim.on{opacity:1;pointer-events:auto}
@@ -377,7 +383,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260724e';
+import * as core from './crm-core.js?v=20260724f';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
@@ -735,13 +741,30 @@ function slotLabel(iso) {
   const t = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Riga', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
   return day + ' ' + t;
 }
+/* A lead can reach Booked without its deal being created: every caller wraps
+   ensureDealForLead in a catch so a failure can't block the write that already
+   landed, and anything booked before that automation existed never had one at
+   all. Either way the closer never sees them — so check on every load. */
+async function missingRows() {
+  let miss = [];
+  try { miss = await core.bookedWithoutDeal(); } catch (e) { return ''; }
+  if (!miss.length) return '';
+  return miss.map((l) => '<div class="calrow miss" data-miss="' + esc(l.id) + '">' +
+    '<span class="lab">BOOKED, NOT IN DEALS</span>' +
+    '<span class="who">@' + esc(l.h) + '</span>' +
+    (l.qual ? '<span>· ' + esc(l.qual) + '</span>' : '') +
+    (l.lastContact ? '<span>· last touch ' + esc(l.lastContact) + '</span>' : '') +
+    '<span class="sp"></span>' +
+    '<button class="lnk" data-addmiss>Add to deals</button></div>').join('');
+}
 async function loadStrip() {
   const el = $('calstrip');
   try {
+    const missHtml = await missingRows();
     const loose = await core.looseBookings();
-    if (!loose || !loose.length) { el.hidden = true; el.innerHTML = ''; return; }
+    if ((!loose || !loose.length) && !missHtml) { el.hidden = true; el.innerHTML = ''; return; }
     const open = state.deals.filter((d) => d.status !== 'Closed' && d.status !== 'No Close');
-    el.innerHTML = loose.map((b) => {
+    el.innerHTML = missHtml + (loose || []).map((b) => {
       const opts = open.map((d) => '<option value="' + d.row + '">' + esc(displayName(d)) + '</option>').join('');
       return '<div class="calrow" data-b="' + esc(b.id) + '">' +
         '<span class="lab">UNLINKED BOOKING</span>' +
@@ -758,6 +781,22 @@ async function loadStrip() {
 $('calstrip').addEventListener('click', async (e) => {
   const btn = e.target.closest('.lnk'); if (!btn) return;
   const rowEl = btn.closest('.calrow');
+  if (btn.hasAttribute('data-addmiss')) {
+    btn.disabled = true; btn.textContent = 'Adding…';
+    try {
+      const who = rowEl.querySelector('.who').textContent;
+      const miss = await core.bookedWithoutDeal();
+      const lead = miss.find((l) => String(l.id) === rowEl.getAttribute('data-miss'));
+      if (!lead) { loadStrip(); return; }   // someone else just added it
+      await core.createMissingDeal(lead);
+      await load();                          // the new deal joins the board
+      toast({ type: 'ok', html: '<span class="mono">' + esc(who) + '</span> added to deals.' });
+    } catch (err) {
+      btn.disabled = false; btn.textContent = 'Add to deals';
+      toast({ type: 'err', html: 'Couldn’t add it: ' + esc(err.message), sticky: true });
+    }
+    return;
+  }
   if (btn.hasAttribute('data-ignore')) {
     btn.disabled = true;
     try {

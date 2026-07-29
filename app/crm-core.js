@@ -60,6 +60,8 @@ const _demo = {
     { id: 11, h: 'ecom.aiden', url: 'https://instagram.com/ecom.aiden', level: 'Engaged 3', status: 'Mid convo', qual: 'Qualified 2', notes: 'wants pricing', lastContact: _ago(2) },
     { id: 12, h: 'bram.vandijk', url: 'https://instagram.com/bram.vandijk', level: 'Archive', status: 'Left on read', qual: 'Unqualified', notes: '', lastContact: _ago(90), followed: _ago(1800) },
     { id: 13, h: 'lena.builds', url: 'https://instagram.com/lena.builds', level: 'Booked', status: 'Call Pitched', qual: 'Qualified 3', notes: 'call booked friday', lastContact: _ago(1) },
+    // booked but never handed over — the case the closing page now catches
+    { id: 25, h: 'giojaunin', url: 'https://instagram.com/giojaunin', level: 'Booked', status: 'Call Pitched', qual: 'Qualified 2', notes: 'booked on a call, deal row never created', lastContact: _ago(3) },
     { id: 14, h: 'devon.scales', url: 'https://instagram.com/devon.scales', level: 'No Close', status: 'Call done', qual: 'Qualified 2', notes: '[no close 20/05] — price too high', lastContact: _ago(40) },
     { id: 15, h: 'priya.dtc', url: 'https://instagram.com/priya.dtc', level: 'No Close', status: 'Call done', qual: 'Qualified 1', notes: '[no close 05/07] — bad timing, revisit Q4', lastContact: _ago(4) },
     // outreach pool: imported from the IG following export, not yet leads.
@@ -468,6 +470,9 @@ export async function ensureDealForLead(lead, when = {}) {
   // one place for the booked ping, so it fires from every path that books a
   // lead (log tool, All-leads drawer, palette) — re-marking Booked won't
   // re-ping, since we only get here when a new deal is actually created.
+  // Backfilling an old booking skips it: Reinis doesn't need "new call!" for
+  // something booked weeks ago.
+  if (when.silent) return { created: true, row: created.id };
   try {
     const { data: L } = await supa.from('leads')
       .select('handle,ig_url,qualification,phone,email,pain_points,last_status,notes')
@@ -486,6 +491,50 @@ export async function ensureDealForLead(lead, when = {}) {
     });
   } catch (e) { /* never block the booking */ }
   return { created: true, row: created.id };
+}
+
+/* ---------- Booked leads that never reached the closer ----------
+   Every path that books a lead creates its deal best-effort: the call is
+   wrapped in try/catch so a failure can't block the write that already
+   succeeded. The cost is a lead that says Booked with no deal behind it —
+   plus anything booked before this automation existed, which can never
+   self-heal (setLead only creates on the level CHANGE to Booked).
+   The closing page checks for them on every load. */
+export async function bookedWithoutDeal() {
+  if (DEMO) {
+    const withDeal = new Set(_demo.deals.map((d) => d.leadId).filter(Boolean));
+    return _demo.leads.filter((l) => l.level === 'Booked' && !withDeal.has(l.id))
+      .map((l) => ({ id: l.id, h: l.h, url: l.url || '', qual: l.qual || '', notes: l.notes || '',
+        lastContact: l.lastContact || '' }));
+  }
+  const { data: booked, error } = await supa.from('leads')
+    .select('id,handle,ig_url,qualification,notes,email,phone,last_contact')
+    .eq('level', 'Booked');
+  if (error) throw new Error(error.message);
+  if (!booked || !booked.length) return [];
+  // ANY deal counts as "reached the closer" — one that's already Closed or a
+  // No Close is history, not a lead to hand over again
+  const ids = booked.map((l) => l.id);
+  const seen = new Set();
+  for (let i = 0; i < ids.length; i += 500) {
+    const { data } = await supa.from('deals').select('lead_id').in('lead_id', ids.slice(i, i + 500));
+    (data || []).forEach((d) => { if (d.lead_id != null) seen.add(d.lead_id); });
+  }
+  return booked.filter((l) => !seen.has(l.id)).map((l) => ({
+    id: l.id, h: l.handle, url: l.ig_url || '', qual: l.qualification || '',
+    notes: l.notes || '', email: l.email || '', phone: l.phone || '',
+    lastContact: isoToDmy(l.last_contact),
+  }));
+}
+
+/** Hand one of them to the closer. Silent: no "new booking" ping for history. */
+export async function createMissingDeal(lead) {
+  const res = await ensureDealForLead(
+    { id: lead.id, h: lead.h, handle: lead.h, ig_url: lead.url, url: lead.url,
+      qualification: lead.qual, notes: lead.notes, email: lead.email, phone: lead.phone },
+    { silent: true });
+  dropBookCache();
+  return res;
 }
 
 /** If exactly ONE unattached active Calendly booking exists from the last 2h,
