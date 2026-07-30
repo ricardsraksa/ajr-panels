@@ -1724,7 +1724,7 @@ export async function setterStats(days = 14) {
 export async function addProspects(cards) {
   const list = (cards || []).map((c) => ({
     h: String(c.handle || '').trim().toLowerCase().replace(/^@/, ''),
-    stage: c.stage || 'Engaged 1',
+    stage: String(c.stage || '').trim(),   // empty = no stage until they reply
     notes: String(c.notes || '').trim(),
     qual: String(c.qual || '').trim(), pains: String(c.pains || '').trim(),
   })).filter((c) => c.h);
@@ -1736,7 +1736,7 @@ export async function addProspects(cards) {
     for (const c of list) {
       if (have.has(c.h)) { skipped++; continue; }
       const id = Date.now() + Math.floor(Math.random() * 1e6);
-      _demo.leads.push({ id, h: c.h, url: 'https://instagram.com/' + c.h, level: c.stage,
+      _demo.leads.push({ id, h: c.h, url: 'https://instagram.com/' + c.h, level: c.stage || '',
         status: '', qual: '', notes: c.notes, lastContact: '', dateAdded: todayDmy(),
         prospected: new Date().toISOString() });
       ids.push(id);
@@ -1752,7 +1752,7 @@ export async function addProspects(cards) {
   for (const c of fresh) {
     const { data, error } = await supa.from('leads').insert({
       handle: c.h, ig_url: 'https://www.instagram.com/' + c.h + '/',
-      level: c.stage, last_contact: null, prospected_at: new Date().toISOString(),
+      level: c.stage || null, last_contact: null, prospected_at: new Date().toISOString(),
       date_added: dmyToIso(todayDmy()), notes: c.notes || null,
       qualification: c.qual || null, pain_points: c.pains || null,
     }).select('id').single();
@@ -2616,7 +2616,14 @@ export function installScanner(opts = {}) {
       <div class="h"><b id="sc2-title">Leads from screenshot</b>
         <button class="x" id="sc2-close" aria-label="Close" style="color:#55555e;background:none;border:none;cursor:pointer">✕</button></div>
       <div class="bd" id="sc2-body"></div>
-      <div class="f"><button class="cancel" id="sc2-cancel">Cancel</button><button class="add" id="sc2-add">Add leads</button></div>
+      <div class="f">
+        <div class="tf" id="sc2-mode" role="group" aria-label="What these screenshots are" style="display:inline-flex;background:#f0ede6;border:1px solid #e6e2da;border-radius:9px;padding:2px;gap:2px">
+          <button type="button" data-m="prospect" style="border-radius:7px;padding:5px 12px;border:none;background:none;cursor:pointer;font:600 11.5px 'Instrument Sans',system-ui,sans-serif;color:#6d675b">Uncontacted</button>
+          <button type="button" data-m="log" style="border-radius:7px;padding:5px 12px;border:none;background:none;cursor:pointer;font:600 11.5px 'Instrument Sans',system-ui,sans-serif;color:#6d675b">Log convo</button>
+        </div>
+        <button id="sc2-more" style="min-height:36px;padding:0 14px;border-radius:8px;border:1px dashed #ddd8cd;background:#fff;color:#6d675b;font-weight:600;font-size:12.5px;cursor:pointer">+ More screenshots</button>
+        <button class="cancel" id="sc2-cancel">Cancel</button><button class="add" id="sc2-add">Add leads</button>
+      </div>
     </div></div>`;
   document.body.appendChild(el);
   const $i = (id) => document.getElementById(id);
@@ -2625,13 +2632,28 @@ export function installScanner(opts = {}) {
   let scanning = 0;      // >0 while an image in the current batch is being read
   let scanTotal = 0, scanDone = 0; // for the "Reading 2 of 5…" progress line
   let msg = '';          // muted line under the header: dupes / unreadable images
-  let mode = 'log'; // 'prospect' = add-only, no contact stamp; set per open
+  // Uncontacted is the default everywhere — adding prospects is the common
+  // case, and a wrong 'log' would stamp contact dates on people never DM'd.
+  // The footer toggle switches the whole batch to conversation-logging.
+  const defaultMode = opts.pasteMode === 'log' ? 'log' : 'prospect';
+  let mode = defaultMode;
   let batchId = 0;   // bumped on close/new batch; a stale loop sees the change and stops
   const g2 = (card, f) => { const x = card.querySelector('[data-f="' + f + '"]'); return x ? x.value.trim() : ''; };
   // closing has to abandon a batch still being read — the loop is async and
   // would otherwise finish into a closed modal and pop it back open
-  const close = () => { batchId++; $i('sc2-modal').classList.remove('on'); items = []; scanning = 0; scanTotal = 0; scanDone = 0; msg = ''; };
+  const close = () => { batchId++; fileQueue.length = 0; draining = false; $i('sc2-modal').classList.remove('on'); items = []; scanning = 0; scanTotal = 0; scanDone = 0; msg = ''; };
   $i('sc2-close').onclick = close; $i('sc2-cancel').onclick = close;
+  $i('sc2-mode').addEventListener('click', (e) => {
+    const b2 = e.target.closest('button[data-m]'); if (!b2) return;
+    mode = b2.getAttribute('data-m') === 'log' ? 'log' : 'prospect';
+    render();
+  });
+  $i('sc2-more').onclick = () => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+    inp.onchange = () => { if (inp.files && inp.files.length) scanFiles(inp.files); };
+    inp.click();
+  };
   $i('sc2-modal').addEventListener('mousedown', (e) => { if (e.target === $i('sc2-modal')) close(); });
 
   function optHtml(list, sel, blank) {
@@ -2691,8 +2713,14 @@ export function installScanner(opts = {}) {
     const busy = scanning > 0;
     $i('sc2-title').textContent = (busy ? scanLabel() + ' · ' : '') +
       items.length + ' lead' + (items.length === 1 ? '' : 's') + (mode === 'prospect' ? ' to add' : ' found');
-    $i('sc2-add').textContent = mode === 'prospect' ? 'Add to uncontacted' : 'Add leads';
+    $i('sc2-add').textContent = mode === 'prospect' ? 'Add to uncontacted' : 'Log conversations';
     $i('sc2-add').disabled = busy || items.length === 0;
+    Array.prototype.forEach.call($i('sc2-mode').querySelectorAll('button[data-m]'), (b2) => {
+      const on = b2.getAttribute('data-m') === mode;
+      b2.style.background = on ? '#fff' : 'none';
+      b2.style.color = on ? '#211f1b' : '#6d675b';
+      b2.style.boxShadow = on ? '0 1px 2px rgba(33,31,27,.07)' : 'none';
+    });
     const note = msg ? '<div style="margin:6px 4px 2px;font-size:11.5px;color:#8a8375">' + escH(msg) + '</div>' : '';
     $i('sc2-body').innerHTML = note + items.map((l, i) => {
       // NEVER fall back to the display name: an inbox screenshot shows names
@@ -2710,7 +2738,7 @@ export function installScanner(opts = {}) {
         '<div class="t"><input class="hh" data-f="handle" value="' + escH(handle) + '" placeholder="' + (shownName ? escH(shownName) + ' — type their @handle' : 'handle') + '">' +
           '<button class="x" data-rm>✕</button></div>' +
         '<div class="g">' +
-          '<select data-f="stage">' + optHtml(['Engaged 1','Engaged 2','Engaged 3','Booked','No Reply'], l.stage || 'Engaged 1') + '</select>' +
+          '<select data-f="stage">' + optHtml(['Engaged 1','Engaged 2','Engaged 3','Booked','No Reply'], l.stage || (mode === 'prospect' ? '' : 'Engaged 1'), mode === 'prospect' ? 'Stage —' : '') + '</select>' +
           '<select data-f="status">' + optHtml(statuses, l.status, 'Status —') + '</select>' +
         '</div>' +
         '<div class="g">' +
@@ -2738,27 +2766,35 @@ export function installScanner(opts = {}) {
     r.onload = () => { const v = String(r.result); res(v.slice(v.indexOf(',') + 1)); };
     r.onerror = rej; r.readAsDataURL(file);
   });
-  // read a whole batch of screenshots one at a time, piling their leads into
-  // the same review list — the setter drops the day's screenshots in at once
+  // Screenshots go into a queue that one worker drains: more can be added at
+  // any moment — mid-scan included — and everything lands in the same review
+  // list. Only Cancel/close abandons the batch.
+  const fileQueue = [];
+  let draining = false;
   async function scanFiles(fileList) {
     const imgs = [].slice.call(fileList || []).filter((f) => f && (f.type || '').indexOf('image/') === 0);
     if (!imgs.length) return;
-    const mine = ++batchId;          // dropping a new batch supersedes the old
+    fileQueue.push(...imgs);
     $i('sc2-modal').classList.add('on');
-    scanTotal = imgs.length; scanDone = 0;
+    scanTotal += imgs.length;
+    if (draining) { refresh(); return; }   // the running worker picks them up
+    draining = true;
+    const mine = ++batchId;
     let dupes = 0, errs = 0;
-    for (const f of imgs) {
-      if (mine !== batchId) return;  // cancelled (or superseded) mid-read
+    while (fileQueue.length) {
+      if (mine !== batchId) { draining = false; return; }  // cancelled
+      const f = fileQueue.shift();
       scanning = 1; refresh();
       try {
         const out = await visionScan(await toB64(f), f.type || 'image/jpeg');
-        if (mine !== batchId) return;   // closed while this one was in flight
+        if (mine !== batchId) { draining = false; return; }
         const leads = (out.leads || []).filter((l) => (l.handle || l.name || '').trim());
         if (leads.length) dupes += addLeads(leads);
-      } catch (e) { if (mine !== batchId) return; errs++; }
+      } catch (e) { if (mine !== batchId) { draining = false; return; } errs++; }
       scanDone++; scanning = 0;
     }
-    scanTotal = 0;
+    draining = false;
+    scanTotal = 0; scanDone = 0;
     const bits = [];
     if (dupes) bits.push(dupes + ' duplicate' + (dupes === 1 ? '' : 's') + ' skipped');
     if (errs) bits.push(errs + ' image' + (errs === 1 ? '' : 's') + ' couldn’t be read');
@@ -2786,7 +2822,7 @@ export function installScanner(opts = {}) {
         const handle = g2(card, 'handle').toLowerCase().replace(/^@/, '');
         if (!handle || seen.has(handle)) return;
         seen.add(handle);
-        batch.push({ handle, stage: g2(card, 'stage') || 'Engaged 1', notes: g2(card, 'notes'),
+        batch.push({ handle, stage: g2(card, 'stage'), notes: g2(card, 'notes'),
           qual: g2(card, 'qual'), pains: g2(card, 'pains') });
       });
       let res = { added: 0, skipped: 0 };
@@ -2821,7 +2857,7 @@ export function installScanner(opts = {}) {
     const its = (e.clipboardData && e.clipboardData.items) || [];
     const files = [];
     for (const it of its) if (it.type && it.type.indexOf('image/') === 0) { const f = it.getAsFile(); if (f) files.push(f); }
-    if (files.length) { e.preventDefault(); mode = opts.pasteMode === 'prospect' ? 'prospect' : 'log'; scanFiles(files); }
+    if (files.length) { e.preventDefault(); if (!items.length && !draining) mode = defaultMode; scanFiles(files); }
   });
   let depth = 0;
   pageListen(window, 'dragenter', (e) => { if (e.dataTransfer && [].indexOf.call(e.dataTransfer.types, 'Files') !== -1) { depth++; $i('sc2-drop').classList.add('on'); } });
@@ -2831,10 +2867,10 @@ export function installScanner(opts = {}) {
     if (!$i('sc2-drop').classList.contains('on')) return;
     e.preventDefault(); depth = 0; $i('sc2-drop').classList.remove('on');
     const fs = e.dataTransfer && e.dataTransfer.files;
-    if (fs && fs.length) { mode = opts.pasteMode === 'prospect' ? 'prospect' : 'log'; scanFiles(fs); }
+    if (fs && fs.length) { if (!items.length && !draining) mode = defaultMode; scanFiles(fs); }
   });
   return { openFile: (m) => {
-    mode = m === 'prospect' ? 'prospect' : 'log';
+    if (!items.length && !draining) mode = m === 'prospect' ? 'prospect' : m === 'log' ? 'log' : defaultMode;
     const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
     inp.onchange = () => { if (inp.files && inp.files.length) scanFiles(inp.files); };
     inp.click();
