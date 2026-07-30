@@ -2168,6 +2168,7 @@ const NAV_ITEMS = [
   { grp: 'SETTER' },
   { id: 'worklist', label: 'Worklist', href: 'worklist.html' },
   { id: 'log-lead', label: 'Log a lead', href: 'log-lead.html' },
+  { id: 'newleads', label: 'New leads', href: 'newleads.html' },
   { id: 'leads', label: 'All leads', href: 'leads.html' },
   { id: 'assistant', label: 'Assistant', href: 'assistant.html' },
   { id: 'report', label: 'Dashboard', href: 'report.html' },
@@ -2820,7 +2821,7 @@ export function installScanner(opts = {}) {
     const its = (e.clipboardData && e.clipboardData.items) || [];
     const files = [];
     for (const it of its) if (it.type && it.type.indexOf('image/') === 0) { const f = it.getAsFile(); if (f) files.push(f); }
-    if (files.length) { e.preventDefault(); mode = 'log'; scanFiles(files); }
+    if (files.length) { e.preventDefault(); mode = opts.pasteMode === 'prospect' ? 'prospect' : 'log'; scanFiles(files); }
   });
   let depth = 0;
   pageListen(window, 'dragenter', (e) => { if (e.dataTransfer && [].indexOf.call(e.dataTransfer.types, 'Files') !== -1) { depth++; $i('sc2-drop').classList.add('on'); } });
@@ -2830,7 +2831,7 @@ export function installScanner(opts = {}) {
     if (!$i('sc2-drop').classList.contains('on')) return;
     e.preventDefault(); depth = 0; $i('sc2-drop').classList.remove('on');
     const fs = e.dataTransfer && e.dataTransfer.files;
-    if (fs && fs.length) scanFiles(fs);
+    if (fs && fs.length) { mode = opts.pasteMode === 'prospect' ? 'prospect' : 'log'; scanFiles(fs); }
   });
   return { openFile: (m) => {
     mode = m === 'prospect' ? 'prospect' : 'log';

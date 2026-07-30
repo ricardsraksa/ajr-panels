@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260725d">
+<link rel="modulepreload" href="./crm-core.js?v=20260726a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -328,7 +328,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 <!--/baked:head-->
 </head>
 <body class="v2-shell">
-<!--baked:side--><nav class="v2-side"><div class="grp">SETTER</div><a class="nav" href="worklist.html" data-nav="worklist">Worklist<span class="slot" data-slot="worklist"></span></a><a class="nav" href="log-lead.html" data-nav="log-lead">Log a lead<span class="slot" data-slot="log-lead"></span></a><a class="nav on" href="leads.html" data-nav="leads">All leads<span class="slot" data-slot="leads"></span></a><a class="nav" href="assistant.html" data-nav="assistant">Assistant<span class="slot" data-slot="assistant"></span></a><a class="nav" href="report.html" data-nav="report">Dashboard<span class="slot" data-slot="report"></span></a><div class="grp gap">CLOSER</div><a class="nav" href="deals.html" data-nav="deals">Deals<span class="slot" data-slot="deals"></span></a><a class="nav" href="close-call.html" data-nav="close-call">Voice log<span class="slot" data-slot="close-call"></span></a><div class="sp"></div><a class="nav" href="settings.html">Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
+<!--baked:side--><nav class="v2-side"><div class="grp">SETTER</div><a class="nav" href="worklist.html" data-nav="worklist">Worklist<span class="slot" data-slot="worklist"></span></a><a class="nav" href="log-lead.html" data-nav="log-lead">Log a lead<span class="slot" data-slot="log-lead"></span></a><a class="nav" href="newleads.html" data-nav="newleads">New leads<span class="slot" data-slot="newleads"></span></a><a class="nav on" href="leads.html" data-nav="leads">All leads<span class="slot" data-slot="leads"></span></a><a class="nav" href="assistant.html" data-nav="assistant">Assistant<span class="slot" data-slot="assistant"></span></a><a class="nav" href="report.html" data-nav="report">Dashboard<span class="slot" data-slot="report"></span></a><div class="grp gap">CLOSER</div><a class="nav" href="deals.html" data-nav="deals">Deals<span class="slot" data-slot="deals"></span></a><a class="nav" href="close-call.html" data-nav="close-call">Voice log<span class="slot" data-slot="close-call"></span></a><div class="sp"></div><a class="nav" href="settings.html">Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
 <main class="v2-main">
   <header class="v2-h">
     <h1>All leads</h1>
@@ -404,7 +404,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260725d';
+import * as core from './crm-core.js?v=20260726a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -532,12 +532,6 @@ function profileHref(l) {
 
 function batchList() {
   if (state.src === 'due') return state.stale || [];
-  if (state.src === 'uncontacted') {
-    // the prospect queue: added via the screenshot adder, not yet DM'd.
-    // Newest first — today's finds sit on top.
-    return state.leads.filter((l) => l.prospected && !l.lastContact && l.level !== 'Archive')
-      .sort((a, b) => String(b.prospected).localeCompare(String(a.prospected)));
-  }
   // Instagram's following list in follow-date order — every account still
   // followed on IG, whatever its CRM stage, because his phone shows them all.
   // Only rows HE removed with ✕ (or dead accounts) drop out: archiving a lead
@@ -570,21 +564,12 @@ function renderPool() {
   const sel = state.sel;
   const t = $('table');
 
-  const uncontacted = state.leads.filter((l) => l.prospected && !l.lastContact && l.level !== 'Archive');
-  const addedToday = state.leads.filter((l) => l.prospected && l.prospected.slice(0, 10) === core.dmyToIso(core.todayDmy())).length;
-  const weekAgoIso = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
-  const addedWeek = state.leads.filter((l) => l.prospected && l.prospected.slice(0, 10) >= weekAgoIso).length;
   const tabs = '<div class="poolbar">' +
     '<div class="tf" id="srcTabs" role="group" aria-label="Batch source">' +
       '<button data-src="due" aria-pressed="' + (state.src === 'due') + '">Due a follow-up ' + due.toLocaleString() + '</button>' +
       '<button data-src="pool" aria-pressed="' + (state.src === 'pool') + '">IG following ' + (state.src === 'pool' ? todo.length : state.leads.filter((l) => l.followed && !l.hidden).length).toLocaleString() + '</button>' +
-      '<button data-src="uncontacted" aria-pressed="' + (state.src === 'uncontacted') + '">Uncontacted ' + uncontacted.length.toLocaleString() + '</button>' +
     '</div>' +
-    (state.src === 'uncontacted'
-      ? '<span style="color:#8a8375">added today <b>' + addedToday + '</b>/20 · week <b>' + addedWeek + '</b>/100</span>'
-      : '') +
     '<span class="sp"></span>' +
-    (state.src === 'uncontacted' ? '<button class="v2-btn dark sm" id="prospectAdd">Add from screenshot</button>' : '') +
     (state.src === 'pool' ? '<button class="v2-btn sm" id="poolImport">Import IG following…</button>' : '') +
     '</div>';
 
@@ -595,14 +580,10 @@ function renderPool() {
           '<div style="margin-bottom:14px">Takes <b>following.json</b> from your Instagram data export, or a CSV with a column of handles or profile links. ' +
           'Pool entries stay out of the lead book and the Worklist.</div>' +
           '<button class="v2-btn dark" id="poolImport2">Import IG following…</button>'
-        : state.src === 'uncontacted'
-        ? '<div style="font-weight:600;color:#211f1b;margin-bottom:6px">No uncontacted leads</div>' +
-          '<div style="margin-bottom:14px">Screenshot an Instagram profile and add it here — the lead queues until you DM them. Target: 20 a day, 100 a week.</div>' +
-          '<button class="v2-btn dark" id="prospectAdd2">Add from screenshot</button>'
         : '<div style="font-weight:600;color:#211f1b;margin-bottom:6px">Nobody is overdue</div>' +
           '<div>Every live lead has been touched inside the overdue window. Nothing to batch.</div>') +
       '</div>';
-    $('count').textContent = state.src === 'pool' ? '0 followed' : state.src === 'uncontacted' ? '0 uncontacted' : '0 due';
+    $('count').textContent = state.src === 'pool' ? '0 followed' : '0 due';
     return;
   }
 
@@ -610,8 +591,6 @@ function renderPool() {
     '<div class="poolbar">' +
       (state.src === 'pool'
         ? '<b>' + fresh.length.toLocaleString() + '</b><span>still to DM</span>'
-        : state.src === 'uncontacted'
-        ? '<b>' + todo.length.toLocaleString() + '</b><span>waiting on a first DM</span>'
         : '<b>' + todo.length.toLocaleString() + '</b><span>waiting on a follow-up</span>') +
       '<span class="sp"></span>' +
       (state.src === 'pool'
@@ -656,15 +635,6 @@ function renderPool() {
           '<a href="' + esc(profileHref(l)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
           '<span class="poolage">' + esc(l.last || 'never') + '</span>' +
           '<button type="button" class="sentbtn" data-sent="' + l.id + '" title="Mark just this one sent">Sent</button>' +
-        '</div>';
-      }
-      if (state.src === 'uncontacted') {
-        return '<div class="poolcell">' +
-          '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>' +
-          '<a href="' + esc(profileHref(l)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
-          '<span class="poolage">added ' + esc(String(l.prospected).slice(8, 10) + '/' + String(l.prospected).slice(5, 7)) + '</span>' +
-          '<button type="button" class="sentbtn" data-sent="' + l.id + '" title="DM sent — stamps today">Sent</button>' +
-          '<button type="button" class="nalbtn" data-nal="' + l.id + '" title="Not a lead — deletes it.">✕</button>' +
         '</div>';
       }
       // pool rows are all still-to-DM; marking Sent moves them to the CRM
@@ -1079,7 +1049,7 @@ $('table').addEventListener('click', async (e) => {
   if (src) {
     state.src = src.getAttribute('data-src');
     // reconnect tabs default to follow-up; the prospect queue is first touch
-    state.kind = state.src === 'uncontacted' ? 'cold' : 'followup';
+    state.kind = 'followup';
     state.sel = new Set();
     renderPool();
     return;
@@ -1280,7 +1250,6 @@ $('table').addEventListener('click', (e) => {
     return;
   }
   if (e.target.closest('#poolImport') || e.target.closest('#poolImport2')) $('importFile').click();
-  if (e.target.closest('#prospectAdd') || e.target.closest('#prospectAdd2')) scanner.openFile('prospect');
 });
 $('importFile').onchange = async () => {
   const f = $('importFile').files[0];
@@ -1322,9 +1291,8 @@ const scanner = core.installScanner({
     if (info && info.mode === 'prospect') {
       const r = info.res || {};
       toast({ type: 'ok', ttl: 10000,
-        html: 'Added <b>' + n + '</b> to uncontacted' + (r.skipped ? ' · ' + r.skipped + ' already in the book' : '') + '.',
+        html: 'Added <b>' + n + '</b> — they queue on <a href="newleads.html">New leads</a>' + (r.skipped ? ' · ' + r.skipped + ' already in the book' : '') + '.',
         action: r.undo && n ? { label: 'Undo', fn: async () => { await core.undoProspects(r.undo); load(); } } : null });
-      state.src = 'uncontacted';
     } else {
       toast({ type: 'ok', html: 'Screenshot: ' + n + ' lead' + (n === 1 ? '' : 's') + ' written.' });
     }
