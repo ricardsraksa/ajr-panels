@@ -540,13 +540,15 @@ export async function dealCalls(dealId) {
 export async function bookedWithoutDeal() {
   const hasDeal = (deals, l) => deals.some((d) => _dealMatches(d, l));
   if (DEMO) {
-    return _demo.leads.filter((l) => l.level === 'Booked' && !hasDeal(_demo.deals, l))
+    return _demo.leads.filter((l) => (l.level === 'Booked' || l.level === 'Closed') && !hasDeal(_demo.deals, l))
       .map((l) => ({ id: l.id, h: l.h, url: l.url || '', qual: l.qual || '', notes: l.notes || '',
-        lastContact: l.lastContact || '' }));
+        lastContact: l.lastContact || '', level: l.level }));
   }
+  // Closed leads belong here too: a lead marked Closed with no deal behind it
+  // is a sale the closing CRM never recorded
   const { data: booked, error } = await supa.from('leads')
-    .select('id,handle,ig_url,qualification,notes,email,phone,last_contact')
-    .eq('level', 'Booked');
+    .select('id,handle,ig_url,qualification,notes,email,phone,last_contact,level')
+    .in('level', ['Booked', 'Closed']);
   if (error) throw new Error(error.message);
   if (!booked || !booked.length) return [];
   // ANY deal counts, including Closed / No Close — those are history, not a
@@ -558,7 +560,7 @@ export async function bookedWithoutDeal() {
     .map((l) => ({
       id: l.id, h: l.handle, url: l.ig_url || '', qual: l.qualification || '',
       notes: l.notes || '', email: l.email || '', phone: l.phone || '',
-      lastContact: isoToDmy(l.last_contact),
+      lastContact: isoToDmy(l.last_contact), level: l.level || 'Booked',
     }));
 }
 
@@ -1230,6 +1232,15 @@ export async function setLead(id, fields) {
   let deal = null;
   if (patch.level === 'Booked' && l.level !== 'Booked') {
     try { deal = await ensureDealForLead({ ...l, handle: l.handle, h: l.handle }); } catch (e) { /* non-blocking */ }
+  }
+  // a lead jumped straight to Closed (closed on the first call) needs its deal
+  // too — silent, since "new booking" would be the wrong ping for a done sale
+  if (patch.level === 'Closed' && l.level !== 'Closed') {
+    try {
+      const { data: has } = await supa.from('deals').select('id')
+        .or('lead_id.eq.' + l.id + ',name.eq.' + JSON.stringify('@' + l.handle)).limit(1);
+      if (!has || !has.length) deal = await ensureDealForLead({ ...l, handle: l.handle, h: l.handle }, { silent: true });
+    } catch (e) { /* non-blocking */ }
   }
   return { ok: true, row: id, handle: l.handle, prev, deal, undo: { table: 'leads', rowId: id, prev, actId } };
 }

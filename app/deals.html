@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260725b">
+<link rel="modulepreload" href="./crm-core.js?v=20260725c">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -388,7 +388,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260725b';
+import * as core from './crm-core.js?v=20260725c';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
@@ -775,7 +775,7 @@ async function missingChip() {
     if (!miss.length) return '';
     return '<a class="calrow miss" href="handover.html" style="text-decoration:none">' +
       '<span class="lab">HANDOVER</span>' +
-      '<span class="who">' + miss.length + ' booked lead' + (miss.length === 1 ? '' : 's') + ' not in deals</span>' +
+      '<span class="who">' + miss.length + ' lead' + (miss.length === 1 ? '' : 's') + ' missing from deals</span>' +
       '<span class="sp"></span><span style="color:#a8762a;font-weight:600">Review →</span></a>';
   } catch (e) { return ''; }
 }
