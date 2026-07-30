@@ -1420,7 +1420,7 @@ export async function assistChat(messages, leadContext) {
   if (DEMO) {
     await new Promise((r) => setTimeout(r, 900));
     return { ok: true,
-      reply: "He's price-anchoring before you've shown value — classic Engaged 2 stall. Don't defend the price in DMs; pull it to a call. Reply something like: \"honestly depends on the store — that's why we do a free audit first, worst case you get a teardown of your flows. got 15 min this week?\" His note from April says he was launching a second store; ask how that launch went first, it reopens the convo warm.",
+      reply: "He's price-anchoring before you've seen any value. Don't defend the price in DMs, pull it to a call. Reply something like: \"honestly depends on the store, that's why we do a free audit first. worst case you get a teardown of your flows. got 15 min this week?\" His note from April says he was launching a second store. Ask how that launch went before pitching, it reopens the convo warm.",
       lead_handle: 'ecom.aiden',
       updates: { qual: 'Qualified 2', level: 'Engaged 3', status: 'Mid convo',
         pains: 'Email barely converts, under 10% of revenue. No time to manage flows himself.',
