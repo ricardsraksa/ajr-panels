@@ -2172,6 +2172,7 @@ const NAV_ITEMS = [
   { id: 'log-lead', label: 'Log a lead', href: 'log-lead.html' },
   { id: 'newleads', label: 'New leads', href: 'newleads.html' },
   { id: 'leads', label: 'All leads', href: 'leads.html' },
+  { id: 'leadpools', label: 'Leadpools', href: 'leadpools.html' },
   { id: 'assistant', label: 'Assistant', href: 'assistant.html' },
   { id: 'report', label: 'Dashboard', href: 'report.html' },
   { grp: 'CLOSER', gap: true },

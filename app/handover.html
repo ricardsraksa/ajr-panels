@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260726e">
+<link rel="modulepreload" href="./crm-core.js?v=20260726f">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f9f8f5}</style>
 <script type="module" blocking="render">
@@ -193,7 +193,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 <!--/baked:head-->
 </head>
 <body class="v2-shell">
-<!--baked:side--><nav class="v2-side"><div class="grp">SETTER</div><a class="nav" href="worklist.html" data-nav="worklist">Worklist<span class="slot" data-slot="worklist"></span></a><a class="nav" href="log-lead.html" data-nav="log-lead">Log a lead<span class="slot" data-slot="log-lead"></span></a><a class="nav" href="newleads.html" data-nav="newleads">New leads<span class="slot" data-slot="newleads"></span></a><a class="nav" href="leads.html" data-nav="leads">All leads<span class="slot" data-slot="leads"></span></a><a class="nav" href="assistant.html" data-nav="assistant">Assistant<span class="slot" data-slot="assistant"></span></a><a class="nav" href="report.html" data-nav="report">Dashboard<span class="slot" data-slot="report"></span></a><div class="grp gap">CLOSER</div><a class="nav on" href="deals.html" data-nav="deals">Deals<span class="slot" data-slot="deals"></span></a><a class="nav" href="close-call.html" data-nav="close-call">Voice log<span class="slot" data-slot="close-call"></span></a><div class="sp"></div><a class="nav" href="settings.html">Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
+<!--baked:side--><nav class="v2-side"><div class="grp">SETTER</div><a class="nav" href="worklist.html" data-nav="worklist">Worklist<span class="slot" data-slot="worklist"></span></a><a class="nav" href="log-lead.html" data-nav="log-lead">Log a lead<span class="slot" data-slot="log-lead"></span></a><a class="nav" href="newleads.html" data-nav="newleads">New leads<span class="slot" data-slot="newleads"></span></a><a class="nav" href="leads.html" data-nav="leads">All leads<span class="slot" data-slot="leads"></span></a><a class="nav" href="leadpools.html" data-nav="leadpools">Leadpools<span class="slot" data-slot="leadpools"></span></a><a class="nav" href="assistant.html" data-nav="assistant">Assistant<span class="slot" data-slot="assistant"></span></a><a class="nav" href="report.html" data-nav="report">Dashboard<span class="slot" data-slot="report"></span></a><div class="grp gap">CLOSER</div><a class="nav on" href="deals.html" data-nav="deals">Deals<span class="slot" data-slot="deals"></span></a><a class="nav" href="close-call.html" data-nav="close-call">Voice log<span class="slot" data-slot="close-call"></span></a><div class="sp"></div><a class="nav" href="settings.html">Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
 <main class="v2-main">
   <div class="colw">
     <header class="v2-h">
@@ -209,7 +209,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260726e';
+import * as core from './crm-core.js?v=20260726f';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
