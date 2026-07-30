@@ -564,6 +564,38 @@ export async function bookedWithoutDeal() {
     }));
 }
 
+/** A deal from nothing — inbound leads go straight to the closer without ever
+ *  entering the setter's book. lead_id stays null; the name/link matchers
+ *  (dealForLead, bookedWithoutDeal) treat that as first-class. */
+export async function createDeal(f = {}) {
+  const rawName = String(f.name || '').trim();
+  if (!rawName) throw new Error('name required');
+  // "@handle" (or a bare handle-looking name) also gives us the IG link
+  const asHandle = /^@?[a-z0-9._]{2,30}$/i.test(rawName) && !/\s/.test(rawName)
+    ? rawName.toLowerCase().replace(/^@/, '') : '';
+  const name = asHandle ? '@' + asHandle : rawName;
+  if (DEMO) {
+    const id = Date.now();
+    _demo.deals.push({ row: id, id, leadId: null, name,
+      link: asHandle ? 'https://instagram.com/' + asHandle : (f.ig_link || ''),
+      status: f.status || 'Discovery Call', meeting: f.meeting || '', meetingTime: f.time || '',
+      followup: '', qual: f.qual || '', cash: '', notes: f.notes || '', hasFF: false, fireflies_link: '' });
+    return { ok: true, row: id, name };
+  }
+  const row = {
+    lead_id: null, name,
+    ig_link: asHandle ? 'https://www.instagram.com/' + asHandle + '/' : (f.ig_link || null),
+    status: f.status || 'Discovery Call',
+    meeting: f.meeting ? (dmyToIso(f.meeting) || f.meeting) : null,
+    meeting_time: f.time || null, qualification: f.qual || null,
+    notes: f.notes || null, email: f.email || null, phone: f.phone || null,
+  };
+  const { data: created, error } = await supa.from('deals').insert(row).select('id').single();
+  if (error) throw new Error(error.message);
+  await logActivity('deals', created.id, 'create', null, { ...row, source: 'inbound' });
+  return { ok: true, row: created.id, name };
+}
+
 /** Hand one of them to the closer. Silent: no "new booking" ping for history. */
 export async function createMissingDeal(lead) {
   const res = await ensureDealForLead(

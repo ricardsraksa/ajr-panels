@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260725c">
+<link rel="modulepreload" href="./crm-core.js?v=20260725d">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -279,6 +279,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
     <h1>Deals</h1>
     <span class="sub" id="today"></span>
     <span class="sp"></span>
+    <button class="v2-btn" id="newDeal">+ New deal</button>
     <button class="v2-btn go" id="voiceLog">Log a call</button>
     <button class="v2-btn sm" id="refresh">Refresh</button>
     <span id="count" hidden></span>
@@ -297,6 +298,25 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
   <div class="v2-card" id="table"><div class="v2-empty" id="skel">Loading deals…</div></div>
 </main>
 
+<!-- inbound deal: straight to the closer, never touches the setter's book -->
+<div id="nd-modal" style="position:fixed;inset:0;z-index:80;background:rgba(33,31,27,.45);display:none;align-items:flex-start;justify-content:center;padding:10vh 16px" hidden>
+  <div style="width:min(400px,100%);background:#f9f8f5;border:1px solid #e6e2da;border-radius:14px;padding:18px 20px">
+    <div style="font-size:16px;font-weight:700;margin-bottom:3px">New deal</div>
+    <div style="color:#8a8375;font-size:12.5px;margin-bottom:14px">For inbound leads. Goes straight to the closing CRM, not the setter's book.</div>
+    <div class="fld"><label>Name or @handle</label><input class="v2-in" id="nd-name" placeholder="@brandowner or Jane Doe" spellcheck="false"></div>
+    <div class="g2">
+      <div class="fld"><label>Meeting</label><input class="v2-in" id="nd-meeting" type="date"></div>
+      <div class="fld"><label>Time</label><input class="v2-in" id="nd-time" placeholder="14:00"></div>
+    </div>
+    <div class="fld"><label>Qualification</label>
+      <select class="v2-in" id="nd-qual"><option value="">—</option><option>Qualified 1</option><option>Qualified 2</option><option>Qualified 3</option></select></div>
+    <div class="fld"><label>Note</label><input class="v2-in" id="nd-notes" placeholder="where they came from, context"></div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="v2-btn go" id="nd-create" style="flex:1">Create deal</button>
+      <button class="v2-btn" id="nd-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" aria-label="Deal editor">
   <div class="dhead">
@@ -388,7 +408,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260725c';
+import * as core from './crm-core.js?v=20260725d';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
@@ -795,14 +815,58 @@ async function loadStrip() {
         '<span class="sp"></span>' +
         '<select><option value="">Pick a deal</option>' + opts + '</select>' +
         '<button class="lnk">Link</button>' +
+        '<button class="lnk" data-newdeal>New deal</button>' +
         '<button class="lnk dim" data-ignore>Ignore</button></div>';
     }).join('');
     el.hidden = false;
   } catch (e) { el.hidden = true; }
 }
+/* ---------- new deal (inbound) ---------- */
+const ndModal = $('nd-modal');
+function ndOpen() { ndModal.hidden = false; ndModal.style.display = 'flex'; $('nd-name').focus(); }
+function ndClose() {
+  ndModal.hidden = true; ndModal.style.display = 'none';
+  ['nd-name', 'nd-meeting', 'nd-time', 'nd-qual', 'nd-notes'].forEach((id) => { $(id).value = ''; });
+}
+$('newDeal').onclick = ndOpen;
+$('nd-cancel').onclick = ndClose;
+ndModal.addEventListener('mousedown', (e) => { if (e.target === ndModal) ndClose(); });
+$('nd-create').onclick = async () => {
+  const name = $('nd-name').value.trim();
+  if (!name) { toast({ type: 'err', html: 'Name or @handle required.' }); return; }
+  $('nd-create').disabled = true;
+  try {
+    const meetIso = $('nd-meeting').value; // date input gives yyyy-mm-dd
+    const res = await core.createDeal({ name,
+      meeting: meetIso ? core.isoToDmy(meetIso) : '', time: $('nd-time').value.trim(),
+      qual: $('nd-qual').value, notes: $('nd-notes').value.trim() });
+    ndClose();
+    await load();
+    toast({ type: 'ok', html: '<span class="mono">' + esc(res.name) + '</span> added to deals.' });
+  } catch (err) {
+    toast({ type: 'err', html: 'Couldn’t create: ' + esc(err.message), sticky: true });
+  } finally { $('nd-create').disabled = false; }
+};
+
 $('calstrip').addEventListener('click', async (e) => {
   const btn = e.target.closest('.lnk'); if (!btn) return;
   const rowEl = btn.closest('.calrow');
+  if (btn.hasAttribute('data-newdeal')) {
+    // inbound who booked straight through Calendly: deal + link in one go
+    btn.disabled = true;
+    try {
+      const who = rowEl.querySelector('.who').textContent.trim();
+      const made = await core.createDeal({ name: who });
+      const res = await core.linkBooking(rowEl.getAttribute('data-b'), made.row);
+      await load();
+      toast({ type: 'ok', ttl: 8000,
+        html: 'New deal <span class="mono">' + esc(made.name) + '</span> created from the booking.' });
+    } catch (err) {
+      btn.disabled = false;
+      toast({ type: 'err', html: 'Couldn’t create: ' + esc(err.message), sticky: true });
+    }
+    return;
+  }
   if (btn.hasAttribute('data-ignore')) {
     btn.disabled = true;
     try {
