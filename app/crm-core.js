@@ -58,7 +58,7 @@ const _demo = {
     { id: 9, h: 'therealashwinn', url: 'https://instagram.com/therealashwinn', level: 'Engaged 1', status: 'End of convo', qual: '', notes: '', lastContact: _ago(140) },
     { id: 10, h: 'thedtcguy', url: 'https://instagram.com/thedtcguy', level: 'No Reply', status: 'Follow up Sent', qual: '', notes: '', lastContact: _ago(43), followed: _ago(3000) },
     { id: 11, h: 'ecom.aiden', url: 'https://instagram.com/ecom.aiden', level: 'Engaged 3', status: 'Mid convo', qual: 'Qualified 2', notes: 'wants pricing', lastContact: _ago(2) },
-    { id: 12, h: 'bram.vandijk', url: 'https://instagram.com/bram.vandijk', level: 'Archive', status: 'Left on read', qual: 'Unqualified', notes: '', lastContact: _ago(90), followed: _ago(1800) },
+    { id: 12, h: 'growthwithdan', url: 'https://instagram.com/growthwithdan', level: 'Archive', status: 'Left on read', qual: 'Unqualified', notes: '[no contact] not a lead', lastContact: _ago(90), followed: _ago(1800) },
     { id: 13, h: 'lena.builds', url: 'https://instagram.com/lena.builds', level: 'Booked', status: 'Call Pitched', qual: 'Qualified 3', notes: 'call booked friday', lastContact: _ago(1) },
     // booked but never handed over — the case the closing page now catches
     { id: 25, h: 'giojaunin', url: 'https://instagram.com/giojaunin', level: 'Booked', status: 'Call Pitched', qual: 'Qualified 2', notes: 'booked on a call, deal row never created', lastContact: _ago(3) },
@@ -1766,24 +1766,48 @@ export async function addProspects(cards) {
   })).filter((c) => c.h);
   if (!list.length) return { added: 0, skipped: 0, ids: [] };
   if (DEMO) {
-    const have = new Set(_demo.leads.map((l) => l.h));
-    const ids = [];
+    const ids = [], revived = [];
     let skipped = 0;
     for (const c of list) {
-      if (have.has(c.h)) { skipped++; continue; }
+      const hit = _demo.leads.find((l) => l.h === c.h);
+      if (hit && hit.level === 'Archive') {
+        revived.push({ id: hit.id, prev: { level: hit.level, lastContact: hit.lastContact } });
+        hit.level = ''; hit.lastContact = ''; hit.prospected = new Date().toISOString();
+        continue;
+      }
+      if (hit) { skipped++; continue; }
       const id = Date.now() + Math.floor(Math.random() * 1e6);
       _demo.leads.push({ id, h: c.h, url: 'https://instagram.com/' + c.h, level: c.stage || '',
         status: '', qual: '', notes: c.notes, lastContact: '', dateAdded: todayDmy(),
         prospected: new Date().toISOString() });
       ids.push(id);
     }
-    return { added: ids.length, skipped, ids, undo: { _demoProspects: ids } };
+    return { added: ids.length, skipped, revived: revived.length, ids,
+      undo: { _demoProspects: ids, _demoRevived: revived } };
   }
   // one existence check over the whole batch, not one query per card
-  const { data: have } = await supa.from('leads').select('handle')
+  const { data: have } = await supa.from('leads')
+    .select('id,handle,level,last_contact,outreach_hidden')
     .in('handle', list.map((c) => c.h));
-  const taken = new Set((have || []).map((r) => String(r.handle).toLowerCase()));
-  const fresh = list.filter((c) => !taken.has(c.h));
+  const byHandle = new Map((have || []).map((r) => [String(r.handle).toLowerCase(), r]));
+  // An archived handle screenshotted back into the prospect queue is an
+  // explicit "this IS a lead after all" — revive the existing row instead of
+  // skipping it, so its history survives and no duplicate is created.
+  const revived = [];
+  for (const c of list) {
+    const hit = byHandle.get(c.h);
+    if (!hit || hit.level !== 'Archive') continue;
+    const prev = { level: hit.level, last_contact: hit.last_contact, outreach_hidden: hit.outreach_hidden };
+    const patch = { level: null, last_contact: null, outreach_hidden: false,
+      prospected_at: new Date().toISOString() };
+    const { error } = await supa.from('leads').update(patch).eq('id', hit.id);
+    if (error) throw new Error(error.message);
+    // a revive is a new lead for the KPI — it re-enters the queue as one
+    await logActivity('leads', hit.id, 'create', prev,
+      { handle: c.h, source: 'prospect-scan', revived: true });
+    revived.push({ id: hit.id, prev });
+  }
+  const fresh = list.filter((c) => !byHandle.has(c.h));
   const ids = [];
   for (const c of fresh) {
     const { data, error } = await supa.from('leads').insert({
@@ -1798,13 +1822,22 @@ export async function addProspects(cards) {
     await logActivity('leads', data.id, 'create', null,
       { handle: c.h, level: c.stage, source: 'prospect-scan' });
   }
-  return { added: ids.length, skipped: list.length - fresh.length, ids,
-    undo: { prospectIds: ids } };
+  return { added: ids.length, skipped: list.length - fresh.length - revived.length,
+    revived: revived.length, ids, undo: { prospectIds: ids, revived } };
 }
 export async function undoProspects(undo) {
-  if (undo && undo._demoProspects) {
-    _demo.leads = _demo.leads.filter((l) => undo._demoProspects.indexOf(l.id) < 0);
+  if (undo && (undo._demoProspects || undo._demoRevived)) {
+    _demo.leads = _demo.leads.filter((l) => (undo._demoProspects || []).indexOf(l.id) < 0);
+    (undo._demoRevived || []).forEach((r) => {
+      const l = _demo.leads.find((x) => x.id === r.id);
+      if (l) { l.level = r.prev.level; l.lastContact = r.prev.lastContact; l.prospected = ''; }
+    });
     return { ok: true };
+  }
+  // a revived lead goes back to the archive it came out of
+  for (const r of (undo && undo.revived) || []) {
+    await supa.from('leads').update({ level: r.prev.level, last_contact: r.prev.last_contact,
+      outreach_hidden: r.prev.outreach_hidden, prospected_at: null }).eq('id', r.id);
   }
   const ids = (undo && undo.prospectIds) || [];
   if (!ids.length) return { ok: true, deleted: 0 };
@@ -2805,7 +2838,9 @@ export function installScanner(opts = {}) {
       const matched = !handle && shownName && opts.resolveName ? opts.resolveName(shownName) : '';
       if (matched) handle = matched;
       l._suggested = { handle, stage: l.stage || 'Engaged 1', status: l.status || '', notes: l.notes || '', qual: l.qual || '', pains: l.pains || '' };
-      const exists = opts.exists ? opts.exists(handle) : null;
+      const ex = opts.exists ? opts.exists(handle) : null;
+      const exHandle = ex && typeof ex === 'object' ? ex.h : ex;
+      const exArchived = !!(ex && typeof ex === 'object' && ex.level === 'Archive');
       return '<div class="sc2-card" data-i="' + i + '">' +
         '<div class="t"><input class="hh" data-f="handle" value="' + escH(handle) + '" placeholder="' + (shownName ? escH(shownName) + ' — @handle or IG link' : '@handle or IG link') + '">' +
           '<button class="x" data-rm>✕</button></div>' +
@@ -2821,7 +2856,11 @@ export function installScanner(opts = {}) {
         (matched ? '<div class="ex">matched “' + escH(shownName) + '” to @' + escH(matched) + '</div>' : '') +
         (!handle ? '<div class="low">couldn’t read the full handle — type it or paste their profile link, or this one is skipped</div>' : '') +
         (l.confidence && l.confidence !== 'high' ? '<div class="low">low confidence — double-check this one</div>' : '') +
-        (exists ? '<div class="ex">already a lead — this updates @' + escH(exists) + '</div>' : '') +
+        (exHandle ? '<div class="ex">' + (mode !== 'prospect'
+          ? 'already a lead — this updates @' + escH(exHandle)
+          : exArchived
+            ? 'archived — this brings @' + escH(exHandle) + ' back as uncontacted'
+            : 'already in the book — this one is skipped') + '</div>' : '') +
       '</div>';
     }).join('');
     Array.prototype.forEach.call($i('sc2-body').querySelectorAll('[data-rm]'), (b) => {
