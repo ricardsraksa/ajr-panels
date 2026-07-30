@@ -2738,8 +2738,8 @@ export function installScanner(opts = {}) {
         '<div class="t"><input class="hh" data-f="handle" value="' + escH(handle) + '" placeholder="' + (shownName ? escH(shownName) + ' — type their @handle' : 'handle') + '">' +
           '<button class="x" data-rm>✕</button></div>' +
         '<div class="g">' +
-          '<select data-f="stage">' + optHtml(['Engaged 1','Engaged 2','Engaged 3','Booked','No Reply'], l.stage || (mode === 'prospect' ? '' : 'Engaged 1'), mode === 'prospect' ? 'Stage —' : '') + '</select>' +
-          '<select data-f="status">' + optHtml(statuses, l.status, 'Status —') + '</select>' +
+          '<select data-f="stage">' + optHtml(['Engaged 1','Engaged 2','Engaged 3','Booked','No Reply'], mode === 'prospect' ? '' : (l.stage || 'Engaged 1'), mode === 'prospect' ? 'Stage —' : '') + '</select>' +
+          '<select data-f="status">' + optHtml(statuses, mode === 'prospect' ? '' : l.status, 'Status —') + '</select>' +
         '</div>' +
         '<div class="g">' +
           '<select data-f="qual">' + optHtml(['Qualified 1','Qualified 2','Qualified 3','Unqualified'], l.qual || '', 'Qual —') + '</select>' +
