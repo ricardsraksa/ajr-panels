@@ -2625,7 +2625,9 @@ export function installScanner(opts = {}) {
           <button type="button" data-m="log" style="border-radius:7px;padding:5px 12px;border:none;background:none;cursor:pointer;font:600 11.5px 'Instrument Sans',system-ui,sans-serif;color:#6d675b">Log convo</button>
         </div>
         <button id="sc2-more" style="min-height:36px;padding:0 14px;border-radius:8px;border:1px dashed #ddd8cd;background:#fff;color:#6d675b;font-weight:600;font-size:12.5px;cursor:pointer">+ More screenshots</button>
-        <button class="cancel" id="sc2-cancel">Cancel</button><button class="add" id="sc2-add">Add leads</button>
+        <button class="cancel" id="sc2-cancel">Cancel</button>
+        <button class="add" id="sc2-go" hidden>Analyze</button>
+        <button class="add" id="sc2-add">Add leads</button>
       </div>
     </div></div>`;
   document.body.appendChild(el);
@@ -2644,8 +2646,14 @@ export function installScanner(opts = {}) {
   const g2 = (card, f) => { const x = card.querySelector('[data-f="' + f + '"]'); return x ? x.value.trim() : ''; };
   // closing has to abandon a batch still being read — the loop is async and
   // would otherwise finish into a closed modal and pop it back open
-  const close = () => { batchId++; fileQueue.length = 0; draining = false; $i('sc2-modal').classList.remove('on'); items = []; scanning = 0; scanTotal = 0; scanDone = 0; msg = ''; };
+  const close = () => {
+    batchId++;
+    fileQueue.forEach((q) => { try { URL.revokeObjectURL(q.url); } catch (e) {} });
+    fileQueue.length = 0; draining = false; gathered = true;
+    $i('sc2-modal').classList.remove('on'); items = []; scanning = 0; scanTotal = 0; scanDone = 0; msg = '';
+  };
   $i('sc2-close').onclick = close; $i('sc2-cancel').onclick = close;
+  $i('sc2-go').onclick = () => { if (fileQueue.length) drain(); };
   $i('sc2-mode').addEventListener('click', (e) => {
     const b2 = e.target.closest('button[data-m]'); if (!b2) return;
     mode = b2.getAttribute('data-m') === 'log' ? 'log' : 'prospect';
@@ -2729,6 +2737,7 @@ export function installScanner(opts = {}) {
   // spinner only before the first card exists; once cards are up, an incoming
   // scan updates the header but leaves the reviewed cards on screen
   function refresh() {
+    if (gathered && !draining) { renderGather(); return; }
     if (scanning > 0 && !items.length) {
       $i('sc2-title').textContent = scanLabel();
       $i('sc2-add').disabled = true;
@@ -2795,32 +2804,61 @@ export function installScanner(opts = {}) {
     r.onload = () => { const v = String(r.result); res(v.slice(v.indexOf(',') + 1)); };
     r.onerror = rej; r.readAsDataURL(file);
   });
-  // Screenshots go into a queue that one worker drains: more can be added at
-  // any moment — mid-scan included — and everything lands in the same review
-  // list. Only Cancel/close abandons the batch.
-  const fileQueue = [];
+  // Two-phase flow: screenshots GATHER first — thumbnails pile up, nothing
+  // scans, more can keep coming — and the AI only runs when Analyze is
+  // pressed. After that, late additions join the running scan directly.
+  // Only Cancel/close abandons the batch.
+  const fileQueue = [];   // [{ f: File, url: objectURL }]
   let draining = false;
+  let gathered = true;    // true until Analyze — files wait as thumbnails
+  function renderGather() {
+    $i('sc2-title').textContent = fileQueue.length + ' screenshot' + (fileQueue.length === 1 ? '' : 's') + ' ready';
+    $i('sc2-add').hidden = true;
+    $i('sc2-go').hidden = false;
+    $i('sc2-go').textContent = 'Analyze ' + fileQueue.length + ' screenshot' + (fileQueue.length === 1 ? '' : 's');
+    $i('sc2-body').innerHTML =
+      '<div style="display:flex;flex-wrap:wrap;gap:8px;padding:6px 4px">' +
+      fileQueue.map((q, i) =>
+        '<span style="position:relative"><img src="' + q.url + '" alt="" style="width:74px;height:74px;object-fit:cover;border-radius:9px;border:1px solid #e6e2da">' +
+        '<button type="button" data-gx="' + i + '" style="position:absolute;top:-6px;right:-6px;width:19px;height:19px;border-radius:50%;background:#211f1b;color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;padding:0">×</button></span>').join('') +
+      '</div>' +
+      '<div style="padding:4px 8px;color:#8a8375;font-size:12px">Keep adding — nothing is analyzed until you say so.</div>';
+    Array.prototype.forEach.call($i('sc2-body').querySelectorAll('[data-gx]'), (b) => {
+      b.onclick = () => {
+        const q = fileQueue.splice(+b.getAttribute('data-gx'), 1)[0];
+        if (q) try { URL.revokeObjectURL(q.url); } catch (e) {}
+        if (!fileQueue.length && !items.length) close(); else renderGather();
+      };
+    });
+  }
   async function scanFiles(fileList) {
     const imgs = [].slice.call(fileList || []).filter((f) => f && (f.type || '').indexOf('image/') === 0);
     if (!imgs.length) return;
-    fileQueue.push(...imgs);
+    imgs.forEach((f) => fileQueue.push({ f, url: URL.createObjectURL(f) }));
     $i('sc2-modal').classList.add('on');
+    if (gathered && !draining) { renderGather(); return; }  // waiting on Analyze
     scanTotal += imgs.length;
     if (draining) { refresh(); return; }   // the running worker picks them up
-    draining = true;
+    drain();
+  }
+  async function drain() {
+    draining = true; gathered = false;
+    $i('sc2-go').hidden = true; $i('sc2-add').hidden = false;
+    scanTotal = scanDone + fileQueue.length;   // everything queued right now
     const mine = ++batchId;
-    let dupes = 0, errs = 0;
+    let dupes = 0, errs = 0, ran = 0;
     while (fileQueue.length) {
       if (mine !== batchId) { draining = false; return; }  // cancelled
-      const f = fileQueue.shift();
+      const q = fileQueue.shift();
       scanning = 1; refresh();
       try {
-        const out = await visionScan(await toB64(f), f.type || 'image/jpeg');
+        const out = await visionScan(await toB64(q.f), q.f.type || 'image/jpeg');
         if (mine !== batchId) { draining = false; return; }
         const leads = (out.leads || []).filter((l) => (l.handle || l.name || '').trim());
         if (leads.length) dupes += addLeads(leads);
       } catch (e) { if (mine !== batchId) { draining = false; return; } errs++; }
-      scanDone++; scanning = 0;
+      try { URL.revokeObjectURL(q.url); } catch (e) { /* thumbnail is gone anyway */ }
+      scanDone++; scanning = 0; ran++;
     }
     draining = false;
     scanTotal = 0; scanDone = 0;
@@ -2832,7 +2870,7 @@ export function installScanner(opts = {}) {
       $i('sc2-title').textContent = 'Screenshot';
       $i('sc2-body').innerHTML = '<div class="think">No leads found' +
         (errs ? ' — ' + errs + ' image' + (errs === 1 ? '' : 's') + ' couldn’t be read' :
-          ' in ' + (imgs.length === 1 ? 'that image' : 'those images')) + '.</div>';
+          ' in ' + (ran === 1 ? 'that image' : 'those images')) + '.</div>';
       return;
     }
     render();
