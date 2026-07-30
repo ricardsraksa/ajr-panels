@@ -48,7 +48,7 @@ function isoToDmyLocal(d) {
 const _demo = {
   leads: [
     { id: 1, h: 'jung.labs', url: 'https://instagram.com/jung.labs', level: 'Engaged 3', status: 'Follow up Sent', qual: 'Qualified 3', notes: 'potential referral for his students', lastContact: _ago(20), dateAdded: _ago(90), followed: _ago(950), email: 'jung@labs.io', phone: '', linkedin: '', pains: 'no time to run ads' },
-    { id: 2, h: 'charlay', url: 'https://instagram.com/charlay', level: 'Engaged 3', status: 'Follow up Sent', qual: 'Qualified 3', notes: 'audit accepted, need to book meeting', lastContact: _ago(63), followed: _ago(1400) },
+    { id: 2, h: 'charlay', url: 'https://instagram.com/charlay', level: 'Engaged 3', status: 'Follow up Sent', qual: 'Qualified 3', notes: 'audit accepted, need to book meeting', lastContact: _ago(63), followed: _ago(1400), lp: true, lpQuality: 'good', lpUsed: true },
     { id: 3, h: 'akram_meza', url: 'https://instagram.com/akram_meza', level: 'Engaged 3', status: 'Follow up Sent', qual: 'Qualified 1', notes: 'showed interest from story', lastContact: _ago(63) },
     { id: 4, h: 'oscarwxng', url: 'https://instagram.com/oscarwxng', level: 'Engaged 2', status: 'Story reply', qual: 'Qualified 2', notes: '', lastContact: _ago(4), followed: _ago(200) },
     { id: 5, h: 'kayla.growth', url: 'https://instagram.com/kayla.growth', level: 'Engaged 2', status: 'Meme sent', qual: '', notes: '', lastContact: _ago(6) },
@@ -213,7 +213,7 @@ export async function loadLeads() {
   const hit = _ttlGet(BOOK_KEY);
   if (hit) return hit;
   const out = await pagedSelect('leads',
-    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,followed_ts,ig_status,ig_last_post,ig_name,outreach_hidden,prospected_at,pain_points,email,phone,linkedin');
+    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,followed_ts,ig_status,ig_last_post,ig_name,outreach_hidden,prospected_at,pain_points,email,phone,linkedin,lp,lp_quality,lp_used');
   const mapped = out.map((l) => ({
     id: l.id, h: l.handle, url: l.ig_url || '',
     level: l.level || '', status: l.last_status || '',
@@ -225,6 +225,7 @@ export async function loadLeads() {
     hidden: !!l.outreach_hidden,
     prospected: l.prospected_at || '',
     pains: l.pain_points || '', email: l.email || '', phone: l.phone || '', linkedin: l.linkedin || '',
+    lp: !!l.lp, lpQuality: l.lp_quality || '', lpUsed: !!l.lp_used,
   }));
   _ttlSet(BOOK_KEY, mapped);
   return mapped;
@@ -1242,7 +1243,8 @@ export async function undoOutreachSent(undo) {
 /** Direct-set a lead's fields (leads-browser editor). Only present keys write. */
 export async function setLead(id, fields) {
   const MAP = { level: 'level', status: 'last_status', qual: 'qualification',
-    notes: 'notes', pains: 'pain_points', email: 'email', phone: 'phone', linkedin: 'linkedin' };
+    notes: 'notes', pains: 'pain_points', email: 'email', phone: 'phone', linkedin: 'linkedin',
+    lp: 'lp', lpQuality: 'lp_quality', lpUsed: 'lp_used' };
   if (DEMO) {
     const l = _demo.leads.find((x) => x.id === id);
     if (!l) throw new Error('lead not found');
@@ -2648,6 +2650,13 @@ export function installScanner(opts = {}) {
     mode = b2.getAttribute('data-m') === 'log' ? 'log' : 'prospect';
     render();
   });
+  // pasting a profile link into a handle box converts it on the spot
+  $i('sc2-body').addEventListener('input', (e) => {
+    const hh = e.target.closest('input.hh');
+    if (!hh || !/instagram\.com/i.test(hh.value)) return;
+    const h = handleFromAny(hh.value);
+    if (h) hh.value = h;
+  });
   $i('sc2-more').onclick = () => {
     const inp = document.createElement('input');
     inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
@@ -2660,11 +2669,30 @@ export function installScanner(opts = {}) {
     return (blank ? '<option value="">' + blank + '</option>' : '') +
       list.map((o) => '<option' + (o === sel ? ' selected' : '') + '>' + escH(o) + '</option>').join('');
   }
+  // Anything typed or pasted into a handle field resolves to a clean handle:
+  // a bare handle, an @handle, or a full profile link — including the phone's
+  // /_u/ form and ?igsh junk. Post/reel/story-id links resolve to nothing
+  // rather than minting a junk handle.
+  const handleFromAny = (v) => {
+    v = String(v || '').trim();
+    if (!v) return '';
+    if (/instagram\.com/i.test(v)) {
+      v = v.replace(/instagram\.com\/_u\//i, 'instagram.com/');
+      try {
+        const CP = typeof window !== 'undefined' ? window.CRMParse : null;
+        if (CP && CP.normalizeHandle) return CP.normalizeHandle(v) || '';
+      } catch (e) { /* fall through to the regex */ }
+      const m = v.match(/instagram\.com\/(?:stories\/)?([a-z0-9._]{2,30})/i);
+      return m && !/^(p|reel|reels|tv|explore|direct|accounts|stories)$/i.test(m[1])
+        ? m[1].toLowerCase() : '';
+    }
+    return v.toLowerCase().replace(/^@+/, '');
+  };
   // the handle a card resolves to: a real @handle wins; failing that, an inbox
   // display name mapped back through the names we hold. Blank if neither — we
   // never invent a handle from a name we can't match.
   function itemHandle(it) {
-    const raw = (it.handle || '').trim().toLowerCase().replace(/^@/, '');
+    const raw = handleFromAny(it.handle);
     if (raw) return raw;
     const nm = (it.name || '').trim();
     return nm && opts.resolveName ? (opts.resolveName(nm) || '') : '';
@@ -2735,7 +2763,7 @@ export function installScanner(opts = {}) {
       l._suggested = { handle, stage: l.stage || 'Engaged 1', status: l.status || '', notes: l.notes || '', qual: l.qual || '', pains: l.pains || '' };
       const exists = opts.exists ? opts.exists(handle) : null;
       return '<div class="sc2-card" data-i="' + i + '">' +
-        '<div class="t"><input class="hh" data-f="handle" value="' + escH(handle) + '" placeholder="' + (shownName ? escH(shownName) + ' — type their @handle' : 'handle') + '">' +
+        '<div class="t"><input class="hh" data-f="handle" value="' + escH(handle) + '" placeholder="' + (shownName ? escH(shownName) + ' — @handle or IG link' : '@handle or IG link') + '">' +
           '<button class="x" data-rm>✕</button></div>' +
         '<div class="g">' +
           '<select data-f="stage">' + optHtml(['Engaged 1','Engaged 2','Engaged 3','Booked','No Reply'], mode === 'prospect' ? '' : (l.stage || 'Engaged 1'), mode === 'prospect' ? 'Stage —' : '') + '</select>' +
@@ -2747,7 +2775,7 @@ export function installScanner(opts = {}) {
         '</div>' +
         '<input class="nn" data-f="notes" value="' + escH(l.notes || '') + '" placeholder="note / sellable angle">' +
         (matched ? '<div class="ex">matched “' + escH(shownName) + '” to @' + escH(matched) + '</div>' : '') +
-        (!handle ? '<div class="low">only a display name was visible — add the @handle or this one is skipped</div>' : '') +
+        (!handle ? '<div class="low">couldn’t read the full handle — type it or paste their profile link, or this one is skipped</div>' : '') +
         (l.confidence && l.confidence !== 'high' ? '<div class="low">low confidence — double-check this one</div>' : '') +
         (exists ? '<div class="ex">already a lead — this updates @' + escH(exists) + '</div>' : '') +
       '</div>';
@@ -2819,7 +2847,7 @@ export function installScanner(opts = {}) {
       // found, not messaged: create as uncontacted, never stamp a contact date
       const batch = [];
       cards.forEach((card) => {
-        const handle = g2(card, 'handle').toLowerCase().replace(/^@/, '');
+        const handle = handleFromAny(g2(card, 'handle'));
         if (!handle || seen.has(handle)) return;
         seen.add(handle);
         batch.push({ handle, stage: g2(card, 'stage'), notes: g2(card, 'notes'),
@@ -2835,7 +2863,7 @@ export function installScanner(opts = {}) {
     let n = 0;
     for (const card of cards) {
       const g = (f) => g2(card, f);
-      const handle = g('handle').toLowerCase().replace(/^@/, '');
+      const handle = handleFromAny(g('handle'));
       if (!handle || seen.has(handle)) continue;
       seen.add(handle);
       try {

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260726d">
+<link rel="modulepreload" href="./crm-core.js?v=20260726e">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -390,6 +390,19 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
     <div class="fld"><label>Pain points</label><textarea class="v2-in" id="f-pains"></textarea></div>
     <div class="fld"><label>Notes</label><textarea class="v2-in mono" id="f-notes" style="font-size:12px"></textarea></div>
     <div class="fld"><label>LinkedIn</label><input class="v2-in" id="f-linkedin" type="text"></div>
+    <div class="fld" id="lp-fld">
+      <label style="cursor:pointer"><input type="checkbox" id="f-lp" style="width:13px;height:13px;accent-color:#2a6a4d;cursor:pointer;margin-right:2px">Leadpool — their audience is a lead source</label>
+      <div id="lp-marks" style="display:flex;gap:8px;margin-top:7px" hidden>
+        <div class="tf" id="f-lpq" role="group" aria-label="Pool quality">
+          <button type="button" data-q="good">Good</button>
+          <button type="button" data-q="bad">Bad</button>
+        </div>
+        <div class="tf" id="f-lpu" role="group" aria-label="Pool used">
+          <button type="button" data-u="0">Unused</button>
+          <button type="button" data-u="1">Used</button>
+        </div>
+      </div>
+    </div>
     <div class="hist" id="d-calls-wrap" hidden><h3>Calls</h3><div id="d-calls" style="display:flex;flex-direction:column;gap:4px;font-size:12.5px"></div></div>
     <div class="hist" id="hist" hidden><h3>History</h3><ul id="hist-list"></ul></div>
   </div>
@@ -404,7 +417,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260726d';
+import * as core from './crm-core.js?v=20260726e';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -441,7 +454,9 @@ function renderSumbar() {
   state.leads.forEach((l) => { const k = l.level || ''; counts[k] = (counts[k] || 0) + 1; });
   const poolCount = state.leads.filter((l) => core.isPool(l.level)).length;
   const realCount = state.leads.length - poolCount - (counts['Archive'] || 0);
+  const lpCount = state.leads.filter((l) => l.lp).length;
   const opts = [['ALL', 'All', realCount]]
+    .concat(lpCount ? [['LP', 'Leadpools', lpCount]] : [])
     .concat(STAGE_ORDER.filter((st) => (st === 'Following' ? poolCount : counts[st]))
       .map((st) => [st, st || 'No level', st === 'Following' ? poolCount : counts[st]]));
   const sel = $('stageSel');
@@ -473,6 +488,7 @@ const COLS = [
   { k: 'email', lab: 'Email', w: '164px', off: true },
   { k: 'phone', lab: 'Phone', w: '108px', off: true },
   { k: 'followed', lab: 'Followed', w: '62px', off: true },
+  { k: 'lpmark', lab: 'Pool', pick: 'Leadpool', w: '96px', off: true },
 ];
 const COL_KEY = 'ajr_cols_v1';
 const DEFAULT_COLS = COLS.filter((c) => !c.off).map((c) => c.k);
@@ -502,6 +518,11 @@ function cmp(a, b, key) {
   }
   // alphabetical would read Qualified 1 as the best one — rank it properly
   if (key === 'qual') return (QUAL_RANK[a.qual] || 0) - (QUAL_RANK[b.qual] || 0);
+  // pools first, good before bad, unused before used (the workable ones)
+  if (key === 'lpmark') {
+    const r = (l) => !l.lp ? 0 : (l.lpQuality === 'good' ? 30 : l.lpQuality === 'bad' ? 10 : 20) + (l.lpUsed ? 0 : 5);
+    return r(a) - r(b);
+  }
   return String(a[key] || '').localeCompare(String(b[key] || ''));
 }
 function visible() {
@@ -510,8 +531,9 @@ function visible() {
     // Following and Archive are buckets, not the working book — each is only
     // visible under its own option. 'All' means the leads actually in play.
     if (state.filter === 'ALL' && (core.isPool(l.level) || l.level === 'Archive')) return false;
-    if (state.filter === 'Following') { if (!core.isPool(l.level)) return false; }
-    else if (state.filter !== 'ALL' && (l.level || '') !== state.filter) return false;
+    if (state.filter === 'LP') { if (!l.lp) return false; }
+    else if (state.filter === 'Following') { if (!core.isPool(l.level)) return false; }
+    else if (state.filter !== 'ALL' && state.filter !== 'LP' && (l.level || '') !== state.filter) return false;
     if (q && !((l.h + ' ' + l.notes + ' ' + l.email + ' ' + l.status + ' ' + l.qual + ' ' + l.igName + ' ' + l.pains).toLowerCase().includes(q))) return false;
     return true;
   });
@@ -798,6 +820,12 @@ function cellHtml(l, k) {
   }
   if (k === 'dateAdded' || k === 'followed') return `<span class="l-mono">${esc((l[k] || '').slice(0, 5))}</span>`;
   if (k === 'email' || k === 'phone') return `<span class="l-mono" title="${esc(l[k])}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l[k] || '')}</span>`;
+  if (k === 'lpmark') {
+    if (!l.lp) return '<span class="l-cell dim">—</span>';
+    const q = l.lpQuality === 'good' ? '<span style="color:#2a6a4d;font-weight:600">good</span>'
+      : l.lpQuality === 'bad' ? '<span style="color:#b4543e;font-weight:600">bad</span>' : 'pool';
+    return `<span class="l-cell">${q} · ${l.lpUsed ? 'used' : 'unused'}</span>`;
+  }
   return `<span class="l-cell dim" title="${esc(l[k])}">${esc(l[k] || '')}</span>`;
 }
 
@@ -884,6 +912,9 @@ async function openDrawer(id) {
   $('f-email').value = l.email || '';
   $('f-phone').value = l.phone || '';
   $('f-linkedin').value = l.linkedin || '';
+  $('f-lp').checked = !!l.lp;
+  state.lpQuality = l.lpQuality || ''; state.lpUsed = !!l.lpUsed;
+  renderLpMarks();
   $('scrim').classList.add('on'); $('drawer').classList.add('on');
   // history (async fill)
   $('hist').hidden = true;
@@ -905,6 +936,25 @@ function closeDrawer() {
   state.editing = null;
   $('scrim').classList.remove('on'); $('drawer').classList.remove('on');
 }
+function renderLpMarks() {
+  $('lp-marks').hidden = !$('f-lp').checked;
+  Array.prototype.forEach.call($('f-lpq').querySelectorAll('button'), (b) =>
+    b.setAttribute('aria-pressed', String(b.getAttribute('data-q') === state.lpQuality)));
+  Array.prototype.forEach.call($('f-lpu').querySelectorAll('button'), (b) =>
+    b.setAttribute('aria-pressed', String((b.getAttribute('data-u') === '1') === state.lpUsed)));
+}
+$('f-lp').addEventListener('change', renderLpMarks);
+$('f-lpq').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-q]'); if (!b) return;
+  const q = b.getAttribute('data-q');
+  state.lpQuality = state.lpQuality === q ? '' : q;   // tap again to clear
+  renderLpMarks();
+});
+$('f-lpu').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-u]'); if (!b) return;
+  state.lpUsed = b.getAttribute('data-u') === '1';
+  renderLpMarks();
+});
 async function saveDrawer() {
   const l = leadById(state.editing); if (!l || state.busy) return;
   const fields = {
@@ -912,12 +962,15 @@ async function saveDrawer() {
     status: $('f-status').value || l.status, qual: $('f-qual').value,
     notes: $('f-notes').value, pains: $('f-pains').value,
     email: $('f-email').value.trim(), phone: $('f-phone').value.trim(), linkedin: $('f-linkedin').value.trim(),
+    lp: $('f-lp').checked, lpQuality: $('f-lp').checked ? state.lpQuality : '',
+    lpUsed: $('f-lp').checked ? state.lpUsed : false,
   };
   state.busy = true; $('d-save').disabled = true;
   try {
     const res = await core.setLead(l.id, fields);
     l.level = fields.level; l.status = fields.status; l.qual = fields.qual;
     l.notes = fields.notes; l.pains = fields.pains; l.email = fields.email; l.phone = fields.phone; l.linkedin = fields.linkedin;
+    l.lp = fields.lp; l.lpQuality = fields.lpQuality; l.lpUsed = fields.lpUsed;
     renderSumbar(); renderTable(); closeDrawer();
     if (res.undo) { state.lastUndo = { res, l }; $('d-cancel').textContent = 'Undo last'; }
     toast({ type: 'ok', html: '<span class="mono">@' + esc(l.h) + '</span> saved.', ttl: 7000,
