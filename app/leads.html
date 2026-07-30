@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260726g">
+<link rel="modulepreload" href="./crm-core.js?v=20260726h">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -417,7 +417,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260726g';
+import * as core from './crm-core.js?v=20260726h';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -774,6 +774,10 @@ function renderTable() {
         esc(markLabel()) + '</button>' +
       (state.lastBatchUndo ? '<button class="v2-btn sm" id="poolUndo">Undo last batch (' + state.lastBatchUndo.count + ')</button>' : '') +
       switchKindBtn() +
+      (state.filter === 'Archive'
+        ? '<button class="v2-btn sm" id="purgeBtn"' + (state.sel.size ? '' : ' disabled') +
+          ' style="color:#b4543e;border-color:#e8cec6">Delete ' + (state.sel.size || 0) + ' permanently</button>'
+        : '') +
     '</div>';
   t.innerHTML = bar + '<div class="v2-scroll"><div class="l-min">' + head + page.map((l) =>
     `<div class="v2-row l-row" data-id="${l.id}">` +
@@ -1252,6 +1256,25 @@ $('table').addEventListener('click', async (e) => {
     } catch (err) {
       pk.disabled = false;
       toast({ type: 'err', html: 'Couldn’t change it: ' + esc(err.message), sticky: true });
+    }
+    return;
+  }
+  const purge = e.target.closest('#purgeBtn');
+  if (purge && !purge.disabled) {
+    const ids = [...state.sel];
+    // permanent means permanent — one confirm is not clutter here
+    if (!confirm('Delete ' + ids.length + ' archived lead' + (ids.length === 1 ? '' : 's') + ' permanently? All their history stays in the activity log, but the leads are gone.')) return;
+    purge.disabled = true;
+    try {
+      const res = await core.purgeLeads(ids);
+      state.leads = state.leads.filter((l) => !state.sel.has(l.id));
+      state.sel = new Set();
+      renderSumbar(); rerender();
+      toast({ type: 'ok', ttl: 12000, html: 'Deleted <b>' + res.purged + '</b> permanently.',
+        action: res.undo ? { label: 'Undo', fn: async () => { await core.undoPurge(res.undo); load(); } } : null });
+    } catch (err) {
+      purge.disabled = false;
+      toast({ type: 'err', html: 'Delete failed: ' + esc(err.message), sticky: true });
     }
     return;
   }

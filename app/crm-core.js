@@ -725,6 +725,40 @@ export async function noContact(ids) {
     undo: { deletedRows: del,
       archivedPrev: arch.map((b) => ({ id: b.id, level: b.level, notes: b.notes, outreach_hidden: b.outreach_hidden })) } };
 }
+/** Permanently delete leads — the restart button. Snapshot first: the undo
+ *  re-inserts exactly what was removed (ids stripped, they're GENERATED). */
+export async function purgeLeads(ids) {
+  if (!ids || !ids.length) return { ok: true, purged: 0 };
+  if (DEMO) {
+    const del = _demo.leads.filter((l) => ids.includes(l.id));
+    _demo.leads = _demo.leads.filter((l) => !ids.includes(l.id));
+    return { ok: true, purged: del.length, undo: { _demoRows: del } };
+  }
+  const rows = [];
+  for (let i = 0; i < ids.length; i += 500) {
+    const { data } = await supa.from('leads').select('*').in('id', ids.slice(i, i + 500));
+    rows.push(...(data || []));
+  }
+  for (let i = 0; i < ids.length; i += 500) {
+    const { error } = await supa.from('leads').delete().in('id', ids.slice(i, i + 500));
+    if (error) throw new Error(error.message);
+  }
+  await logActivity('leads', ids[0], 'purge', null,
+    { purged: rows.length, handles: rows.slice(0, 50).map((r) => r.handle) });
+  dropBookCache();
+  return { ok: true, purged: rows.length, undo: { deletedRows: rows } };
+}
+export async function undoPurge(undo) {
+  dropBookCache();
+  if (!undo) return { ok: true };
+  if (undo._demoRows) { _demo.leads.push(...undo._demoRows); return { ok: true }; }
+  const rows = (undo.deletedRows || []).map(({ id, ...rest }) => rest);
+  if (!rows.length) return { ok: true };
+  const { error } = await supa.from('leads').insert(rows);
+  if (error) throw new Error(error.message);
+  return { ok: true, restored: rows.length };
+}
+
 export async function undoNoContact(undo) {
   if (undo && undo._demoDeleted) {
     _demo.leads.push(...undo._demoDeleted.map((r) => ({ ...r })));
