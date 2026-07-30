@@ -200,6 +200,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
       <h1>Handover</h1>
       <span class="sub" id="count">—</span>
       <span class="sp"></span>
+      <button class="v2-btn go sm" id="addAll" hidden>Add all to deals</button>
       <a class="v2-btn sm" href="deals.html">← Deals</a>
     </header>
     <p class="v2-lab" style="margin:0 0 12px">Leads marked Booked or Closed whose deal was never created — the closing CRM can't see them until they're added.</p>
@@ -219,6 +220,8 @@ let miss = [];
 
 function render() {
   $('count').textContent = miss.length ? miss.length + ' to hand over' : 'all clear';
+  $('addAll').hidden = miss.length < 2;
+  $('addAll').textContent = 'Add all ' + miss.length + ' to deals';
   $('list').innerHTML = miss.length ? miss.map((l) =>
     '<div class="hrow" data-id="' + esc(l.id) + '">' +
       '<span class="who"><a href="' + esc(l.url || 'https://instagram.com/' + l.h) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a></span>' +
@@ -256,6 +259,23 @@ $('list').addEventListener('click', async (e) => {
     toast({ type: 'err', html: 'Couldn’t add: ' + esc(err.message), sticky: true });
   }
 });
+
+$('addAll').onclick = async () => {
+  const btn = $('addAll');
+  btn.disabled = true;
+  const batch = miss.slice();
+  let ok = 0, failed = 0;
+  for (const lead of batch) {
+    btn.textContent = 'Adding ' + (ok + failed + 1) + ' of ' + batch.length + '…';
+    try { await core.createMissingDeal(lead); miss = miss.filter((l) => l !== lead); ok++; }
+    catch (e) { failed++; }
+    render();
+  }
+  btn.disabled = false;
+  toast(failed
+    ? { type: 'err', sticky: true, html: '<b>' + ok + '</b> added, <b>' + failed + '</b> failed — retry the rows still listed.' }
+    : { type: 'ok', ttl: 9000, html: '<b>' + ok + '</b> added to deals. The Closed ones still need their cash recorded.' });
+};
 
 core.installPalette({});
 load();
