@@ -2788,15 +2788,31 @@ export function installScanner(opts = {}) {
     if (scanning <= 0) return '';
     return scanTotal > 1 ? 'Reading ' + (scanDone + 1) + ' of ' + scanTotal + '…' : 'Reading screenshot…';
   }
-  // one screenshot's leads onto the pile, skipping anyone already queued
+  // one screenshot's leads onto the pile, skipping anyone already queued.
+  // Dedup keys on BOTH the handle and the normalized display name: the same
+  // person often reads as a handle-card in one screenshot and a name-only
+  // card in the next, and a handle-only key lets that pair through.
+  const keysOf = (l) => {
+    const ks = [];
+    const h = itemHandle(l);
+    if (h) ks.push('h:' + h);
+    const nm = normName(l.name || '');
+    if (nm) ks.push('n:' + nm);
+    return ks;
+  };
   function addLeads(leads) {
     syncFromDom();
-    const have = new Set(items.map(itemHandle).filter(Boolean));
+    const have = new Set();
+    items.forEach((it) => keysOf(it).forEach((k) => have.add(k)));
     let dupes = 0;
     for (const l of leads) {
-      const h = itemHandle(l);
-      if (h && have.has(h)) { dupes++; continue; }
-      if (h) have.add(h);
+      const ks = keysOf(l);
+      if (ks.length && ks.some((k) => have.has(k))) { dupes++; continue; }
+      ks.forEach((k) => have.add(k));
+      // remembered at intake for the ai_feedback comparison later — collapsed
+      // rows never render a card, so this can't be set at render time
+      l._suggested = { handle: itemHandle(l), stage: l.stage || '', status: l.status || '',
+        notes: l.notes || '', qual: l.qual || '', pains: l.pains || '' };
       items.push(l);
     }
     return dupes;
@@ -2816,8 +2832,6 @@ export function installScanner(opts = {}) {
   function render() {
     syncFromDom();
     const busy = scanning > 0;
-    $i('sc2-title').textContent = (busy ? scanLabel() + ' · ' : '') +
-      items.length + ' lead' + (items.length === 1 ? '' : 's') + (mode === 'prospect' ? ' to add' : ' found');
     $i('sc2-add').textContent = mode === 'prospect' ? 'Add to uncontacted' : 'Log conversations';
     $i('sc2-add').disabled = busy || items.length === 0;
     Array.prototype.forEach.call($i('sc2-mode').querySelectorAll('button[data-m]'), (b2) => {
@@ -2827,7 +2841,45 @@ export function installScanner(opts = {}) {
       b2.style.boxShadow = on ? '0 1px 2px rgba(33,31,27,.07)' : 'none';
     });
     const note = msg ? '<div style="margin:6px 4px 2px;font-size:11.5px;color:#8a8375">' + escH(msg) + '</div>' : '';
-    $i('sc2-body').innerHTML = note + items.map((l, i) => {
+    // a card demands attention only when something is actually missing —
+    // no readable handle, or the AI flagged its own read as shaky
+    const needsInfo = (l) => !itemHandle(l) || l.confidence === 'low';
+    const withIdx = items.map((l, i) => ({ l, i }));
+    const needy = withIdx.filter((x) => needsInfo(x.l) || x.l._open);
+    const ready = withIdx.filter((x) => !needsInfo(x.l) && !x.l._open);
+    $i('sc2-title').textContent = (busy ? scanLabel() + ' · ' : '') + items.length +
+      ' lead' + (items.length === 1 ? '' : 's') +
+      (needy.length ? ' — ' + needy.length + ' need' + (needy.length === 1 ? 's' : '') + ' your input' : ' — all ready');
+    const readyRow = (l, i) => {
+      const h = itemHandle(l);
+      const ex = opts.exists ? opts.exists(h) : null;
+      const exArchived = !!(ex && typeof ex === 'object' && ex.level === 'Archive');
+      const badge = mode === 'prospect'
+        ? (exArchived ? '<span style="color:#2a6a4d;font-size:11px;font-weight:600">revives</span>'
+          : ex ? '<span style="color:#98917f;font-size:11px">in book — skipped</span>' : '')
+        : (ex ? '<span style="color:#98917f;font-size:11px">updates</span>' : '<span style="color:#2a6a4d;font-size:11px">new</span>');
+      return '<div class="sc2-ready" data-i="' + i + '" style="display:flex;align-items:center;gap:9px;padding:7px 12px;border:1px solid #e6e2da;border-radius:10px;margin:5px 4px;background:#fff;font-size:12.5px">' +
+        '<b style="font-size:13px;color:#211f1b">@' + escH(h) + '</b>' + badge +
+        (l.qual ? '<span style="font:600 10.5px \'IBM Plex Mono\',monospace;color:#8a8375">' + escH(l.qual.replace('Qualified ', 'Q')) + '</span>' : '') +
+        '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#8a8375">' + escH(l.notes || l.pains || '') + '</span>' +
+        '<button type="button" data-edit style="border:none;background:none;color:#6d675b;font-size:11.5px;font-weight:600;cursor:pointer;padding:2px 6px">edit</button>' +
+        '<button class="x" data-rm2 style="width:24px;height:24px">✕</button></div>';
+    };
+    const secTtl = (t2) => '<div style="font:600 10px \'IBM Plex Mono\',monospace;letter-spacing:.1em;text-transform:uppercase;color:#98917f;padding:8px 6px 3px">' + t2 + '</div>';
+    $i('sc2-body').innerHTML = note +
+      (needy.length ? (ready.length ? secTtl('Needs your input') : '') + needy.map((x) => cardHtml(x.l, x.i)).join('') : '') +
+      (ready.length ? secTtl('Ready — nothing needed (' + ready.length + ')') + ready.map((x) => readyRow(x.l, x.i)).join('') : '');
+    Array.prototype.forEach.call($i('sc2-body').querySelectorAll('[data-edit]'), (b2) => {
+      b2.onclick = () => { syncFromDom(); items[+b2.closest('.sc2-ready').getAttribute('data-i')]._open = true; render(); };
+    });
+    Array.prototype.forEach.call($i('sc2-body').querySelectorAll('[data-rm2]'), (b2) => {
+      b2.onclick = () => {
+        syncFromDom();
+        items.splice(+b2.closest('.sc2-ready').getAttribute('data-i'), 1);
+        if (!items.length && scanning <= 0) close(); else render();
+      };
+    });
+    function cardHtml(l, i) {
       // NEVER fall back to the display name: an inbox screenshot shows names
       // ('Luka Vukoslavovic'), and turning one into a handle invents a lead
       // that matches nobody. Leave it blank so the card asks for the real one.
@@ -2862,7 +2914,7 @@ export function installScanner(opts = {}) {
             ? 'archived — this brings @' + escH(exHandle) + ' back as uncontacted'
             : 'already in the book — this one is skipped') + '</div>' : '') +
       '</div>';
-    }).join('');
+    }
     Array.prototype.forEach.call($i('sc2-body').querySelectorAll('[data-rm]'), (b) => {
       b.onclick = () => {
         syncFromDom();
@@ -2949,21 +3001,25 @@ export function installScanner(opts = {}) {
     render();
   }
   $i('sc2-add').onclick = async () => {
+    // Add reads from ITEMS, not the DOM: ready rows render without a card,
+    // and reading only cards would silently drop every collapsed lead.
+    // syncFromDom has already pulled any open-card edits back into items.
     syncFromDom();
-    const cards = [].slice.call($i('sc2-body').querySelectorAll('.sc2-card'));
     $i('sc2-add').disabled = true; $i('sc2-add').textContent = 'Adding…';
     // one batch can hold the same handle twice (the same lead across two
-    // screenshots the user edited to match) — first card wins, rest skipped
+    // screenshots the user edited to match) — first one wins, rest skipped
     const seen = new Set();
     if (mode === 'prospect') {
       // found, not messaged: create as uncontacted, never stamp a contact date
       const batch = [];
-      cards.forEach((card) => {
-        const handle = handleFromAny(g2(card, 'handle'));
+      items.forEach((it) => {
+        const handle = itemHandle(it);
         if (!handle || seen.has(handle)) return;
         seen.add(handle);
-        batch.push({ handle, stage: g2(card, 'stage'), notes: g2(card, 'notes'),
-          qual: g2(card, 'qual'), pains: g2(card, 'pains') });
+        // stage stays empty unless the setter opened the card and set one —
+        // a collapsed item still carries the AI's guess, which prospects drop
+        batch.push({ handle, stage: it._open ? (it.stage || '') : '',
+          notes: (it.notes || '').trim(), qual: (it.qual || '').trim(), pains: (it.pains || '').trim() });
       });
       let res = { added: 0, skipped: 0 };
       try { res = await addProspects(batch); } catch (e) { /* surfaced via onDone(0) */ }
@@ -2973,18 +3029,17 @@ export function installScanner(opts = {}) {
       return;
     }
     let n = 0;
-    for (const card of cards) {
-      const g = (f) => g2(card, f);
-      const handle = handleFromAny(g('handle'));
+    for (const it of items) {
+      const handle = itemHandle(it);
       if (!handle || seen.has(handle)) continue;
       seen.add(handle);
+      const fields = { handle, stage: it.stage || 'Engaged 1', status: it.status || '',
+        note: (it.notes || '').trim(), qual: (it.qual || '').trim(), pains: (it.pains || '').trim() };
       try {
-        await setterUpdate({ handle, stage: g('stage'), status: g('status'), note: g('notes'),
-          qual: g('qual'), pains: g('pains') });
-        const orig = items[+card.getAttribute('data-i')];
-        if (orig && orig._suggested) logAiFeedback('vision', handle, orig._suggested,
-          { handle, stage: g('stage'), status: g('status'), notes: g('notes'),
-            qual: g('qual'), pains: g('pains') });
+        await setterUpdate(fields);
+        if (it._suggested) logAiFeedback('vision', handle, it._suggested,
+          { handle, stage: fields.stage, status: fields.status, notes: fields.note,
+            qual: fields.qual, pains: fields.pains });
         n++;
       } catch (e) { /* count only successes */ }
     }
