@@ -1512,6 +1512,82 @@ export async function assistChat(messages, leadContext) {
   return data;
 }
 
+/* ---------- assistant chat history: one thread per lead, in the DB ----------
+   The CRM stays the long-term memory; these rows are the conversation itself,
+   so a thread survives sessions and follows the account across devices. */
+
+function _demoChats() {
+  if (!_demo.chats) {
+    _demo.chats = [
+      { id: 1, lead_handle: 'ecom.aiden', role: 'user', content: 'he asked if we do one-off audits or only retainers, what do i say', meta: null, created_at: new Date(Date.now() - 26 * 36e5).toISOString() },
+      { id: 2, lead_handle: 'ecom.aiden', role: 'assistant', content: 'Neither answer wins in a DM. Pull it up a level: "we start everyone with the audit anyway, so lets do that and you decide what it becomes after". Keeps the retainer conversation for the call.', meta: { updates: { status: 'Mid convo' }, handle: 'ecom.aiden', fb: 'applied' }, created_at: new Date(Date.now() - 26 * 36e5 + 60e3).toISOString() },
+    ];
+    _demo.chatSeq = 10;
+  }
+  return _demo.chats;
+}
+
+/** Threads overview: one row per chat, newest activity first. */
+export async function chatList() {
+  const rows = DEMO ? _demoChats().slice() : (await (async () => {
+    const { data, error } = await supa.from('assist_chats')
+      .select('id,lead_handle,role,content,created_at')
+      .order('id', { ascending: false }).limit(300);
+    if (error) throw new Error(error.message);
+    return data || [];
+  })());
+  const seen = new Map();
+  for (const r of rows.sort((a, b) => b.id - a.id)) {
+    const k = r.lead_handle || '';
+    if (!seen.has(k)) seen.set(k, { handle: k, last: r.created_at, preview: r.content.slice(0, 80), count: 0 });
+    seen.get(k).count++;
+  }
+  return [...seen.values()];
+}
+
+export async function chatLoad(handle, limit = 80) {
+  if (DEMO) return _demoChats().filter((r) => (r.lead_handle || '') === (handle || '')).slice(-limit);
+  const { data, error } = await supa.from('assist_chats').select('*')
+    .eq('lead_handle', handle || '').order('id', { ascending: false }).limit(limit);
+  if (error) throw new Error(error.message);
+  return (data || []).reverse();
+}
+
+export async function chatSave(handle, role, content, meta) {
+  if (DEMO) {
+    const row = { id: ++_demo.chatSeq, lead_handle: handle || '', role, content,
+      meta: meta || null, created_at: new Date().toISOString() };
+    _demoChats().push(row);
+    return { id: row.id };
+  }
+  const { data, error } = await supa.from('assist_chats')
+    .insert({ lead_handle: handle || '', role, content, meta: meta || null })
+    .select('id').single();
+  if (error) throw new Error(error.message);
+  return { id: data.id };
+}
+
+/** Merge a patch into one message's meta — how a proposal records its fate. */
+export async function chatSetMeta(id, patch) {
+  if (DEMO) {
+    const r = _demoChats().find((x) => x.id === id);
+    if (r) r.meta = { ...(r.meta || {}), ...patch };
+    return { ok: true };
+  }
+  const { data } = await supa.from('assist_chats').select('meta').eq('id', id).single();
+  const { error } = await supa.from('assist_chats')
+    .update({ meta: { ...((data && data.meta) || {}), ...patch } }).eq('id', id);
+  if (error) throw new Error(error.message);
+  return { ok: true };
+}
+
+export async function chatClear(handle) {
+  if (DEMO) { _demo.chats = _demoChats().filter((r) => (r.lead_handle || '') !== (handle || '')); return { ok: true }; }
+  const { error } = await supa.from('assist_chats').delete().eq('lead_handle', handle || '');
+  if (error) throw new Error(error.message);
+  return { ok: true };
+}
+
 let _demoVisionCall = 0;
 export async function visionScan(imageB64, mediaType) {
   if (DEMO) {
