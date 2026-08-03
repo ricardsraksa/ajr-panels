@@ -1597,7 +1597,7 @@ export async function visionScan(imageB64, mediaType) {
     // accumulating, a duplicate being skipped, and a name-only inbox card
     const sets = [
       [{ handle: 'growthwithdan', name: 'Dan', stage: 'Engaged 3', status: 'Call Pitched', notes: 'supplement brand ~40k/mo, asked about the audit', confidence: 'high', story: 'yes' }],
-      [{ handle: 'sara.ecom', name: 'Sara', stage: 'Engaged 2', status: 'Left on read', notes: 'email flows, sent audit offer', confidence: 'medium' },
+      [{ handle: 'sara.ecom', name: 'Sara', stage: 'Engaged 2', status: 'Left on read', notes: 'email flows, sent audit offer', confidence: 'medium', priv: 'yes' },
        { handle: 'growthwithdan', name: 'Dan', stage: 'Engaged 3', status: 'Mid convo', notes: 'same lead again — should be skipped', confidence: 'high' }],
       [{ handle: '', name: 'Luka Vukoslavovic', stage: 'Engaged 1', status: 'Story reply', notes: 'inbox screenshot — name only, no handle', confidence: 'low' }],
     ];
@@ -1840,7 +1840,7 @@ export async function addProspects(cards) {
     stage: String(c.stage || '').trim(),   // empty = no stage until they reply
     notes: String(c.notes || '').trim(),
     qual: String(c.qual || '').trim(), pains: String(c.pains || '').trim(),
-    story: c.story === 'yes',
+    story: c.story === 'yes', priv: c.priv === 'yes',
   })).filter((c) => c.h);
   if (!list.length) return { added: 0, skipped: 0, ids: [] };
   if (DEMO) {
@@ -1852,6 +1852,7 @@ export async function addProspects(cards) {
         revived.push({ id: hit.id, prev: { level: hit.level, lastContact: hit.lastContact } });
         hit.level = ''; hit.lastContact = ''; hit.prospected = new Date().toISOString();
         if (c.story) hit.storySeenAt = new Date().toISOString();
+        if (c.priv) hit.igStatus = 'private';
         continue;
       }
       if (hit) { skipped++; continue; }
@@ -1859,7 +1860,7 @@ export async function addProspects(cards) {
       _demo.leads.push({ id, h: c.h, url: 'https://instagram.com/' + c.h, level: c.stage || '',
         status: '', qual: '', notes: c.notes, lastContact: '', dateAdded: todayDmy(),
         prospected: new Date().toISOString(),
-        storySeenAt: c.story ? new Date().toISOString() : '' });
+        storySeenAt: c.story ? new Date().toISOString() : '', igStatus: c.priv ? 'private' : '' });
       ids.push(id);
     }
     return { added: ids.length, skipped, revived: revived.length, ids,
@@ -1881,6 +1882,7 @@ export async function addProspects(cards) {
     const patch = { level: null, last_contact: null, outreach_hidden: false,
       prospected_at: new Date().toISOString() };
     if (c.story) patch.story_seen_at = new Date().toISOString();
+    if (c.priv) patch.ig_status = 'private';
     const { error } = await supa.from('leads').update(patch).eq('id', hit.id);
     if (error) throw new Error(error.message);
     // a revive is a new lead for the KPI — it re-enters the queue as one
@@ -1897,6 +1899,7 @@ export async function addProspects(cards) {
       date_added: dmyToIso(todayDmy()), notes: c.notes || null,
       qualification: c.qual || null, pain_points: c.pains || null,
       story_seen_at: c.story ? new Date().toISOString() : null,
+      ig_status: c.priv ? 'private' : null,
     }).select('id').single();
     if (error) throw new Error(error.message);
     ids.push(data.id);
@@ -2948,6 +2951,7 @@ export function installScanner(opts = {}) {
       const ex = opts.exists ? opts.exists(h) : null;
       const exArchived = !!(ex && typeof ex === 'object' && ex.level === 'Archive');
       const badge = (l.story === 'yes' ? '<span style="color:#c13584;font-size:11px;font-weight:700">◉ story</span>' : '') +
+        (l.priv === 'yes' ? '<span style="color:#8a8375;font-size:11px;font-weight:600">🔒 private</span>' : '') +
         (mode === 'prospect'
         ? (exArchived ? '<span style="color:#2a6a4d;font-size:11px;font-weight:600">revives</span>'
           : ex ? '<span style="color:#98917f;font-size:11px">in book — skipped</span>' : '')
@@ -3000,6 +3004,7 @@ export function installScanner(opts = {}) {
         '</div>' +
         '<input class="nn" data-f="notes" value="' + escH(l.notes || '') + '" placeholder="note / sellable angle">' +
         (l.story === 'yes' ? '<div style="color:#c13584;font-size:11px;font-weight:700;margin-top:5px">◉ story live — reply to it first</div>' : '') +
+        (l.priv === 'yes' ? '<div style="color:#8a8375;font-size:11px;font-weight:600;margin-top:5px">🔒 private account — DM lands in requests</div>' : '') +
         (matched ? '<div class="ex">matched “' + escH(shownName) + '” to @' + escH(matched) + '</div>' : '') +
         (!handle ? '<div class="low">couldn’t read the full handle — type it or paste their profile link, or this one is skipped</div>' : '') +
         (l.confidence && l.confidence !== 'high' ? '<div class="low">low confidence — double-check this one</div>' : '') +
@@ -3143,7 +3148,7 @@ export function installScanner(opts = {}) {
         // a collapsed item still carries the AI's guess, which prospects drop
         batch.push({ handle, stage: it._open ? (it.stage || '') : '',
           notes: (it.notes || '').trim(), qual: (it.qual || '').trim(), pains: (it.pains || '').trim(),
-          story: it.story || '' });
+          story: it.story || '', priv: it.priv || '' });
       });
       let res = { added: 0, skipped: 0 };
       try { res = await addProspects(batch); } catch (e) { /* surfaced via onDone(0) */ }

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260727f">
+<link rel="modulepreload" href="./crm-core.js?v=20260727g">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f9f8f5}</style>
 <script type="module" blocking="render">
@@ -244,7 +244,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260727f';
+import * as core from './crm-core.js?v=20260727g';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'newleads' });
@@ -307,6 +307,7 @@ function render() {
       '<input type="checkbox" class="q-tick" data-id="' + l.id + '"' + (state.sel.has(l.id) ? ' checked' : '') + '>' +
       '<a class="q-h" href="' + esc(l.url || 'https://instagram.com/' + l.h) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
       (storyLive(l) ? '<span style="color:#c13584;font:700 11px \'Instrument Sans\',system-ui,sans-serif;flex:none" title="Had an active story when added — story-reply them first">◉ story</span>' : '') +
+      (l.igStatus === 'private' ? '<span style="color:#8a8375;font:600 11px \'Instrument Sans\',system-ui,sans-serif;flex:none" title="Private account — your DM lands in their requests">🔒</span>' : '') +
       '<span class="sp" style="flex:1"></span>' +
       '<span class="q-meta" title="Added to the CRM">' + esc((l.prospected || '').slice(5, 10).split('-').reverse().join('/')) + '</span>' +
       '<button class="q-sent" data-sent="' + l.id + '">Sent</button>' +
