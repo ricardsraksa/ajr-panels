@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260727b">
+<link rel="modulepreload" href="./crm-core.js?v=20260727c">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f9f8f5}</style>
 <script type="module" blocking="render">
@@ -241,7 +241,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260727b';
+import * as core from './crm-core.js?v=20260727c';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'newleads' });
@@ -251,10 +251,17 @@ const toast = core.toast;
 
 const state = { leads: [], sel: new Set(), targets: null, stats: [] };
 
+const storyLive = (l) => l.storySeenAt && (Date.now() - new Date(l.storySeenAt).getTime()) < 24 * 36e5;
 function queue() {
   return state.leads
     .filter((l) => l.prospected && !l.lastContact && l.level !== 'Archive' && !core.isPool(l.level))
-    .sort((a, b) => String(b.prospected).localeCompare(String(a.prospected)));
+    .sort((a, b) => {
+      // an active story is the warmest opener there is, and it expires —
+      // those leads jump the queue while the story is still live
+      const sa = storyLive(a) ? 1 : 0, sb = storyLive(b) ? 1 : 0;
+      if (sa !== sb) return sb - sa;
+      return String(b.prospected).localeCompare(String(a.prospected));
+    });
 }
 
 function renderKpi() {
@@ -296,6 +303,7 @@ function render() {
     q.map((l) => '<div class="q-row" data-id="' + l.id + '">' +
       '<input type="checkbox" class="q-tick" data-id="' + l.id + '"' + (state.sel.has(l.id) ? ' checked' : '') + '>' +
       '<a class="q-h" href="' + esc(l.url || 'https://instagram.com/' + l.h) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
+      (storyLive(l) ? '<span style="color:#c13584;font:700 11px \'Instrument Sans\',system-ui,sans-serif;flex:none" title="Had an active story when added — story-reply them first">◉ story</span>' : '') +
       (l.qual ? '<span class="q-meta">' + esc(l.qual.replace('Qualified ', 'Q')) + '</span>' : '') +
       '<span class="q-note" title="' + esc(l.notes || '') + '">' + esc(core.notesOneLine(l.notes || '')) + '</span>' +
       '<span class="q-meta">' + esc((l.prospected || '').slice(5, 10).split('-').reverse().join('/')) + '</span>' +

@@ -213,7 +213,7 @@ export async function loadLeads() {
   const hit = _ttlGet(BOOK_KEY);
   if (hit) return hit;
   const out = await pagedSelect('leads',
-    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,followed_ts,ig_status,ig_last_post,ig_name,outreach_hidden,prospected_at,pain_points,email,phone,linkedin,lp,lp_quality,lp_used');
+    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,followed_ts,ig_status,ig_last_post,ig_name,outreach_hidden,prospected_at,pain_points,email,phone,linkedin,lp,lp_quality,lp_used,story_seen_at');
   const mapped = out.map((l) => ({
     id: l.id, h: l.handle, url: l.ig_url || '',
     level: l.level || '', status: l.last_status || '',
@@ -226,6 +226,7 @@ export async function loadLeads() {
     prospected: l.prospected_at || '',
     pains: l.pain_points || '', email: l.email || '', phone: l.phone || '', linkedin: l.linkedin || '',
     lp: !!l.lp, lpQuality: l.lp_quality || '', lpUsed: !!l.lp_used,
+    storySeenAt: l.story_seen_at || '',
   }));
   _ttlSet(BOOK_KEY, mapped);
   return mapped;
@@ -1595,7 +1596,7 @@ export async function visionScan(imageB64, mediaType) {
     // rotate through a few results so a multi-screenshot batch shows leads
     // accumulating, a duplicate being skipped, and a name-only inbox card
     const sets = [
-      [{ handle: 'growthwithdan', name: 'Dan', stage: 'Engaged 3', status: 'Call Pitched', notes: 'supplement brand ~40k/mo, asked about the audit', confidence: 'high' }],
+      [{ handle: 'growthwithdan', name: 'Dan', stage: 'Engaged 3', status: 'Call Pitched', notes: 'supplement brand ~40k/mo, asked about the audit', confidence: 'high', story: 'yes' }],
       [{ handle: 'sara.ecom', name: 'Sara', stage: 'Engaged 2', status: 'Left on read', notes: 'email flows, sent audit offer', confidence: 'medium' },
        { handle: 'growthwithdan', name: 'Dan', stage: 'Engaged 3', status: 'Mid convo', notes: 'same lead again — should be skipped', confidence: 'high' }],
       [{ handle: '', name: 'Luka Vukoslavovic', stage: 'Engaged 1', status: 'Story reply', notes: 'inbox screenshot — name only, no handle', confidence: 'low' }],
@@ -1839,6 +1840,7 @@ export async function addProspects(cards) {
     stage: String(c.stage || '').trim(),   // empty = no stage until they reply
     notes: String(c.notes || '').trim(),
     qual: String(c.qual || '').trim(), pains: String(c.pains || '').trim(),
+    story: c.story === 'yes',
   })).filter((c) => c.h);
   if (!list.length) return { added: 0, skipped: 0, ids: [] };
   if (DEMO) {
@@ -1855,7 +1857,8 @@ export async function addProspects(cards) {
       const id = Date.now() + Math.floor(Math.random() * 1e6);
       _demo.leads.push({ id, h: c.h, url: 'https://instagram.com/' + c.h, level: c.stage || '',
         status: '', qual: '', notes: c.notes, lastContact: '', dateAdded: todayDmy(),
-        prospected: new Date().toISOString() });
+        prospected: new Date().toISOString(),
+        storySeenAt: c.story ? new Date().toISOString() : '' });
       ids.push(id);
     }
     return { added: ids.length, skipped, revived: revived.length, ids,
@@ -1891,6 +1894,7 @@ export async function addProspects(cards) {
       level: c.stage || null, last_contact: null, prospected_at: new Date().toISOString(),
       date_added: dmyToIso(todayDmy()), notes: c.notes || null,
       qualification: c.qual || null, pain_points: c.pains || null,
+      story_seen_at: c.story ? new Date().toISOString() : null,
     }).select('id').single();
     if (error) throw new Error(error.message);
     ids.push(data.id);
@@ -2941,10 +2945,11 @@ export function installScanner(opts = {}) {
       const h = itemHandle(l);
       const ex = opts.exists ? opts.exists(h) : null;
       const exArchived = !!(ex && typeof ex === 'object' && ex.level === 'Archive');
-      const badge = mode === 'prospect'
+      const badge = (l.story === 'yes' ? '<span style="color:#c13584;font-size:11px;font-weight:700">◉ story</span>' : '') +
+        (mode === 'prospect'
         ? (exArchived ? '<span style="color:#2a6a4d;font-size:11px;font-weight:600">revives</span>'
           : ex ? '<span style="color:#98917f;font-size:11px">in book — skipped</span>' : '')
-        : (ex ? '<span style="color:#98917f;font-size:11px">updates</span>' : '<span style="color:#2a6a4d;font-size:11px">new</span>');
+        : (ex ? '<span style="color:#98917f;font-size:11px">updates</span>' : '<span style="color:#2a6a4d;font-size:11px">new</span>'));
       return '<div class="sc2-ready" data-i="' + i + '" style="display:flex;align-items:center;gap:9px;padding:7px 12px;border:1px solid #e6e2da;border-radius:10px;margin:5px 4px;background:#fff;font-size:12.5px">' +
         '<b style="font-size:13px;color:#211f1b">@' + escH(h) + '</b>' + badge +
         (l.qual ? '<span style="font:600 10.5px \'IBM Plex Mono\',monospace;color:#8a8375">' + escH(l.qual.replace('Qualified ', 'Q')) + '</span>' : '') +
@@ -3134,7 +3139,8 @@ export function installScanner(opts = {}) {
         // stage stays empty unless the setter opened the card and set one —
         // a collapsed item still carries the AI's guess, which prospects drop
         batch.push({ handle, stage: it._open ? (it.stage || '') : '',
-          notes: (it.notes || '').trim(), qual: (it.qual || '').trim(), pains: (it.pains || '').trim() });
+          notes: (it.notes || '').trim(), qual: (it.qual || '').trim(), pains: (it.pains || '').trim(),
+          story: it.story || '' });
       });
       let res = { added: 0, skipped: 0 };
       try { res = await addProspects(batch); } catch (e) { /* surfaced via onDone(0) */ }
