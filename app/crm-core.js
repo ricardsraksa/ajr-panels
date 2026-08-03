@@ -1851,6 +1851,7 @@ export async function addProspects(cards) {
       if (hit && hit.level === 'Archive') {
         revived.push({ id: hit.id, prev: { level: hit.level, lastContact: hit.lastContact } });
         hit.level = ''; hit.lastContact = ''; hit.prospected = new Date().toISOString();
+        if (c.story) hit.storySeenAt = new Date().toISOString();
         continue;
       }
       if (hit) { skipped++; continue; }
@@ -1879,6 +1880,7 @@ export async function addProspects(cards) {
     const prev = { level: hit.level, last_contact: hit.last_contact, outreach_hidden: hit.outreach_hidden };
     const patch = { level: null, last_contact: null, outreach_hidden: false,
       prospected_at: new Date().toISOString() };
+    if (c.story) patch.story_seen_at = new Date().toISOString();
     const { error } = await supa.from('leads').update(patch).eq('id', hit.id);
     if (error) throw new Error(error.message);
     // a revive is a new lead for the KPI — it re-enters the queue as one
