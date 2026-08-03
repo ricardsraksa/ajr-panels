@@ -1950,11 +1950,33 @@ export async function setterStats(days = 14) {
    not messaged them yet, so the lead enters the book as Engaged 1 with NO
    last_contact and a prospected_at stamp. The Uncontacted tab lists exactly
    these; marking them sent stamps last_contact and they leave the queue. */
+/* Filler the scanner sometimes produces despite the prompt. A note has to be
+   quotable in a DM; anything that is inference, hedging, meta-commentary, or
+   a restatement of "they sell things online" is worse than an empty field. */
+const NOTE_JUNK = [
+  /\bbased on (the )?(post|profile|bio|content|image|screenshot)/i,
+  /\b(appears|seems|likely|possibly|probably) to be\b/i,
+  /\b(appears|seems|likely|possibly|probably)\b/i,
+  /interested in (ecommerce|e-commerce|online business|marketing)/i,
+  /\b(runs|has|sells) (an )?(online (store|business)|products?|ecommerce)\b/i,
+  /\b(dropshipping|lifestyle)\s*\/\s*(dropshipping|lifestyle|brand)/i,
+  /^\s*(ecommerce|e-commerce|ecom) (brand|store|business)\.?\s*$/i,
+];
+export function cleanNote(v) {
+  const parts = String(v || '').split(/(?<=[.!?])\s+|\s*·\s*|\s*;\s*/)
+    .map((x) => x.trim()).filter(Boolean)
+    .filter((x) => !NOTE_JUNK.some((re) => re.test(x)));
+  const out = parts.join('. ').replace(/\.\.+/g, '.').trim();
+  // a note with no digit, no capitalised name and under ~4 words is filler
+  if (out && out.length < 22 && !/\d/.test(out) && !/[A-Z][a-z]{2,}/.test(out)) return '';
+  return out.replace(/\s*\.\s*$/, '');
+}
+
 export async function addProspects(cards) {
   const list = (cards || []).map((c) => ({
     h: String(c.handle || '').trim().toLowerCase().replace(/^@/, ''),
     stage: String(c.stage || '').trim(),   // empty = no stage until they reply
-    notes: String(c.notes || '').trim(),
+    notes: cleanNote(c.notes),
     qual: String(c.qual || '').trim(), pains: String(c.pains || '').trim(),
     story: c.story === 'yes', priv: c.priv === 'yes',
   })).filter((c) => c.h);
