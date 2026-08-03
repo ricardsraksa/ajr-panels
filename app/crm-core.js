@@ -2752,7 +2752,16 @@ export function installScanner(opts = {}) {
       .sc2-card select:focus{border-color:#211f1b;outline:none;box-shadow:0 0 0 3px rgba(33,31,27,.07)}
       .sc2-card .low{font-size:11px;color:#a8762a;margin-top:6px}
       .sc2-card .ex{font-size:11px;color:#2a6a4d;margin-top:6px}
-      #sc2-modal .f{padding:14px 20px;border-top:1px solid #e6e2da;display:flex;gap:10px;align-items:center}
+      #sc2-modal .f{padding:14px 20px;border-top:1px solid #e6e2da;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+      @media (max-width:760px){
+        #sc2-modal{padding:0;align-items:stretch}
+        #sc2-modal .c{width:100%;min-height:100dvh;border-radius:0;border:none;display:flex;flex-direction:column}
+        #sc2-modal .bd{max-height:none;flex:1;-webkit-overflow-scrolling:touch}
+        #sc2-modal .f{padding:12px 14px calc(12px + env(safe-area-inset-bottom))}
+        #sc2-modal .f button{min-height:44px}
+        #sc2-modal .f .add{flex:1}
+        .sc2-card .hh,.sc2-card select,.sc2-card .nn{min-height:40px}
+      }
       #sc2-modal .f button{min-height:36px;padding:0 16px;border-radius:8px;font-weight:600;font-size:12.5px;border:1px solid #ddd8cd;background:#fff;color:#4d4a42;cursor:pointer}
       #sc2-modal .add{background:#2a6a4d;border-color:#2a6a4d;color:#fff;margin-left:auto}
       #sc2-modal .add:disabled{opacity:.45}
@@ -2862,7 +2871,9 @@ export function installScanner(opts = {}) {
   }
   function scanLabel() {
     if (scanning <= 0) return '';
-    return scanTotal > 1 ? 'Reading ' + (scanDone + 1) + ' of ' + scanTotal + '…' : 'Reading screenshot…';
+    return scanTotal > 1
+      ? 'Reading ' + Math.min(scanDone + scanning, scanTotal) + ' of ' + scanTotal + '…'
+      : 'Reading screenshot…';
   }
   // one screenshot's leads onto the pile, skipping anyone already queued.
   // Dedup keys on BOTH the handle and the normalized display name: the same
@@ -3005,6 +3016,26 @@ export function installScanner(opts = {}) {
     r.onload = () => { const v = String(r.result); res(v.slice(v.indexOf(',') + 1)); };
     r.onerror = rej; r.readAsDataURL(file);
   });
+  // Phone screenshots are 4-8MB PNGs; base64 inflates that past the vision
+  // function's payload cap and the image silently fails. Anything big gets
+  // downscaled to 1600px long-edge JPEG (~300KB) — profile text stays crisp,
+  // upload stops choking on cellular, and no screenshot is ever too large.
+  async function prepImage(file) {
+    if (file.size < 900_000) return { data: await toB64(file), type: file.type || 'image/jpeg' };
+    try {
+      const bmp = await createImageBitmap(file);
+      const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+      const w = Math.max(1, Math.round(bmp.width * scale)), h = Math.max(1, Math.round(bmp.height * scale));
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(bmp, 0, 0, w, h);
+      if (bmp.close) bmp.close();
+      const dataUrl = c.toDataURL('image/jpeg', 0.82);
+      return { data: dataUrl.slice(dataUrl.indexOf(',') + 1), type: 'image/jpeg' };
+    } catch (e) {
+      // canvas failed (odd format?) — send the original and let the server judge
+      return { data: await toB64(file), type: file.type || 'image/jpeg' };
+    }
+  }
   // Two-phase flow: screenshots GATHER first — thumbnails pile up, nothing
   // scans, more can keep coming — and the AI only runs when Analyze is
   // pressed. After that, late additions join the running scan directly.
@@ -3048,19 +3079,27 @@ export function installScanner(opts = {}) {
     scanTotal = scanDone + fileQueue.length;   // everything queued right now
     const mine = ++batchId;
     let dupes = 0, errs = 0, ran = 0;
-    while (fileQueue.length) {
-      if (mine !== batchId) { draining = false; return; }  // cancelled
-      const q = fileQueue.shift();
-      scanning = 1; refresh();
-      try {
-        const out = await visionScan(await toB64(q.f), q.f.type || 'image/jpeg');
-        if (mine !== batchId) { draining = false; return; }
-        const leads = (out.leads || []).filter((l) => (l.handle || l.name || '').trim());
-        if (leads.length) dupes += addLeads(leads);
-      } catch (e) { if (mine !== batchId) { draining = false; return; } errs++; }
-      try { URL.revokeObjectURL(q.url); } catch (e) { /* thumbnail is gone anyway */ }
-      scanDone++; scanning = 0; ran++;
-    }
+    // three screenshots in flight at once — the batch has no size limit, and
+    // sequential reads make a big camera-roll dump take minutes
+    const worker = async () => {
+      while (fileQueue.length) {
+        if (mine !== batchId) return;
+        const q = fileQueue.shift();
+        scanning++; refresh();
+        try {
+          const img = await prepImage(q.f);
+          const out = await visionScan(img.data, img.type);
+          if (mine !== batchId) return;
+          const leads = (out.leads || []).filter((l) => (l.handle || l.name || '').trim());
+          if (leads.length) dupes += addLeads(leads);
+        } catch (e) { if (mine !== batchId) return; errs++; }
+        try { URL.revokeObjectURL(q.url); } catch (e) { /* thumbnail is gone anyway */ }
+        scanDone++; scanning--; ran++; refresh();
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+    if (mine !== batchId) { draining = false; return; }   // cancelled mid-run
+    scanning = 0;
     draining = false;
     scanTotal = 0; scanDone = 0;
     const bits = [];
