@@ -26,6 +26,7 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .dname a.ig:hover{text-decoration:underline;text-decoration-color:#ccc5b6}
 .d-cell{font-size:12.5px;color:#4d4a42;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .d-cell.dim{color:#8a8375}
+.d-none{color:#ddd8cd}   /* an empty cell should read as absence, not as data */
 .st-amber{color:#a8762a}
 .st-red{color:#b4543e}
 .st-green{color:#2a6a4d;font-weight:600}
@@ -35,16 +36,16 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .d-mono.late{color:#b4543e;font-weight:600}
 .d-cash{font-family:'IBM Plex Mono',monospace;font-weight:600;color:#2a6a4d;text-align:right}
 /* unlinked calendly booking */
-.calstrip{display:flex;flex-direction:column;gap:9px;margin-bottom:14px}
-.calrow{display:flex;align-items:center;gap:11px;flex-wrap:wrap;padding:13px 16px;border:1px solid #e2d9f4;
-  border-radius:12px;background:#f6f2fb;font-size:13px;color:#4d4a42}
-.calrow .lab{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7c56c9}
+.calstrip{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.calrow{display:flex;align-items:center;gap:9px;padding:6px 11px;border:1px solid #e2d9f4;
+  border-radius:9px;background:#f6f2fb;font-size:12.5px;color:#4d4a42;min-height:34px}
+.calrow .lab{font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7c56c9;flex:none}
 .calrow .who{font-weight:700;color:#211f1b}
 .calrow .sp{flex:1}
-.calrow select{min-height:32px;padding:0 9px;border:1px solid #ddd8cd;border-radius:8px;background:#fff;font-size:12.5px;max-width:190px;cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:28px;transition:border-color .16s ease, box-shadow .16s ease;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%238a8375%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27m6 9 6 6 6-6%27/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;background-size:13px}
+.calrow select{min-height:26px;padding:0 9px;border:1px solid #ddd8cd;border-radius:8px;background:#fff;font-size:12.5px;max-width:190px;cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:28px;transition:border-color .16s ease, box-shadow .16s ease;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%238a8375%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27m6 9 6 6 6-6%27/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;background-size:13px}
 .calrow select:hover{border-color:#8a8375}
 .calrow select:focus{border-color:#211f1b;outline:none;box-shadow:0 0 0 3px rgba(33,31,27,.07)}
-.calrow .lnk{min-height:32px;padding:0 13px;border-radius:8px;border:1px solid #d5c8ef;background:#fff;color:#7c56c9;font-weight:600;font-size:12.5px}
+.calrow .lnk{min-height:26px;padding:0 10px;border-radius:8px;border:1px solid #d5c8ef;background:#fff;color:#7c56c9;font-weight:600;font-size:12.5px}
 .calrow .lnk:hover{background:#f0eafb}
 .calrow .lnk.dim{border-color:#e6e2da;color:#8a8375}
 .calrow .lnk.dim:hover{background:#f4f2ed;color:#4d4a42}
@@ -106,7 +107,6 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .cap-mic.on{background:#b4543e;animation:pul 1.3s ease infinite}
 .cap-go{flex:none;min-height:34px;padding:0 15px;border-radius:8px;background:#211f1b;color:#f9f8f5;font-weight:600;font-size:13px}
 .cap-go:disabled{opacity:.4}
-.cap-hint{margin-top:7px;font-size:11.5px;color:#98917f}
 /* confirm-first preview — nothing is written until this is accepted */
 .cap-prev{margin-top:11px;border-top:1px solid #f0ede6;padding-top:11px;display:flex;align-items:flex-start;gap:11px;flex-wrap:wrap}
 .cap-prev .body{flex:1;min-width:200px;font-size:13px;color:#4d4a42}
@@ -341,7 +341,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
     <span class="sub" id="today"></span>
     <span class="sp"></span>
     <button class="v2-btn" id="newDeal">+ New deal</button>
-    <button class="v2-btn sm" id="refresh">Refresh</button>
+    <button class="v2-btn sm" id="refresh" title="Refresh" aria-label="Refresh">↻</button>
     <span id="count" hidden></span>
   </header>
 
@@ -350,11 +350,10 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
   <div class="cap">
     <div class="cap-row">
       <span class="cap-pin" id="capPin" hidden><span class="nm"></span><button class="x" id="capUnpin" aria-label="Unpin deal">×</button></span>
-      <input class="v2-in cap-in" id="capIn" type="text" placeholder="Say or type what happened — “closed Awais for 3k, follow up tuesday” or “sent pricing over DM, no reply”">
+      <input class="v2-in cap-in" id="capIn" type="text" placeholder="“closed Awais for 3k, follow up tuesday”">
       <button class="cap-mic" id="capMic" hidden aria-label="Record">●</button>
       <button class="cap-go" id="capGo">Read it</button>
     </div>
-    <div class="cap-hint" id="capHint">Works for calls and DMs. Nothing is saved until you confirm.</div>
     <div class="cap-prev" id="capPrev" hidden></div>
     <div class="cap-money" id="capMoney" hidden></div>
   </div>
@@ -527,7 +526,7 @@ function statusBadge(s) {
   return `<span class="d-cell ${cls}">${esc(label)}</span>`;
 }
 function dateCell(dmy, isFollowup) {
-  if (!dmy) return '<span class="d-cell dim">—</span>';
+  if (!dmy) return '<span class="d-cell d-none">—</span>';
   const n = daysUntil(dmy);
   if (n === 0) return '<span class="d-mono today">today</span>';
   if (isFollowup && n !== null && n < 0) return `<span class="d-mono late">${-n}d late</span>`;
@@ -569,7 +568,8 @@ function render() {
   const fuOver = state.deals.filter((d) => { const n = daysUntil(d.followup); return n !== null && n < 0 && !isDone(d); }).length;
   const strip = $('today');
   const bits = [];
-  if (meetsToday) bits.push('<span class="st-amber" style="font-weight:600">' + meetsToday + ' call' + (meetsToday === 1 ? '' : 's') + ' today</span>');
+  // today's call count already shows in the sidebar badge and the Today chip —
+  // the header only carries what actually needs chasing
   if (fuOver) bits.push('<span class="st-red" style="font-weight:600">' + fuOver + ' follow-up' + (fuOver === 1 ? '' : 's') + ' overdue</span>');
   strip.innerHTML = bits.join('&nbsp;&nbsp;');
   const rows = visibleDeals();
@@ -585,7 +585,7 @@ function render() {
       <span>${statusBadge(d.status)}</span>
       ${dateCell(d.meeting)}
       ${dateCell(d.followup, true)}
-      <span class="d-cash">${d.cash !== '' && d.cash != null ? '$' + Number(d.cash).toLocaleString('en-US') : '<span class="d-cell dim">—</span>'}</span>
+      <span class="d-cash">${d.cash !== '' && d.cash != null ? '$' + Number(d.cash).toLocaleString('en-US') : '<span class="d-none">—</span>'}</span>
       <span class="d-cell dim" title="${esc(d.notes)}">${esc(core.notesOneLine ? core.notesOneLine(d.notes) : (d.notes || ''))}</span>
       ${isDone(d) ? '' : `<span class="rowacts"><button class="fu-quick" data-fu="${d.row}" title="Log a follow-up today, next one in a week">+ FU</button>` +
         `<button class="fu-quick" data-won="${d.row}" title="Closed — you'll confirm the amount">Won</button>` +
@@ -1069,7 +1069,7 @@ async function missingChip() {
     if (!miss.length) return '';
     return '<a class="calrow miss" href="handover.html" style="text-decoration:none">' +
       '<span class="lab">HANDOVER</span>' +
-      '<span class="who">' + miss.length + ' lead' + (miss.length === 1 ? '' : 's') + ' missing from deals</span>' +
+      '<span>' + miss.length + ' lead' + (miss.length === 1 ? '' : 's') + ' missing from deals</span>' +
       '<span class="sp"></span><span style="color:#a8762a;font-weight:600">Review →</span></a>';
   } catch (e) { return ''; }
 }
@@ -1085,12 +1085,12 @@ async function loadStrip() {
       return '<div class="calrow" data-b="' + esc(b.id) + '">' +
         '<span class="lab">UNLINKED BOOKING</span>' +
         '<span class="who">' + esc(b.name || b.email || 'Booking') + '</span>' +
-        '<span>· ' + esc(slotLabel(b.start_iso)) + (b.email ? ' · ' + esc(b.email) : '') + '</span>' +
+        '<span class="d-cell dim" style="min-width:0">· ' + esc(slotLabel(b.start_iso)) + '</span>' +
         '<span class="sp"></span>' +
         '<select><option value="">Pick a deal</option>' + opts + '</select>' +
         '<button class="lnk">Link</button>' +
-        '<button class="lnk" data-newdeal>New deal</button>' +
-        '<button class="lnk dim" data-ignore>Ignore</button></div>';
+        '<button class="lnk dim" data-newdeal title="Create a new deal from this booking">New</button>' +
+        '<button class="lnk dim" data-ignore title="Ignore this booking">✕</button></div>';
     }).join('');
     el.hidden = false;
   } catch (e) { el.hidden = true; }
