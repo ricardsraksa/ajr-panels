@@ -90,6 +90,26 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .cash-warn{color:#4d4a42;font-size:12px;margin-top:8px}
 .fu-nudge{display:flex;align-items:center;gap:6px;margin:-6px 0 13px;font-size:12px;color:#8a8375}
 .fu-nudge button{min-height:26px;padding:0 9px;border-radius:8px;border:1px solid #ddd8cd;background:#fff;font-size:11.5px;color:#4d4a42}
+/* log a text/DM follow-up — the non-call path, most follow-ups happen here */
+.fu-box{border:1px dashed #ddd8cd;border-radius:12px;padding:13px;margin-bottom:16px}
+.fu-box .lab{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#98917f;display:block;margin-bottom:9px}
+.fu-when{display:flex;align-items:center;gap:5px;margin-top:9px;font-size:11.5px;color:#8a8375}
+.fu-when .sp{flex:1}
+.fu-when button{min-height:26px;padding:0 9px;border-radius:8px;border:1px solid #ddd8cd;background:#fff;
+  font-size:11.5px;color:#4d4a42}
+.fu-when button:hover{border-color:#8a8375}
+.fu-when button[aria-pressed="true"]{background:#211f1b;border-color:#211f1b;color:#f9f8f5;font-weight:600}
+.fu-when .fu-go{min-height:28px;padding:0 12px;background:#211f1b;border-color:#211f1b;color:#f9f8f5;
+  font-weight:600;white-space:nowrap;flex:none}
+.fu-when .fu-go:hover{background:#000}
+/* row-level one-click follow-up; hidden until hover so the table stays calm */
+.d-row{position:relative}
+.fu-quick{position:absolute;right:12px;top:50%;transform:translateY(-50%);min-height:26px;padding:0 10px;
+  border-radius:8px;border:1px solid #ddd8cd;background:#fff;font:600 11.5px 'Instrument Sans',system-ui,sans-serif;
+  color:#4d4a42;opacity:0;transition:opacity .12s;box-shadow:0 1px 3px rgba(33,31,27,.12)}
+.d-row:hover .fu-quick{opacity:1}
+.fu-quick:hover{border-color:#211f1b;color:#211f1b}
+.fu-quick:focus-visible{opacity:1}
 .hist{margin-top:4px;border-top:1px solid #f0ede6;padding-top:13px}
 .hist h3{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#98917f;margin-bottom:8px}
 .hist ul{list-style:none}
@@ -344,6 +364,21 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
       </div>
     </div>
 
+    <div class="fu-box">
+      <span class="lab">Log a follow-up (text / DM)</span>
+      <div class="ai-row">
+        <input class="v2-in" id="fu-text" type="text" placeholder="sent pricing over DM — no reply yet">
+      </div>
+      <div class="fu-when">Next
+        <button data-fd="3">+3d</button>
+        <button data-fd="7" aria-pressed="true">+1w</button>
+        <button data-fd="14">+2w</button>
+        <button data-fd="-1" title="leave the follow-up date unchanged">—</button>
+        <span class="sp"></span>
+        <button class="fu-go" id="fu-log">Log it</button>
+      </div>
+    </div>
+
     <div class="g2">
       <div class="fld"><label>Status<span class="v2-ai" id="tag-f-status" hidden>AI</span></label>
         <select class="v2-in" id="f-status">
@@ -512,9 +547,16 @@ function render() {
       ${dateCell(d.followup, true)}
       <span class="d-cash">${d.cash !== '' && d.cash != null ? '$' + Number(d.cash).toLocaleString('en-US') : '<span class="d-cell dim">—</span>'}</span>
       <span class="d-cell dim" title="${esc(d.notes)}">${esc(core.notesOneLine ? core.notesOneLine(d.notes) : (d.notes || ''))}</span>
+      ${isDone(d) ? '' : `<button class="fu-quick" data-fu="${d.row}" title="Log a follow-up today, next one in a week">+ FU</button>`}
     </div>`).join('') + '</div></div>';
   Array.prototype.forEach.call(t.querySelectorAll('.d-row'), (r) => {
     r.onclick = () => openDrawer(+r.getAttribute('data-id'));
+    // one-click follow-up straight from the list — never opens the drawer
+    const fq = r.querySelector('.fu-quick');
+    if (fq) fq.addEventListener('click', (e) => {
+      e.stopPropagation();
+      logFollowup(+fq.getAttribute('data-fu'), '', 7);
+    });
     // the name goes to Instagram, not the drawer
     const a2 = r.querySelector('.dname a.ig');
     if (a2) a2.addEventListener('click', (e) => e.stopPropagation());
@@ -538,6 +580,7 @@ function openDrawer(id) {
   showEditor(); clearTags();
   state.aiSnapshot = null;
   state.editing = id; state.cashConfirmed = false;
+  $('fu-text').value = '';
   $('d-name').textContent = displayName(d);
   $('f-status').value = ['Discovery Call','Closing call','Followup','Closed','No Close'].includes(d.status) ? d.status : '';
   $('f-meeting').value = core.dmyToIso(d.meeting) || '';
@@ -662,6 +705,56 @@ Array.prototype.forEach.call(document.querySelectorAll('#fu-nudge button'), (b) 
     $('f-followup').value = d.toISOString().slice(0, 10);
     $('fu-nudge').hidden = true;
   };
+});
+
+/* ---------- text / DM follow-up log ----------
+   Most follow-ups happen over DM, not on a call, so this is the cheap path:
+   append a dated note line and move the next follow-up date. It deliberately
+   never touches status or cash — those stay explicit decisions. */
+let fuDays = 7;
+function logFollowup(rowId, text, days) {
+  if (state.busy) return Promise.resolve();
+  const d = dealById(rowId);
+  if (!d) return Promise.resolve();
+  const now = new Date();
+  const stamp = String(now.getDate()).padStart(2, '0') + '/' + String(now.getMonth() + 1).padStart(2, '0');
+  const line = '[follow-up ' + stamp + ']' + (text ? ' ' + text : ' sent');
+  const fields = { notes: line };
+  let nextIso = '';
+  if (days >= 0) {
+    const n = new Date(); n.setDate(n.getDate() + days);
+    nextIso = n.toISOString().slice(0, 10);
+    fields.followup = nextIso;
+  }
+  state.busy = true;
+  return core.closerUpdate({ row: d.row, fields }).then((res) => {
+    d.notes = d.notes ? d.notes + '\n' + line : line;
+    if (nextIso) d.followup = core.isoToDmy(nextIso);
+    render();
+    if (state.editing === d.row) {          // keep an open drawer in sync
+      $('f-notes').value = d.notes;
+      if (nextIso) $('f-followup').value = nextIso;
+      $('fu-text').value = '';
+      checkFuNudge();
+    }
+    toast({ type: 'ok', ttl: 8000,
+      html: 'Follow-up logged — <span class="mono">' + esc(displayName(d)) + '</span>'
+        + (nextIso ? ' · next ' + esc(core.isoToDmy(nextIso)) : ''),
+      action: res.undo ? { label: 'Undo', fn: () => undo(res, d) } : null });
+  }).catch((e) => {
+    toast({ type: 'err', html: 'Couldn’t log the follow-up: ' + esc(e.message), sticky: true });
+  }).finally(() => { state.busy = false; });
+}
+Array.prototype.forEach.call(document.querySelectorAll('.fu-when button[data-fd]'), (b) => {
+  b.onclick = () => {
+    fuDays = Number(b.getAttribute('data-fd'));
+    Array.prototype.forEach.call(document.querySelectorAll('.fu-when button[data-fd]'),
+      (o) => o.setAttribute('aria-pressed', o === b ? 'true' : 'false'));
+  };
+});
+$('fu-log').onclick = () => { if (state.editing) logFollowup(state.editing, $('fu-text').value.trim(), fuDays); };
+$('fu-text').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && state.editing) { e.preventDefault(); logFollowup(state.editing, $('fu-text').value.trim(), fuDays); }
 });
 function syncCashConfirm() {
   const d = dealById(state.editing);
