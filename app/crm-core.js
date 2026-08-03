@@ -1589,6 +1589,91 @@ export async function chatClear(handle) {
   return { ok: true };
 }
 
+/* ---------- walk-away screenshot uploads ----------
+   The in-page scanner dies with the tab; these survive it. Screenshots are
+   compressed, pushed to the 'shots' bucket, queued as scan_jobs, and the
+   scanworker function drains the queue server-side — the phone can leave the
+   moment the upload bar finishes. Results wait on New leads for review. */
+
+function _demoJobs() { if (!_demo.scanJobs) { _demo.scanJobs = []; _demo.jobSeq = 0; } return _demo.scanJobs; }
+
+/** Upload a batch. onStep(done, total) fires per finished upload. */
+export async function uploadShots(files, onStep) {
+  const list = [].slice.call(files || []).filter((f) => f && (f.type || '').indexOf('image/') === 0);
+  if (!list.length) return { queued: 0 };
+  if (DEMO) {
+    for (let i = 0; i < list.length; i++) {
+      const job = { id: ++_demo.jobSeq, status: 'pending', leads: null };
+      _demoJobs().push(job);
+      // demo "worker": resolves shortly after, even if the page is closed the
+      // demo resets anyway — this exists to exercise the exact same UI path
+      setTimeout(async () => {
+        const out = await visionScan('demo', 'image/png');
+        job.status = 'done'; job.leads = out.leads || [];
+      }, 900 + i * 500);
+      if (onStep) onStep(i + 1, list.length);
+    }
+    return { queued: list.length };
+  }
+  let done = 0;
+  const stamp = Date.now();
+  // three uploads in flight, same as the scanner's read pool
+  const queue = list.slice();
+  const one = async (f, idx) => {
+    const img = await prepImage(f);
+    const bytes = Uint8Array.from(atob(img.data), (c) => c.charCodeAt(0));
+    const path = stamp + '-' + idx + (img.type === 'image/png' ? '.png' : '.jpg');
+    const { error: upErr } = await supa.storage.from('shots')
+      .upload(path, bytes.buffer, { contentType: img.type });
+    if (upErr) throw new Error(upErr.message);
+    const { error: jobErr } = await supa.from('scan_jobs').insert({ path });
+    if (jobErr) throw new Error(jobErr.message);
+    done++; if (onStep) onStep(done, list.length);
+  };
+  let idx = 0;
+  const worker = async () => { while (queue.length) { const f = queue.shift(); await one(f, idx++); } };
+  await Promise.all([worker(), worker(), worker()]);
+  // fire-and-forget kick; the function answers instantly and keeps draining
+  try { supa.functions.invoke('scanworker', { body: {} }); } catch (e) { /* next visit kicks it */ }
+  return { queued: list.length };
+}
+
+/** Queue state + everything processed and waiting for review. */
+export async function scanJobs() {
+  if (DEMO) {
+    const jobs = _demoJobs();
+    return {
+      pending: jobs.filter((j) => j.status === 'pending' || j.status === 'working').length,
+      errors: jobs.filter((j) => j.status === 'error').length,
+      done: jobs.filter((j) => j.status === 'done').map((j) => ({ id: j.id, leads: j.leads || [] })),
+    };
+  }
+  const { data, error } = await supa.from('scan_jobs').select('id,status,leads').order('id');
+  if (error) throw new Error(error.message);
+  const rows = data || [];
+  return {
+    pending: rows.filter((r) => r.status === 'pending' || r.status === 'working').length,
+    errors: rows.filter((r) => r.status === 'error').length,
+    done: rows.filter((r) => r.status === 'done').map((r) => ({ id: r.id, leads: r.leads || [] })),
+  };
+}
+
+/** Kick the background worker — also called on page load as the safety net. */
+export async function kickScanWorker() {
+  if (DEMO) return { ok: true };
+  try { await supa.functions.invoke('scanworker', { body: {} }); } catch (e) { /* harmless */ }
+  return { ok: true };
+}
+
+/** Jobs are consumed once their leads were added (or dismissed). */
+export async function clearScanJobs(ids) {
+  if (!ids || !ids.length) return { ok: true };
+  if (DEMO) { _demo.scanJobs = _demoJobs().filter((j) => ids.indexOf(j.id) < 0); return { ok: true }; }
+  const { error } = await supa.from('scan_jobs').delete().in('id', ids);
+  if (error) throw new Error(error.message);
+  return { ok: true };
+}
+
 let _demoVisionCall = 0;
 export async function visionScan(imageB64, mediaType) {
   if (DEMO) {
@@ -2731,6 +2816,32 @@ export function makeNameResolver(leads) {
   return (name) => byName.get(normName(name)) || '';
 }
 
+const fileB64 = (file) => new Promise((res, rej) => {
+  const r = new FileReader();
+  r.onload = () => { const v = String(r.result); res(v.slice(v.indexOf(',') + 1)); };
+  r.onerror = rej; r.readAsDataURL(file);
+});
+/** Phone screenshots are 4-8MB PNGs; base64 inflates that past the vision
+ *  function's payload cap and the image silently fails. Anything big gets
+ *  downscaled to 1600px long-edge JPEG (~300KB) — profile text stays crisp
+ *  and no screenshot is ever too large. Shared by the in-page scanner and
+ *  the background uploader. */
+export async function prepImage(file) {
+  if (file.size < 900_000) return { data: await fileB64(file), type: file.type || 'image/jpeg' };
+  try {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    const w = Math.max(1, Math.round(bmp.width * scale)), h = Math.max(1, Math.round(bmp.height * scale));
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.getContext('2d').drawImage(bmp, 0, 0, w, h);
+    if (bmp.close) bmp.close();
+    const dataUrl = c.toDataURL('image/jpeg', 0.82);
+    return { data: dataUrl.slice(dataUrl.indexOf(',') + 1), type: 'image/jpeg' };
+  } catch (e) {
+    return { data: await fileB64(file), type: file.type || 'image/jpeg' };
+  }
+}
+
 export function installScanner(opts = {}) {
   if (document.getElementById('sc2-modal')) return;
   const statuses = opts.statuses || STATUSES;
@@ -3023,31 +3134,6 @@ export function installScanner(opts = {}) {
       };
     });
     $i('sc2-modal').classList.add('on');
-  }
-  const toB64 = (file) => new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => { const v = String(r.result); res(v.slice(v.indexOf(',') + 1)); };
-    r.onerror = rej; r.readAsDataURL(file);
-  });
-  // Phone screenshots are 4-8MB PNGs; base64 inflates that past the vision
-  // function's payload cap and the image silently fails. Anything big gets
-  // downscaled to 1600px long-edge JPEG (~300KB) — profile text stays crisp,
-  // upload stops choking on cellular, and no screenshot is ever too large.
-  async function prepImage(file) {
-    if (file.size < 900_000) return { data: await toB64(file), type: file.type || 'image/jpeg' };
-    try {
-      const bmp = await createImageBitmap(file);
-      const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
-      const w = Math.max(1, Math.round(bmp.width * scale)), h = Math.max(1, Math.round(bmp.height * scale));
-      const c = document.createElement('canvas'); c.width = w; c.height = h;
-      c.getContext('2d').drawImage(bmp, 0, 0, w, h);
-      if (bmp.close) bmp.close();
-      const dataUrl = c.toDataURL('image/jpeg', 0.82);
-      return { data: dataUrl.slice(dataUrl.indexOf(',') + 1), type: 'image/jpeg' };
-    } catch (e) {
-      // canvas failed (odd format?) — send the original and let the server judge
-      return { data: await toB64(file), type: file.type || 'image/jpeg' };
-    }
   }
   // Two-phase flow: screenshots GATHER first — thumbnails pile up, nothing
   // scans, more can keep coming — and the AI only runs when Analyze is

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260727g">
+<link rel="modulepreload" href="./crm-core.js?v=20260727h">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f9f8f5}</style>
 <script type="module" blocking="render">
@@ -234,17 +234,19 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
     </div>
 
     <div class="drop-hint" id="dropHint">
-      <b>Drop or paste screenshots anywhere on this page.</b><br>
-      Profiles, shared-profile chats, inbox lists — they're added as uncontacted,
-      no contact date, straight into the count above.
+      <b>Drop or paste screenshots — they upload and you can leave.</b><br>
+      Processing runs in the background; results wait here for review, even if
+      you close the page mid-batch.
     </div>
+
+    <div class="v2-card" id="review" hidden style="margin-bottom:16px"></div>
 
     <div class="v2-card" id="queue"><div class="v2-empty" id="skel">Loading…</div></div>
   </div>
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260727g';
+import * as core from './crm-core.js?v=20260727h';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'newleads' });
@@ -386,29 +388,151 @@ $('queue').addEventListener('click', async (e) => {
   }
 });
 
-/* the whole page is prospecting, so every way in — button, paste, drop —
-   adds uncontacted leads and never stamps a contact date */
-const scanner = core.installScanner({
-  pasteMode: 'prospect',
-  statuses: core.STATUSES,
-  resolveName: (n) => core.makeNameResolver(state.leads)(n),
-  exists: (h) => state.leads.find((l) => l.h === h) || null,
-  onDone: (n, info) => {
-    const r = (info && info.res) || {};
-    toast({ type: 'ok', ttl: 10000,
-      html: 'Added <b>' + n + '</b>' + (r.revived ? ' · <b>' + r.revived + '</b> brought back from archive' : '') +
-        (r.skipped ? ' · ' + r.skipped + ' already in the book' : '') + '.',
-      action: r.undo && n ? { label: 'Undo', fn: async () => { await core.undoProspects(r.undo); load(); } } : null });
-    load();
-  },
+/* ---------- walk-away uploads ----------
+   Screenshots upload to storage and a server-side worker extracts the leads;
+   the page only has to survive the upload itself. Results queue in the
+   review card until Add — reload, phone-lock, whatever, they wait. */
+let review = { items: [], jobIds: [] };
+const cleanH = (v) => {
+  v = String(v || '').trim();
+  const m = v.match(/instagram\.com\/(?:_u\/)?(?:stories\/)?([a-z0-9._]{2,30})/i);
+  if (m && !/^(p|reel|reels|tv|explore|direct|accounts|stories)$/i.test(m[1])) return m[1].toLowerCase();
+  return v.toLowerCase().replace(/^@+/, '');
+};
+const itemH = (it) => {
+  const h = cleanH(it.handle);
+  if (h) return h;
+  const nm = (it.name || '').trim();
+  return nm ? (core.makeNameResolver(state.leads)(nm) || '') : '';
+};
+
+function renderReview() {
+  const el = $('review');
+  const pend = review.pending || 0;
+  if (!pend && !review.items.length) { el.hidden = true; el.innerHTML = ''; return; }
+  const needy = review.items.filter((it) => !itemH(it));
+  const ready = review.items.filter((it) => itemH(it));
+  const badge = (it) =>
+    (it.story === 'yes' ? '<span style="color:#c13584;font:700 11px sans-serif">◉ story</span>' : '') +
+    (it.priv === 'yes' ? '<span title="Private — DM lands in requests">🔒</span>' : '');
+  const inBook = (h) => state.leads.some((l) => l.h === h);
+  el.innerHTML =
+    '<div class="qbar"><b>' + review.items.length + '</b><span>scanned' +
+      (needy.length ? ' · ' + needy.length + ' need a handle' : '') + '</span>' +
+      (pend ? '<span style="color:#a8762a">⏳ ' + pend + ' still processing…</span>' : '') +
+      '<span class="sp"></span>' +
+      '<button class="v2-btn go sm" id="rvAdd"' + (ready.length ? '' : ' disabled') + '>Add ' + ready.length + ' to uncontacted</button>' +
+    '</div>' +
+    review.items.map((it, i) => {
+      const h = itemH(it);
+      return '<div class="q-row" data-i="' + i + '">' +
+        (h
+          ? '<span class="q-h">@' + esc(h) + '</span>' + badge(it) +
+            (inBook(h) ? '<span class="q-meta">in book — skipped</span>' : '')
+          : '<input class="v2-in" data-hfix value="" placeholder="' + esc((it.name || 'unknown') + ' — @handle or IG link') + '" style="flex:1;min-height:34px;max-width:240px">' + badge(it)) +
+        '<span class="sp" style="flex:1"></span>' +
+        '<button class="q-x" data-rvx title="Skip this one">✕</button>' +
+      '</div>';
+    }).join('');
+  el.hidden = false;
+  $('rvAdd').onclick = async () => {
+    // pull typed handle fixes back in first
+    el.querySelectorAll('[data-hfix]').forEach((inp) => {
+      const it = review.items[+inp.closest('.q-row').getAttribute('data-i')];
+      if (it && inp.value.trim()) it.handle = cleanH(inp.value);
+    });
+    const seen = new Set();
+    const batch = [];
+    review.items.forEach((it) => {
+      const h = itemH(it);
+      if (!h || seen.has(h)) return;
+      seen.add(h);
+      batch.push({ handle: h, stage: '', notes: (it.notes || '').trim(),
+        qual: (it.qual || '').trim(), pains: (it.pains || '').trim(),
+        story: it.story || '', priv: it.priv || '' });
+    });
+    $('rvAdd').disabled = true;
+    try {
+      const res = await core.addProspects(batch);
+      await core.clearScanJobs(review.jobIds);
+      review = { items: [], jobIds: [], pending: review.pending };
+      toast({ type: 'ok', ttl: 10000,
+        html: 'Added <b>' + res.added + '</b>' + (res.revived ? ' · <b>' + res.revived + '</b> back from archive' : '') +
+          (res.skipped ? ' · ' + res.skipped + ' already in the book' : '') + '.',
+        action: res.undo && res.added ? { label: 'Undo', fn: async () => { await core.undoProspects(res.undo); load(); } } : null });
+      load(); pollJobs();
+    } catch (err) { toast({ type: 'err', html: esc(err.message), sticky: true }); renderReview(); }
+  };
+  el.querySelectorAll('[data-rvx]').forEach((b) => {
+    b.onclick = () => { review.items.splice(+b.closest('.q-row').getAttribute('data-i'), 1); renderReview(); };
+  });
+}
+
+let pollTimer = null;
+async function pollJobs() {
+  let js;
+  try { js = await core.scanJobs(); } catch (e) { return; }
+  review.pending = js.pending;
+  review.jobIds = js.done.map((j) => j.id);
+  // flatten + dedup by handle/name across every processed screenshot
+  const have = new Set();
+  const items = [];
+  js.done.forEach((j) => (j.leads || []).forEach((l) => {
+    if (!(l.handle || l.name || '').trim()) return;
+    const keys = [];
+    const h = cleanH(l.handle); if (h) keys.push('h:' + h);
+    const nm = core.normName(l.name || ''); if (nm) keys.push('n:' + nm);
+    if (keys.length && keys.some((k) => have.has(k))) return;
+    keys.forEach((k) => have.add(k));
+    items.push(l);
+  }));
+  // keep the user's typed fixes and removals: only grow the list
+  const existing = new Set(review.items.map((it) => itemH(it) || core.normName(it.name || '')));
+  items.forEach((it) => {
+    const k = itemH(it) || core.normName(it.name || '');
+    if (!existing.has(k)) review.items.push(it);
+  });
+  renderReview();
+  if (js.pending > 0 && !pollTimer) {
+    pollTimer = core.pageInterval(() => pollJobs(), 4000);
+  }
+  if (js.errors) $('dropHint').innerHTML = '<b>' + js.errors + ' screenshot' + (js.errors === 1 ? '' : 's') + ' couldn’t be read.</b><br>They were skipped — re-upload them if they mattered.';
+}
+
+async function doUpload(files) {
+  const imgs = [].slice.call(files || []).filter((f) => f && (f.type || '').indexOf('image/') === 0);
+  if (!imgs.length) return;
+  $('addBtn').disabled = true;
+  try {
+    await core.uploadShots(imgs, (d, t) => { $('addBtn').textContent = 'Uploading ' + d + '/' + t + '…'; });
+    toast({ type: 'ok', ttl: 9000, html: '<b>' + imgs.length + '</b> uploaded — processing in the background. You can leave this page.' });
+  } catch (err) { toast({ type: 'err', html: 'Upload failed: ' + esc(err.message), sticky: true }); }
+  $('addBtn').disabled = false; $('addBtn').textContent = 'Add screenshots';
+  pollJobs();
+}
+$('addBtn').onclick = () => {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+  inp.onchange = () => doUpload(inp.files);
+  inp.click();
+};
+core.pageListen(window, 'paste', (e) => {
+  const its = (e.clipboardData && e.clipboardData.items) || [];
+  const files = [];
+  for (const it of its) if (it.type && it.type.indexOf('image/') === 0) { const f = it.getAsFile(); if (f) files.push(f); }
+  if (files.length) { e.preventDefault(); doUpload(files); }
 });
-$('addBtn').onclick = () => scanner.openFile('prospect');
-$('refresh').onclick = load;
+core.pageListen(window, 'dragover', (e) => e.preventDefault());
+core.pageListen(window, 'drop', (e) => { e.preventDefault(); if (e.dataTransfer && e.dataTransfer.files.length) doUpload(e.dataTransfer.files); });
+
+$('refresh').onclick = () => { load(); pollJobs(); };
 if (matchMedia('(max-width: 760px)').matches) $('dropHint').innerHTML =
-  '<b>Tap Add screenshots</b> and pick them from your camera roll — profiles, shared-profile chats, inbox lists.';
+  '<b>Tap Add screenshots, then leave.</b> They process in the background and the results wait here.';
 
 core.installPalette({});
 load();
+core.kickScanWorker();   // resume any batch an earlier session left behind
+pollJobs();
 }
 </script>
 </body>
