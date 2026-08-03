@@ -2170,7 +2170,7 @@ function runPageCleanups() {
 }
 
 const SPA_PAGES = ['worklist.html', 'log-lead.html', 'leads.html', 'report.html',
-  'deals.html', 'close-call.html', 'settings.html'];
+  'deals.html', 'settings.html'];
 
 export function initRouter() {
   if (window.__ajrRouter) return;
@@ -2446,7 +2446,6 @@ const NAV_ITEMS = [
   { id: 'briefing', label: 'Briefing', href: 'briefing.html' },
   { grp: 'CLOSER', gap: true },
   { id: 'deals', label: 'Deals', href: 'deals.html' },
-  { id: 'close-call', label: 'Voice log', href: 'close-call.html' },
 ];
 
 /** Inject the v2 stylesheet + fonts once. Safe to call from any page. */
@@ -2456,7 +2455,7 @@ export function installTheme() {
         && HTMLScriptElement.supports && HTMLScriptElement.supports('speculationrules')) {
       const sr = document.createElement('script');
       sr.type = 'speculationrules';
-      const others = ['worklist', 'log-lead', 'leads', 'deals', 'report', 'close-call', 'settings']
+      const others = ['worklist', 'log-lead', 'leads', 'deals', 'report', 'settings']
         .map((p) => p + '.html')
         .filter((p) => !location.pathname.endsWith('/' + p));
       sr.textContent = JSON.stringify({

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260803b">
+<link rel="modulepreload" href="./crm-core.js?v=20260803c">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -90,9 +90,47 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .cash-warn{color:#4d4a42;font-size:12px;margin-top:8px}
 .fu-nudge{display:flex;align-items:center;gap:6px;margin:-6px 0 13px;font-size:12px;color:#8a8375}
 .fu-nudge button{min-height:26px;padding:0 9px;border-radius:8px;border:1px solid #ddd8cd;background:#fff;font-size:11.5px;color:#4d4a42}
-/* log a text/DM follow-up — the non-call path, most follow-ups happen here */
-.fu-box{border:1px dashed #ddd8cd;border-radius:12px;padding:13px;margin-bottom:16px}
-.fu-box .lab{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#98917f;display:block;margin-bottom:9px}
+/* ===== v2 capture bar: the one place anything gets logged =====
+   Replaces the old drawer AI box, the drawer follow-up box and the separate
+   close-call popup. Type or speak; confirm the one-line preview; done. */
+.cap{background:#fff;border:1px solid #e6e2da;border-radius:12px;padding:12px 14px;margin-bottom:14px}
+.cap-row{display:flex;align-items:center;gap:9px}
+.cap-pin{display:inline-flex;align-items:center;gap:6px;flex:none;max-width:190px;min-height:30px;padding:0 6px 0 11px;
+  border-radius:99px;background:#211f1b;color:#f9f8f5;font-size:12.5px;font-weight:600}
+.cap-pin .x{color:#f9f8f5;opacity:.6;font-size:14px;line-height:1;padding:0 3px}
+.cap-pin .x:hover{opacity:1}
+.cap-pin .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cap-in{flex:1;min-width:0}
+.cap-mic{width:34px;height:34px;flex:none;border-radius:50%;background:#2a6a4d;color:#fff;display:inline-flex;
+  align-items:center;justify-content:center;font-size:11px}
+.cap-mic.on{background:#b4543e;animation:pul 1.3s ease infinite}
+.cap-go{flex:none;min-height:34px;padding:0 15px;border-radius:8px;background:#211f1b;color:#f9f8f5;font-weight:600;font-size:13px}
+.cap-go:disabled{opacity:.4}
+.cap-hint{margin-top:7px;font-size:11.5px;color:#98917f}
+/* confirm-first preview — nothing is written until this is accepted */
+.cap-prev{margin-top:11px;border-top:1px solid #f0ede6;padding-top:11px;display:flex;align-items:flex-start;gap:11px;flex-wrap:wrap}
+.cap-prev .body{flex:1;min-width:200px;font-size:13px;color:#4d4a42}
+.cap-prev .who{font-weight:700;color:#211f1b}
+.cap-prev .chg{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.cap-prev .pill{font:600 11.5px 'IBM Plex Mono',monospace;border:1px solid #e2d9f4;background:#f6f2fb;color:#7c56c9;
+  border-radius:99px;padding:2px 9px}
+.cap-prev .pill.money{border-color:#c9dfd2;background:#eef5f0;color:#2a6a4d}
+.cap-prev .warn{color:#a8762a;font-size:12px;margin-top:6px}
+.cap-prev .acts{display:flex;gap:7px;flex:none}
+.cap-prev .no{min-height:32px;padding:0 12px;border-radius:8px;border:1px solid #ddd8cd;background:#fff;font-size:12.5px;color:#4d4a42}
+.cap-money{margin-top:10px;border:1px solid #c9dfd2;background:#eef5f0;border-radius:10px;padding:11px 13px}
+.cap-money .amt{font:700 22px 'IBM Plex Mono',monospace;color:#2a6a4d}
+.cap-money .sub{font-size:12px;color:#4d4a42;margin:3px 0 9px}
+/* "just hopped off a call" — ported from the retired popup */
+.cap-nudge{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 13px;border-radius:10px;
+  border:1px solid #e2d9f4;background:#f6f2fb;font-size:13px;color:#4d4a42}
+.cap-nudge .bdot{width:8px;height:8px;border-radius:50%;background:#7c56c9;flex:none;animation:pul2 1.6s ease infinite}
+@keyframes pul2{0%,100%{opacity:1}50%{opacity:.35}}
+.cap-nudge .who{font-weight:700;color:#211f1b}
+.cap-nudge .sp{flex:1}
+.cap-nudge button{min-height:30px;padding:0 12px;border-radius:8px;border:1px solid #d5c8ef;background:#fff;
+  color:#7c56c9;font-weight:600;font-size:12.5px}
+.cap-nudge button.dim{border-color:#e6e2da;color:#8a8375}
 .fu-when{display:flex;align-items:center;gap:5px;margin-top:9px;font-size:11.5px;color:#8a8375}
 .fu-when .sp{flex:1}
 .fu-when button{min-height:26px;padding:0 9px;border-radius:8px;border:1px solid #ddd8cd;background:#fff;
@@ -104,10 +142,13 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .fu-when .fu-go:hover{background:#000}
 /* row-level one-click follow-up; hidden until hover so the table stays calm */
 .d-row{position:relative}
-.fu-quick{position:absolute;right:12px;top:50%;transform:translateY(-50%);min-height:26px;padding:0 10px;
-  border-radius:8px;border:1px solid #ddd8cd;background:#fff;font:600 11.5px 'Instrument Sans',system-ui,sans-serif;
-  color:#4d4a42;opacity:0;transition:opacity .12s;box-shadow:0 1px 3px rgba(33,31,27,.12)}
-.d-row:hover .fu-quick{opacity:1}
+.rowacts{position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;gap:5px;
+  opacity:0;transition:opacity .12s}
+.d-row:hover .rowacts,.rowacts:focus-within{opacity:1}
+.fu-quick{min-height:26px;padding:0 10px;border-radius:8px;border:1px solid #ddd8cd;background:#fff;
+  font:600 11.5px 'Instrument Sans',system-ui,sans-serif;color:#4d4a42;box-shadow:0 1px 3px rgba(33,31,27,.12)}
+.fu-quick[data-won]{border-color:#c9dfd2;color:#2a6a4d}
+.fu-quick[data-lost]{border-color:#e8cdc6;color:#b4543e}
 .fu-quick:hover{border-color:#211f1b;color:#211f1b}
 .fu-quick:focus-visible{opacity:1}
 .hist{margin-top:4px;border-top:1px solid #f0ede6;padding-top:13px}
@@ -293,17 +334,30 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 <!--/baked:head-->
 </head>
 <body class="v2-shell">
-<!--baked:side--><nav class="v2-side"><div class="grp">SETTER</div><a class="nav" href="worklist.html" data-nav="worklist">Worklist<span class="slot" data-slot="worklist"></span></a><a class="nav" href="log-lead.html" data-nav="log-lead">Log a lead<span class="slot" data-slot="log-lead"></span></a><a class="nav" href="newleads.html" data-nav="newleads">New leads<span class="slot" data-slot="newleads"></span></a><a class="nav" href="leads.html" data-nav="leads">All leads<span class="slot" data-slot="leads"></span></a><a class="nav" href="leadpools.html" data-nav="leadpools">Leadpools<span class="slot" data-slot="leadpools"></span></a><a class="nav" href="assistant.html" data-nav="assistant">Assistant<span class="slot" data-slot="assistant"></span></a><a class="nav" href="report.html" data-nav="report">Dashboard<span class="slot" data-slot="report"></span></a><a class="nav" href="briefing.html" data-nav="briefing">Briefing<span class="slot" data-slot="briefing"></span></a><div class="grp gap">CLOSER</div><a class="nav on" href="deals.html" data-nav="deals">Deals<span class="slot" data-slot="deals"></span></a><a class="nav" href="close-call.html" data-nav="close-call">Voice log<span class="slot" data-slot="close-call"></span></a><div class="sp"></div><a class="nav" href="settings.html">Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
+<!--baked:side--><nav class="v2-side"><div class="grp">SETTER</div><a class="nav" href="worklist.html" data-nav="worklist">Worklist<span class="slot" data-slot="worklist"></span></a><a class="nav" href="log-lead.html" data-nav="log-lead">Log a lead<span class="slot" data-slot="log-lead"></span></a><a class="nav" href="newleads.html" data-nav="newleads">New leads<span class="slot" data-slot="newleads"></span></a><a class="nav" href="leads.html" data-nav="leads">All leads<span class="slot" data-slot="leads"></span></a><a class="nav" href="leadpools.html" data-nav="leadpools">Leadpools<span class="slot" data-slot="leadpools"></span></a><a class="nav" href="assistant.html" data-nav="assistant">Assistant<span class="slot" data-slot="assistant"></span></a><a class="nav" href="report.html" data-nav="report">Dashboard<span class="slot" data-slot="report"></span></a><a class="nav" href="briefing.html" data-nav="briefing">Briefing<span class="slot" data-slot="briefing"></span></a><div class="grp gap">CLOSER</div><a class="nav on" href="deals.html" data-nav="deals">Deals<span class="slot" data-slot="deals"></span></a><div class="sp"></div><a class="nav" href="settings.html">Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
 <main class="v2-main">
   <header class="v2-h">
     <h1>Deals</h1>
     <span class="sub" id="today"></span>
     <span class="sp"></span>
     <button class="v2-btn" id="newDeal">+ New deal</button>
-    <button class="v2-btn go" id="voiceLog">Log a call</button>
     <button class="v2-btn sm" id="refresh">Refresh</button>
     <span id="count" hidden></span>
   </header>
+
+  <div class="cap-nudge" id="capNudge" hidden></div>
+
+  <div class="cap">
+    <div class="cap-row">
+      <span class="cap-pin" id="capPin" hidden><span class="nm"></span><button class="x" id="capUnpin" aria-label="Unpin deal">×</button></span>
+      <input class="v2-in cap-in" id="capIn" type="text" placeholder="Say or type what happened — “closed Awais for 3k, follow up tuesday” or “sent pricing over DM, no reply”">
+      <button class="cap-mic" id="capMic" hidden aria-label="Record">●</button>
+      <button class="cap-go" id="capGo">Read it</button>
+    </div>
+    <div class="cap-hint" id="capHint">Works for calls and DMs. Nothing is saved until you confirm.</div>
+    <div class="cap-prev" id="capPrev" hidden></div>
+    <div class="cap-money" id="capMoney" hidden></div>
+  </div>
 
   <div class="calstrip" id="calstrip" hidden></div>
 
@@ -356,27 +410,13 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
   </div>
 
   <div class="dbody" id="dbody">
-    <div class="ai-box">
-      <span class="lab">Log the call</span>
-      <div class="ai-row">
-        <input class="v2-in" id="ai-in" type="text" placeholder="closed for 3k, follow up next tuesday">
-        <button class="mic" id="ai-mic" hidden aria-label="Record">●</button>
-      </div>
-    </div>
-
-    <div class="fu-box">
-      <span class="lab">Log a follow-up (text / DM)</span>
-      <div class="ai-row">
-        <input class="v2-in" id="fu-text" type="text" placeholder="sent pricing over DM — no reply yet">
-      </div>
-      <div class="fu-when">Next
-        <button data-fd="3">+3d</button>
-        <button data-fd="7" aria-pressed="true">+1w</button>
-        <button data-fd="14">+2w</button>
-        <button data-fd="-1" title="leave the follow-up date unchanged">—</button>
-        <span class="sp"></span>
-        <button class="fu-go" id="fu-log">Log it</button>
-      </div>
+    <div class="fu-when" style="margin:0 0 15px">Log a follow-up
+      <button data-fd="3">+3d</button>
+      <button data-fd="7" aria-pressed="true">+1w</button>
+      <button data-fd="14">+2w</button>
+      <button data-fd="-1" title="leave the follow-up date unchanged">—</button>
+      <span class="sp"></span>
+      <button class="fu-go" id="fu-log">Log it</button>
     </div>
 
     <div class="g2">
@@ -443,7 +483,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260803b';
+import * as core from './crm-core.js?v=20260803c';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
@@ -547,15 +587,24 @@ function render() {
       ${dateCell(d.followup, true)}
       <span class="d-cash">${d.cash !== '' && d.cash != null ? '$' + Number(d.cash).toLocaleString('en-US') : '<span class="d-cell dim">—</span>'}</span>
       <span class="d-cell dim" title="${esc(d.notes)}">${esc(core.notesOneLine ? core.notesOneLine(d.notes) : (d.notes || ''))}</span>
-      ${isDone(d) ? '' : `<button class="fu-quick" data-fu="${d.row}" title="Log a follow-up today, next one in a week">+ FU</button>`}
+      ${isDone(d) ? '' : `<span class="rowacts"><button class="fu-quick" data-fu="${d.row}" title="Log a follow-up today, next one in a week">+ FU</button>` +
+        `<button class="fu-quick" data-won="${d.row}" title="Closed — you'll confirm the amount">Won</button>` +
+        `<button class="fu-quick" data-lost="${d.row}" title="No close — add the reason">Lost</button></span>`}
     </div>`).join('') + '</div></div>';
   Array.prototype.forEach.call(t.querySelectorAll('.d-row'), (r) => {
     r.onclick = () => openDrawer(+r.getAttribute('data-id'));
     // one-click follow-up straight from the list — never opens the drawer
-    const fq = r.querySelector('.fu-quick');
-    if (fq) fq.addEventListener('click', (e) => {
-      e.stopPropagation();
-      logFollowup(+fq.getAttribute('data-fu'), '', 7);
+    Array.prototype.forEach.call(r.querySelectorAll('.fu-quick'), (b) => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const fu = b.getAttribute('data-fu'), won = b.getAttribute('data-won'), lost = b.getAttribute('data-lost');
+        if (fu) return logFollowup(+fu, '', 7);
+        // Won/Lost seed the capture bar so the amount or reason is still said out loud
+        capPin(+(won || lost));
+        $('capIn').value = won ? 'closed — collected ' : 'no close — ';
+        $('capIn').focus();
+        $('capIn').setSelectionRange($('capIn').value.length, $('capIn').value.length);
+      });
     });
     // the name goes to Instagram, not the drawer
     const a2 = r.querySelector('.dname a.ig');
@@ -580,7 +629,6 @@ function openDrawer(id) {
   showEditor(); clearTags();
   state.aiSnapshot = null;
   state.editing = id; state.cashConfirmed = false;
-  $('fu-text').value = '';
   $('d-name').textContent = displayName(d);
   $('f-status').value = ['Discovery Call','Closing call','Followup','Closed','No Close'].includes(d.status) ? d.status : '';
   $('f-meeting').value = core.dmyToIso(d.meeting) || '';
@@ -595,7 +643,6 @@ function openDrawer(id) {
   $('f-service').value = d.service || '';
   setCallType(d.callType || 'Sales');
   syncReasonRow();
-  $('ai-in').value = '';
   $('cash-warn').hidden = true;
   $('cash-confirm').hidden = true;
   // every recorded call, newest first — loads async so the drawer opens instantly
@@ -616,7 +663,6 @@ function openDrawer(id) {
   $('scrim').classList.add('on'); $('drawer').classList.add('on');
   checkFuNudge();
   loadHist(d.row);
-  setTimeout(() => $('ai-in').focus(), 60);
 }
 async function loadHist(id) {
   $('hist').hidden = true;
@@ -633,17 +679,8 @@ async function loadHist(id) {
   } catch (e) { /* best-effort */ }
 }
 function closeDrawer() {
-  state.editing = null;
+  state.editing = null; state.pickMode = null;
   $('scrim').classList.remove('on'); $('drawer').classList.remove('on');
-}
-function openVoiceLog() {
-  state.editing = null;
-  $('d-name').textContent = 'Log a call';
-  $('pick').hidden = false; $('dbody').hidden = true; $('dfoot').hidden = true;
-  $('pick-search').value = '';
-  renderPickList('');
-  $('scrim').classList.add('on'); $('drawer').classList.add('on');
-  setTimeout(() => $('pick-search').focus(), 60);
 }
 function renderPickList(q) {
   q = (q || '').toLowerCase().trim();
@@ -654,44 +691,191 @@ function renderPickList(q) {
   ul.innerHTML = rows.slice(0, 40).map((d) =>
     `<li data-id="${d.row}"><span class="pn">${esc(displayName(d))}</span><span class="ps">${esc(d.status || '')}</span></li>`).join('');
   Array.prototype.forEach.call(ul.querySelectorAll('li[data-id]'), (li) => {
-    li.onclick = () => openDrawer(+li.getAttribute('data-id'));
+    li.onclick = () => {
+      const id = +li.getAttribute('data-id');
+      if (state.pickMode === 'capture') {
+        state.pickMode = null; closeDrawer(); capPin(id); $('capIn').focus();
+        if ($('capIn').value.trim()) capRead();
+      } else openDrawer(id);
+    };
   });
 }
 
-// AI box: sentence -> interpret -> fill the drawer fields (notes appended in-view)
-let aiBusy = false;
-async function runAI() {
-  const text = $('ai-in').value.trim(); if (!text || aiBusy) return;
-  const d = dealById(state.editing); if (!d) return;
-  aiBusy = true; $('ai-in').disabled = true;
+/* ===== capture bar engine =====
+   One path for everything the closer logs: resolve the deal, let Claude read
+   the sentence, show a preview, write only on confirm. Money always gets its
+   own separate confirmation before it is written. */
+const cap = { busy: false, pinned: null, parsed: null, snapshot: null, text: '', pendingId: null, cashOk: false };
+
+function capPin(rowId) {
+  cap.pinned = rowId || null;
+  const el = $('capPin'), d = rowId ? dealById(rowId) : null;
+  if (d) { el.querySelector('.nm').textContent = displayName(d); el.hidden = false; }
+  else el.hidden = true;
+}
+function capReset(keepPin) {
+  cap.parsed = null; cap.snapshot = null; cap.text = '';
+  $('capPrev').hidden = true; $('capPrev').innerHTML = '';
+  $('capMoney').hidden = true; $('capMoney').innerHTML = '';
+  $('capIn').value = '';
+  if (!keepPin) capPin(null);
+}
+/** Which deal is this about? Pinned wins; otherwise trust the AI's match. */
+function capResolve(matches) {
+  if (cap.pinned && dealById(cap.pinned)) return { deal: dealById(cap.pinned) };
+  const open = (matches || []).filter((m) => dealById(m.row));
+  if (open.length === 1) return { deal: dealById(open[0].row) };
+  if (open.length > 1) return { ambiguous: open.map((m) => dealById(m.row)) };
+  return {};
+}
+async function capRead() {
+  const text = $('capIn').value.trim();
+  if (!text || cap.busy) return;
+  cap.busy = true; $('capGo').disabled = true; $('capGo').textContent = 'Reading…';
   try {
-    const res = await core.interpret(text, 'closer', displayName(d));
+    const pinnedDeal = cap.pinned ? dealById(cap.pinned) : null;
+    const res = await core.interpret(text, 'closer', pinnedDeal ? displayName(pinnedDeal) : '');
     const cmd = CRMParse.intentToCommand(res.intent, { now: new Date(), leads: state.leads, closing: state.deals, statuses: core.STATUSES });
-    const f = (cmd.closer && cmd.closer.fields) || {};
-    if (f.status) { $('f-status').value = ['Discovery Call','Closing call','Followup','Closed','No Close'].includes(f.status) ? f.status : $('f-status').value; setTag('f-status', true); syncReasonRow(); }
-    // clock time for the call, when stated ("booked follow up tuesday 3pm")
-    if (res.intent && res.intent.meeting_time && /^\d{2}:\d{2}$/.test(res.intent.meeting_time)) {
-      $('f-mtime').value = res.intent.meeting_time;
-    }
-    // no-close reason: the AI pulls it from whatever was said/typed (often a DM, not a call)
-    if ($('f-status').value === 'No Close' && res.intent && res.intent.no_close_reason) {
-      $('f-reason').value = res.intent.no_close_reason; setTag('f-reason', true);
-    }
-    if (f.meeting) { $('f-meeting').value = core.dmyToIso(f.meeting) || $('f-meeting').value; setTag('f-meeting', true); }
-    if (f.followup) { $('f-followup').value = core.dmyToIso(f.followup) || $('f-followup').value; setTag('f-followup', true); }
-    if (f.cash != null && f.cash !== '') { $('f-cash').value = f.cash; setTag('f-cash', true); }
-    if (f.notes) { $('f-notes').value = $('f-notes').value ? $('f-notes').value + '\n' + f.notes : f.notes; setTag('f-notes', true); }
-    const warns = (cmd.closer && cmd.closer.warnings) || [];
-    toast({ type: 'ok', html: 'Claude filled the fields' + (warns.length ? ' · ' + esc(warns.join(' ')) : '') });
-    $('ai-in').value = '';
-    state.aiSnapshot = { status: $('f-status').value, meeting: $('f-meeting').value,
-      followup: $('f-followup').value, cash: $('f-cash').value, notes: $('f-notes').value };
-    checkCashWarn();
-    checkFuNudge();
+    const closer = cmd.closer || {};
+    const f = Object.assign({}, closer.fields || {});
+    const target = capResolve(closer.matches);
+    if (target.ambiguous) { capAmbiguous(target.ambiguous, text); return; }
+    if (!target.deal) { capNoDeal(closer.targetText); return; }
+    if (res.intent && res.intent.no_close_reason) f.no_close_reason = res.intent.no_close_reason;
+    if (res.intent && /^\d{2}:\d{2}$/.test(res.intent.meeting_time || '')) f.meeting_time = res.intent.meeting_time;
+    cap.text = text;
+    cap.parsed = { deal: target.deal, fields: f, warnings: closer.warnings || [] };
+    cap.snapshot = { status: f.status || '', meeting: f.meeting || '', followup: f.followup || '', cash: f.cash == null ? '' : f.cash, notes: f.notes || '' };
+    capPreview();
   } catch (e) {
     toast({ type: 'err', html: 'Couldn’t read that: ' + esc(e.message) });
-  } finally { aiBusy = false; $('ai-in').disabled = false; }
+  } finally { cap.busy = false; $('capGo').disabled = false; $('capGo').textContent = 'Read it'; }
 }
+function capAmbiguous(list, text) {
+  $('capPrev').hidden = false;
+  $('capPrev').innerHTML = '<div class="body">Which deal is this about?<div class="chg">' +
+    list.map((d) => `<button class="no" data-pick="${d.row}">${esc(displayName(d))}</button>`).join('') +
+    '</div></div>';
+  Array.prototype.forEach.call($('capPrev').querySelectorAll('[data-pick]'), (b) => {
+    b.onclick = () => { capPin(+b.getAttribute('data-pick')); $('capIn').value = text; $('capPrev').hidden = true; capRead(); };
+  });
+}
+function capNoDeal(targetText) {
+  $('capPrev').hidden = false;
+  $('capPrev').innerHTML = '<div class="body">Couldn’t tell which deal' +
+    (targetText ? ' — nothing open matches <b>' + esc(targetText) + '</b>' : '') +
+    '.<div class="chg" style="margin-top:7px">Pick it from the list, then say it again.</div></div>' +
+    '<div class="acts"><button class="no" id="capPick">Pick a deal</button></div>';
+  $('capPick').onclick = () => capOpenPicker();
+}
+const FLABEL = { status: 'status', meeting: 'meeting', followup: 'next follow-up', notes: 'note', no_close_reason: 'reason', meeting_time: 'time' };
+function capPreview() {
+  const p = cap.parsed; if (!p) return;
+  const f = p.fields;
+  const pills = Object.keys(f).filter((k) => k !== 'cash' && f[k] !== '' && f[k] != null)
+    .map((k) => `<span class="pill">${esc(FLABEL[k] || k)} · ${esc(String(k === 'notes' ? shorten(f.notes) : f[k]))}</span>`);
+  if (f.cash != null && f.cash !== '') pills.push(`<span class="pill money">cash · $${Number(f.cash).toLocaleString('en-US')}</span>`);
+  if (!pills.length) {
+    $('capPrev').hidden = false;
+    $('capPrev').innerHTML = '<div class="body">Nothing to change from that — try naming the outcome, a date, or what you sent.</div>' +
+      '<div class="acts"><button class="no" id="capCancel">Clear</button></div>';
+    $('capCancel').onclick = () => capReset(true);
+    return;
+  }
+  $('capPrev').hidden = false;
+  $('capPrev').innerHTML =
+    `<div class="body"><span class="who">${esc(displayName(p.deal))}</span><div class="chg">${pills.join('')}</div>` +
+    (p.warnings.length ? `<div class="warn">${esc(p.warnings.join(' '))}</div>` : '') + '</div>' +
+    '<div class="acts"><button class="no" id="capCancel">Cancel</button><button class="cap-go" id="capSave">Log it</button></div>';
+  $('capCancel').onclick = () => capReset(true);
+  $('capSave').onclick = () => capCommit();
+}
+function shorten(s) { s = String(s || ''); return s.length > 46 ? s.slice(0, 45) + '…' : s; }
+
+/** Money is never written on the same click that revealed it. */
+function capCommit() {
+  const p = cap.parsed; if (!p || cap.busy) return;
+  const cash = p.fields.cash;
+  if (cash != null && cash !== '' && !cap.cashOk) {
+    $('capMoney').hidden = false;
+    $('capMoney').innerHTML = `<div class="amt">$${Number(cash).toLocaleString('en-US')}</div>` +
+      `<div class="sub">Collected from ${esc(displayName(p.deal))} — is that right?</div>` +
+      '<button class="cap-go" id="capMoneyYes">Correct — log it</button> ' +
+      '<button class="no" id="capMoneyNo">Wrong amount</button>';
+    $('capMoneyYes').onclick = () => { cap.cashOk = true; $('capMoney').hidden = true; capCommit(); };
+    $('capMoneyNo').onclick = () => { $('capMoney').hidden = true; $('capIn').focus(); };
+    return;
+  }
+  capWrite();
+}
+async function capWrite() {
+  const p = cap.parsed; const d = p.deal;
+  cap.busy = true; $('capGo').disabled = true;
+  try {
+    const res = await core.closerUpdate({ row: d.row, fields: p.fields, cashConfirmed: true });
+    core.logAiFeedback('interpret', displayName(d), cap.snapshot, p.fields);
+    // reflect locally without a refetch
+    const f = p.fields;
+    if (f.status) d.status = f.status;
+    if (f.meeting) d.meeting = f.meeting;
+    if (f.followup) d.followup = f.followup;
+    if (f.cash != null && f.cash !== '') d.cash = Number(f.cash);
+    if (f.no_close_reason != null) d.noCloseReason = f.no_close_reason;
+    if (f.notes) d.notes = d.notes ? d.notes + '\n' + f.notes : f.notes;
+    if (cap.pendingId) { core.markPendingConsumed(cap.pendingId).catch(() => {}); cap.pendingId = null; $('capNudge').hidden = true; }
+    render();
+    if (state.editing === d.row) openDrawer(d.row);
+    capReset(false); cap.cashOk = false;
+    toast({ type: 'ok', ttl: 9000, html: 'Logged — <span class="mono">' + esc(displayName(d)) + '</span>',
+      action: res.undo ? { label: 'Undo', fn: () => undo(res, d) } : null });
+  } catch (e) {
+    toast({ type: 'err', html: 'Couldn’t log that: ' + esc(e.message), sticky: true });
+  } finally { cap.busy = false; $('capGo').disabled = false; }
+}
+/* deal picker reused for "which deal?" — pins instead of opening the editor */
+function capOpenPicker() {
+  state.editing = null; state.pickMode = 'capture';
+  $('d-name').textContent = 'Pick a deal';
+  $('pick').hidden = false; $('dbody').hidden = true; $('dfoot').hidden = true;
+  $('pick-search').value = '';
+  renderPickList('');
+  $('scrim').classList.add('on'); $('drawer').classList.add('on');
+  setTimeout(() => $('pick-search').focus(), 60);
+}
+$('capGo').onclick = capRead;
+$('capIn').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  if (cap.parsed && !$('capPrev').hidden) capCommit(); else capRead();
+});
+$('capUnpin').onclick = () => capPin(null);
+
+/* ---------- "just hopped off a call" nudge (was the popup's job) ---------- */
+const NUDGE_SEEN = 'ajr_nudge_seen';
+function seenSet() { try { return new Set(JSON.parse(localStorage.getItem(NUDGE_SEEN) || '[]')); } catch (e) { return new Set(); } }
+function markSeen(id) {
+  const s = seenSet(); s.add(id);
+  try { localStorage.setItem(NUDGE_SEEN, JSON.stringify([...s].slice(-40))); } catch (e) {}
+}
+async function pollPending() {
+  try {
+    const calls = await core.pendingCalls();
+    const seen = seenSet();
+    const fresh = (calls || []).find((c) => !seen.has(c.id) && dealById(c.deal_id));
+    const el = $('capNudge');
+    if (!fresh) { if (!cap.pendingId) el.hidden = true; return; }
+    const d = dealById(fresh.deal_id);
+    cap.pendingId = fresh.id;
+    el.hidden = false;
+    el.innerHTML = '<span class="bdot"></span><div style="flex:1;min-width:0">' +
+      '<div style="font:600 10px \'IBM Plex Mono\',monospace;letter-spacing:.1em;color:#7c56c9">JUST HOPPED OFF A CALL</div>' +
+      '<div class="who">' + esc(displayName(d)) + '</div></div>' +
+      '<button id="nudgeLog">Log it</button><button class="dim" id="nudgeSkip">Not now</button>';
+    $('nudgeLog').onclick = () => { capPin(d.row); $('capIn').focus(); };
+    $('nudgeSkip').onclick = () => { markSeen(fresh.id); cap.pendingId = null; el.hidden = true; };
+  } catch (e) { /* the nudge is a convenience; never break the page over it */ }
+}
+
 
 function checkFuNudge() {
   const d = dealById(state.editing); if (!d) { $('fu-nudge').hidden = true; return; }
@@ -734,7 +918,6 @@ function logFollowup(rowId, text, days) {
     if (state.editing === d.row) {          // keep an open drawer in sync
       $('f-notes').value = d.notes;
       if (nextIso) $('f-followup').value = nextIso;
-      $('fu-text').value = '';
       checkFuNudge();
     }
     toast({ type: 'ok', ttl: 8000,
@@ -752,10 +935,7 @@ Array.prototype.forEach.call(document.querySelectorAll('.fu-when button[data-fd]
       (o) => o.setAttribute('aria-pressed', o === b ? 'true' : 'false'));
   };
 });
-$('fu-log').onclick = () => { if (state.editing) logFollowup(state.editing, $('fu-text').value.trim(), fuDays); };
-$('fu-text').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && state.editing) { e.preventDefault(); logFollowup(state.editing, $('fu-text').value.trim(), fuDays); }
-});
+$('fu-log').onclick = () => { if (state.editing) logFollowup(state.editing, '', fuDays); };
 function syncCashConfirm() {
   const d = dealById(state.editing);
   const cash = $('f-cash').value.trim();
@@ -855,16 +1035,17 @@ async function undo(res, d) {
 function initVoice() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) return;
-  $('ai-mic').hidden = false;
+  $('capMic').hidden = false;
   let rec = null, listening = false;
-  $('ai-mic').onclick = () => {
-    if (listening) { try { rec.stop(); } catch (e) {} return; }
-    rec = new SR(); rec.lang = 'en-US'; rec.interimResults = true;
-    const base = $('ai-in').value ? $('ai-in').value.trim() + ' ' : '';
-    rec.onresult = (ev) => { let t = ''; for (let i = 0; i < ev.results.length; i++) t += ev.results[i][0].transcript; $('ai-in').value = base + t.trim(); };
-    rec.onend = () => { listening = false; $('ai-mic').classList.remove('on'); if ($('ai-in').value.trim()) runAI(); };
-    rec.onerror = () => { listening = false; $('ai-mic').classList.remove('on'); };
-    try { rec.start(); listening = true; $('ai-mic').classList.add('on'); } catch (e) {}
+  $('capMic').onclick = () => {
+    if (listening) { rec.stop(); return; }
+    rec = new SR(); rec.lang = 'en-US'; rec.interimResults = true; rec.maxAlternatives = 1;
+    const base = $('capIn').value ? $('capIn').value.trim() + ' ' : '';
+    rec.onresult = (ev) => { let t = ''; for (let i = 0; i < ev.results.length; i++) t += ev.results[i][0].transcript; $('capIn').value = base + t.trim(); };
+    // stopping the mic is the "I'm done talking" signal — read it straight away
+    rec.onend = () => { listening = false; $('capMic').classList.remove('on'); if ($('capIn').value.trim()) capRead(); };
+    rec.onerror = () => { listening = false; $('capMic').classList.remove('on'); };
+    try { rec.start(); listening = true; $('capMic').classList.add('on'); } catch (e) {}
   };
 }
 
@@ -1000,7 +1181,10 @@ async function load() {
   try {
     const d = await core.bootstrap();
     state.deals = d.deals; state.leads = d.leads; state.serverDate = d.serverDate;
-    setDot(false); render(); loadStrip();
+    setDot(false); render(); loadStrip(); pollPending();
+    // deep link from the call watcher / an old close-call bookmark
+    const want = new URLSearchParams(location.search).get('deal');
+    if (want && dealById(+want)) { capPin(+want); $('capIn').focus(); }
   } catch (e) {
     setDot(true);
     $('table').innerHTML = '<div class="empty">Couldn’t load: ' + esc(e.message) + '</div>';
@@ -1015,7 +1199,6 @@ $('filters').onclick = (e) => {
 };
 $('search').oninput = (e) => { state.q = e.target.value; render(); };
 $('refresh').onclick = load;
-$('voiceLog').onclick = openVoiceLog;
 $('pick-search').oninput = (e) => renderPickList(e.target.value);
 $('scrim').onclick = closeDrawer;
 $('d-close').onclick = closeDrawer;
@@ -1033,8 +1216,13 @@ $('d-save').onclick = saveDrawer;
 $('f-status').addEventListener('change', syncReasonRow);
 $('f-cash').addEventListener('input', () => { setTag('f-cash', false); state.cashConfirmed = false; $('d-save').textContent = 'Save changes'; checkCashWarn(); syncCashConfirm(); });
 $('cash-confirm').onclick = () => { state.cashConfirmed = true; syncCashConfirm(); checkCashWarn(); toast({ html: 'Amount confirmed — hit Save changes.' }); };
-$('ai-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); runAI(); } });
-core.pageListen(document, 'keydown', (e) => { if (e.key === 'Escape' && state.editing) closeDrawer(); });
+core.pageListen(document, 'keydown', (e) => {
+  if (e.key === 'Escape' && state.editing) return closeDrawer();
+  // ⌘/ctrl+L anywhere = start logging, the one shortcut a closer needs
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'l') { e.preventDefault(); $('capIn').focus(); }
+});
+core.pageInterval(pollPending, 45000);
+core.pageListen(window, 'focus', pollPending);
 
 core.installPalette({ deals: () => state.deals, onDeal: (d) => openDrawer(d.row) });
 initVoice();
