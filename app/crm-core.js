@@ -48,23 +48,20 @@ function isoToDmyLocal(d) {
 const _demo = {
   briefing: {
     date: 'Monday, August 3, 2026', iso: new Date().toISOString().slice(0, 10),
-    counts: '1 newsletter · 2 topics · 2 news reads',
-    keydev_url: '#',
-    newsletters: [{ name: 'Nik Sharma', date: 'Aug 2', subject: '7 Practical Funnels/Buying Routes to Test', topics: [
-      { title: 'Test buying routes, not landing pages', clarifier: 'a new URL is not a new test',
-        info: 'A brand built 20-30 paid landing pages in months and its PDP still won. The unit of testing is the buying route: ad → argument → offer → checkout → customer.',
-        links: [{ headline: 'Landing Page vs. Product Page for Paid Traffic', source: 'Jordan Glickman', url: '#' }] },
-      { title: 'The ad made a promise; the page has to keep it', clarifier: 'the visitor lands holding a "mental receipt"',
-        info: 'If the ad tells one story and the page opens with another, the customer restarts the sale from zero — and most will not bother.',
-        links: [{ headline: 'Message Match: Critical Component For Ad Success', source: 'KlientBoost', url: '#' }] },
-    ] }],
-    news: [
-      { headline: 'Meta Ads Update July 2026: Three Changes Distorting Your Reports', url: '#', source: 'GoodMorning', date: 'Jul 15, 2026',
-        summary: 'Location fees appear only on invoices, the off-Meta opt-out removal is re-expanding retargeting pools, and the metrics overhaul breaks historical comparisons.',
-        takeaway: 'Re-baseline reporting from mid-June forward before "fixing" campaigns that were never broken.' },
-      { headline: 'July 2026 eCommerce News and Updates for Sellers', url: '#', source: 'Stack Influence', date: 'Aug 2, 2026',
-        summary: 'Amazon capped most product titles at 75 characters from July 27; Walmart cut referral fees across 14 categories.',
-        takeaway: 'Rewrite Amazon titles around the 75-character cap before listings get truncated.' },
+    counts: '6 items · 4 sources', keydev_url: '#',
+    groups: [
+      { tag: 'Meta & paid social', items: [
+        { t: 'Location fees are live and invoice-only', d: '2–5% on spend delivered to UK/FR/IT/ES/AT/TR — never shows in Ads Manager', src: 'GoodMorning', url: '' },
+        { t: 'Metrics overhaul breaks your history', d: 'reach and video views replaced by Media Views, which counts repeats', src: 'GoodMorning', url: '' },
+        { t: 'AI creative gets auto-labelled', d: 'ads made or edited with AI are flagged whether you opt in or not', src: 'Social Media Today', url: '' },
+      ] },
+      { tag: 'Marketplaces', items: [
+        { t: 'Amazon caps titles at 75 characters', d: 'overflow moves to a new Item Highlights field', src: 'Stack Influence', url: '' },
+        { t: 'Walmart cut referral fees in 14 categories', d: 'deepest in apparel, electronics and home', src: 'Stack Influence', url: '' },
+      ] },
+      { tag: 'Playbook — Nik Sharma', items: [
+        { t: 'Test buying routes, not landing pages', d: 'one brand shipped 20–30 pages in 6 months and the PDP still won', src: 'Aug 2 issue', url: '' },
+      ] },
     ],
   },
   leads: [
