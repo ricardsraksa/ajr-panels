@@ -11,29 +11,46 @@
 <script type="module" blocking="render">
 await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 </script>
-<title>Leadpools · AJR</title>
+<title>Briefing · AJR</title>
 <style>
+.demo-banner{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;
+  color:#8a8375;text-align:center;padding:6px 12px;border:1px solid #e6e2da;border-radius:8px;
+  background:#f4f2ed;margin-bottom:14px}
 .colw{max-width:820px}
-.p-row{display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid #f0ede6;font-size:13px;flex-wrap:wrap}
-.p-row:first-child{border-top:none}
-.p-row.used{opacity:.6}
-.p-h{font-weight:600;color:#211f1b;text-decoration:none;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.p-h:hover{color:#211f1b;text-decoration:underline;text-decoration-color:#ccc5b6}
-.p-qual{font:600 10.5px 'IBM Plex Mono',monospace;color:#8a8375;flex:none}
-.p-note{color:#8a8375;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:80px}
-.p-x{width:28px;height:28px;border-radius:8px;color:#8a8375;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none;background:none;border:none}
-.p-x:hover{color:#b4543e;background:#fbf0ed}
-.tf{display:inline-flex;background:#f0ede6;border:1px solid #e6e2da;border-radius:9px;padding:2px;gap:2px;flex:none}
-.tf button{border-radius:7px;padding:4px 11px;min-height:28px;border:none;background:none;cursor:pointer;
-  font:600 11.5px 'Instrument Sans',system-ui,sans-serif;color:#6d675b}
-.tf button:hover{color:#211f1b}
-.tf button[aria-pressed="true"]{background:#fff;color:#211f1b;box-shadow:0 1px 2px rgba(33,31,27,.07)}
-.tf button[aria-pressed="true"][data-q="good"]{color:#2a6a4d}
-.tf button[aria-pressed="true"][data-q="bad"]{color:#b4543e}
-.sumline{color:#8a8375;font-size:12.5px;margin-bottom:12px}
-.sumline b{color:#211f1b;font-family:'IBM Plex Mono',monospace}
-.empty-p{padding:38px 20px;text-align:center;color:#8a8375;font-size:13px;line-height:1.7}
-.empty-p b{color:#211f1b}
+.pg-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.pg-head h1{font:700 21px 'Instrument Sans',system-ui,sans-serif;color:#211f1b}
+.pg-head .sub{color:#8a8375;font-size:13px}
+.counts{display:inline-block;font:600 11px 'IBM Plex Mono',monospace;color:#6d675b;background:#f0ede6;
+  border:1px solid #e6e2da;border-radius:99px;padding:3px 11px;margin-bottom:18px}
+.stale{border:1px solid #ecc9a8;background:#fdf4ea;color:#9a5b24;border-radius:10px;
+  padding:10px 14px;font-size:13px;font-weight:600;margin-bottom:16px}
+.empty{border:1px dashed #ddd8cd;border-radius:12px;padding:36px 20px;text-align:center;color:#8a8375;font-size:13.5px}
+.sec{font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:.09em;text-transform:uppercase;
+  color:#8a8375;margin:22px 0 10px}
+.card{background:#fff;border:1px solid #e6e2da;border-radius:12px;padding:18px 20px;margin-bottom:12px}
+.nl-head{display:flex;align-items:center;gap:8px}
+.nl-name{font:700 11.5px 'IBM Plex Mono',monospace;color:#3a4ed6;background:#eef0fd;border-radius:6px;padding:3px 9px}
+.nl-date{color:#8a8375;font-size:12px}
+.nl-subj{color:#8a8375;font-size:13px;font-style:italic;margin:7px 0 2px}
+.topic{border-top:1px solid #f0ede6;padding-top:14px;margin-top:14px}
+.topic:first-of-type{border-top:none;padding-top:6px;margin-top:6px}
+.t-title{font:650 15px 'Instrument Sans',system-ui,sans-serif;color:#211f1b}
+.t-clar{color:#8a8375;font-size:12px;margin:1px 0 7px}
+.t-info{color:#4a463e;font-size:13.5px;line-height:1.55;margin-bottom:8px}
+.t-links{display:flex;flex-direction:column;gap:3px}
+.t-links a{color:#3a4ed6;font-size:12.5px;font-weight:600;text-decoration:none;width:fit-content}
+.t-links a:hover{text-decoration:underline}
+.t-links .src{color:#8a8375;font-weight:400}
+.news-card{background:#fff;border:1px solid #e6e2da;border-radius:12px;padding:15px 18px;margin-bottom:10px}
+.n-head a{font:650 14.5px 'Instrument Sans',system-ui,sans-serif;color:#211f1b;text-decoration:none}
+.n-head a:hover{color:#3a4ed6;text-decoration:underline}
+.n-src{color:#8a8375;font-size:12px;margin:2px 0 7px}
+.n-sum{color:#4a463e;font-size:13px;line-height:1.5;margin-bottom:8px}
+.n-take{font-size:13px;background:#eef7f0;border-left:3px solid #3f9d63;border-radius:6px;padding:8px 11px;color:#2c5c3e}
+.n-take b{color:#1e7a45}
+.kd{display:inline-flex;align-items:center;gap:6px;margin:14px 0 40px;color:#3a4ed6;font-size:13px;font-weight:600;text-decoration:none}
+.kd:hover{text-decoration:underline}
+[hidden]{display:none!important}
 </style>
 <!--baked:head-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -200,110 +217,78 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 <!--/baked:head-->
 </head>
 <body class="v2-shell">
-<!--baked:side--><nav class="v2-side"><div class="grp">SETTER</div><a class="nav" href="worklist.html" data-nav="worklist">Worklist<span class="slot" data-slot="worklist"></span></a><a class="nav" href="log-lead.html" data-nav="log-lead">Log a lead<span class="slot" data-slot="log-lead"></span></a><a class="nav" href="newleads.html" data-nav="newleads">New leads<span class="slot" data-slot="newleads"></span></a><a class="nav" href="leads.html" data-nav="leads">All leads<span class="slot" data-slot="leads"></span></a><a class="nav on" href="leadpools.html" data-nav="leadpools">Leadpools<span class="slot" data-slot="leadpools"></span></a><a class="nav" href="assistant.html" data-nav="assistant">Assistant<span class="slot" data-slot="assistant"></span></a><a class="nav" href="report.html" data-nav="report">Dashboard<span class="slot" data-slot="report"></span></a><a class="nav" href="briefing.html" data-nav="briefing">Briefing<span class="slot" data-slot="briefing"></span></a><div class="grp gap">CLOSER</div><a class="nav" href="deals.html" data-nav="deals">Deals<span class="slot" data-slot="deals"></span></a><a class="nav" href="close-call.html" data-nav="close-call">Voice log<span class="slot" data-slot="close-call"></span></a><div class="sp"></div><a class="nav" href="settings.html">Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
+<!--baked:side--><nav class="v2-side"><div class="grp">SETTER</div><a class="nav" href="worklist.html" data-nav="worklist">Worklist<span class="slot" data-slot="worklist"></span></a><a class="nav" href="log-lead.html" data-nav="log-lead">Log a lead<span class="slot" data-slot="log-lead"></span></a><a class="nav" href="newleads.html" data-nav="newleads">New leads<span class="slot" data-slot="newleads"></span></a><a class="nav" href="leads.html" data-nav="leads">All leads<span class="slot" data-slot="leads"></span></a><a class="nav" href="leadpools.html" data-nav="leadpools">Leadpools<span class="slot" data-slot="leadpools"></span></a><a class="nav" href="assistant.html" data-nav="assistant">Assistant<span class="slot" data-slot="assistant"></span></a><a class="nav" href="report.html" data-nav="report">Dashboard<span class="slot" data-slot="report"></span></a><a class="nav on" href="briefing.html" data-nav="briefing">Briefing<span class="slot" data-slot="briefing"></span></a><div class="grp gap">CLOSER</div><a class="nav" href="deals.html" data-nav="deals">Deals<span class="slot" data-slot="deals"></span></a><a class="nav" href="close-call.html" data-nav="close-call">Voice log<span class="slot" data-slot="close-call"></span></a><div class="sp"></div><a class="nav" href="settings.html">Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
 <main class="v2-main">
   <div class="colw">
-    <header class="v2-h">
-      <h1>Leadpools</h1>
-      <span class="sub" id="count">—</span>
-      <span class="sp"></span>
-      <button class="v2-btn sm" id="refresh" type="button">Refresh</button>
-    </header>
-    <div class="sumline" id="sumline"></div>
-    <div class="v2-card" id="list"><div class="v2-empty">Loading…</div></div>
+    <div class="demo-banner" id="demoBanner" hidden>DEMO — sample briefing</div>
+    <div class="pg-head">
+      <h1>Briefing</h1>
+      <span class="sub" id="bDate">—</span>
+    </div>
+    <span class="counts" id="bCounts" hidden></span>
+    <div class="stale" id="staleNote" hidden></div>
+    <div id="content"></div>
   </div>
 </main>
-
 <script type="module">
 import * as core from './crm-core.js?v=20260803a';
 const session = await core.requireAuth();
 if (session) {
-await core.installChrome({ active: 'leadpools' });
+await core.installChrome({ active: 'briefing' });
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-const toast = core.toast;
-let leads = [];
+if (core.isDemo) $('demoBanner').hidden = false;
 
-const pools = () => leads.filter((l) => l.lp);
-// the workable ones first: good+unused, then unrated, bad and used sink
-const rank = (l) => (l.lpQuality === 'good' ? 30 : l.lpQuality === 'bad' ? 10 : 20) + (l.lpUsed ? 0 : 5);
-
-function render() {
-  const p = pools().sort((a, b) => rank(b) - rank(a));
-  $('count').textContent = p.length ? p.length + ' pool' + (p.length === 1 ? '' : 's') : 'none yet';
-  const unused = p.filter((l) => !l.lpUsed).length;
-  const good = p.filter((l) => l.lpQuality === 'good').length;
-  $('sumline').innerHTML = p.length
-    ? '<b>' + unused + '</b> unused · <b>' + good + '</b> rated good — accounts whose audience feeds prospecting'
-    : '';
-  if (!p.length) {
-    $('list').innerHTML = '<div class="empty-p"><b>No leadpools marked yet.</b><br>' +
-      'Open any lead on All leads and tick “Leadpool” in the drawer — accounts whose followers and commenters are worth mining show up here.</div>';
-    return;
-  }
-  $('list').innerHTML = p.map((l) => `
-    <div class="p-row${l.lpUsed ? ' used' : ''}" data-id="${l.id}">
-      <a class="p-h" href="${esc(l.url || 'https://instagram.com/' + l.h)}" target="_blank" rel="noopener">@${esc(l.h)}</a>
-      ${l.qual ? '<span class="p-qual">' + esc(l.qual.replace('Qualified ', 'Q')) + '</span>' : ''}
-      <span class="p-note" title="${esc(l.notes || '')}">${esc(core.notesOneLine(l.notes || ''))}</span>
-      <div class="tf" role="group" aria-label="Quality">
-        <button type="button" data-q="good" aria-pressed="${l.lpQuality === 'good'}">Good</button>
-        <button type="button" data-q="bad" aria-pressed="${l.lpQuality === 'bad'}">Bad</button>
-      </div>
-      <div class="tf" role="group" aria-label="Used">
-        <button type="button" data-u="0" aria-pressed="${!l.lpUsed}">Unused</button>
-        <button type="button" data-u="1" aria-pressed="${l.lpUsed}">Used</button>
-      </div>
-      <button class="p-x" data-x title="Not a pool — unmarks it, the lead itself stays">✕</button>
-    </div>`).join('');
+function linkRow(l) {
+  return `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.headline)} <span class="src">— ${esc(l.source)}</span></a>`;
+}
+function topicBlock(t) {
+  return `<div class="topic">
+    <div class="t-title">${esc(t.title)}</div>
+    ${t.clarifier ? `<div class="t-clar">${esc(t.clarifier)}</div>` : ''}
+    <div class="t-info">${esc(t.info)}</div>
+    ${(t.links || []).length ? `<div class="t-links">${t.links.map(linkRow).join('')}</div>` : ''}
+  </div>`;
+}
+function nlCard(n) {
+  return `<div class="card">
+    <div class="nl-head"><span class="nl-name">${esc(n.name)}</span><span class="nl-date">${esc(n.date || '')}</span></div>
+    <div class="nl-subj">${esc(n.subject)}</div>
+    ${(n.topics || []).map(topicBlock).join('')}
+  </div>`;
+}
+function newsCard(a) {
+  return `<div class="news-card">
+    <div class="n-head"><a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.headline)}</a></div>
+    <div class="n-src">${esc(a.source)}${a.date ? ' · ' + esc(a.date) : ''}</div>
+    <div class="n-sum">${esc(a.summary)}</div>
+    <div class="n-take"><b>Takeaway:</b> ${esc(a.takeaway)}</div>
+  </div>`;
 }
 
-async function save(l, fields, revert) {
-  try {
-    await core.setLead(l.id, fields);
-    render();
-  } catch (err) {
-    revert();
-    render();
-    toast({ type: 'err', html: 'Save failed: ' + esc(err.message), sticky: true });
+try {
+  const b = await core.loadBriefing();
+  if (!b) {
+    $('bDate').textContent = '';
+    $('content').innerHTML = '<div class="empty">No briefing published yet — the daily automation writes one here every morning at 7.</div>';
+  } else {
+    $('bDate').textContent = b.date || '';
+    if (b.counts) { $('bCounts').textContent = b.counts; $('bCounts').hidden = false; }
+    if (b.iso) {
+      const age = (Date.now() - new Date(b.iso + 'T07:00:00')) / 36e5;
+      if (age > 48) { $('staleNote').textContent = 'This briefing is from ' + b.date + ' — the daily automation may not have run since.'; $('staleNote').hidden = false; }
+    }
+    $('content').innerHTML =
+      `<div class="sec">From the newsletters</div>` +
+      ((b.newsletters || []).length ? b.newsletters.map(nlCard).join('') : '<div class="empty">No new newsletters that morning.</div>') +
+      `<div class="sec">Industry news · read &amp; summarized</div>` +
+      (b.news || []).map(newsCard).join('') +
+      (b.keydev_url && b.keydev_url !== '#' ? `<a class="kd" href="${esc(b.keydev_url)}" target="_blank" rel="noopener">📌 Key Developments archive →</a>` : '');
   }
+} catch (e) {
+  $('content').innerHTML = '<div class="empty">Could not load the briefing: ' + esc(e.message) + '</div>';
 }
-
-$('list').addEventListener('click', (e) => {
-  const row = e.target.closest('.p-row'); if (!row) return;
-  const l = leads.find((x) => x.id === +row.getAttribute('data-id')); if (!l) return;
-  const q = e.target.closest('button[data-q]');
-  if (q) {
-    const prev = l.lpQuality;
-    const v = q.getAttribute('data-q');
-    l.lpQuality = l.lpQuality === v ? '' : v;   // tap again to clear
-    save(l, { lpQuality: l.lpQuality }, () => { l.lpQuality = prev; });
-    render(); return;
-  }
-  const u = e.target.closest('button[data-u]');
-  if (u) {
-    const prev = l.lpUsed;
-    l.lpUsed = u.getAttribute('data-u') === '1';
-    if (l.lpUsed !== prev) save(l, { lpUsed: l.lpUsed }, () => { l.lpUsed = prev; });
-    render(); return;
-  }
-  if (e.target.closest('[data-x]')) {
-    const prev = { lp: l.lp, lpQuality: l.lpQuality, lpUsed: l.lpUsed };
-    l.lp = false;
-    save(l, { lp: false, lpQuality: '', lpUsed: false }, () => Object.assign(l, prev));
-    render();
-    toast({ type: 'ok', ttl: 8000, html: '<span class="mono">@' + esc(l.h) + '</span> unmarked — the lead itself is untouched.',
-      action: { label: 'Undo', fn: () => { Object.assign(l, prev); save(l, prev, () => { l.lp = false; }); render(); } } });
-  }
-});
-
-async function load() {
-  try { leads = await core.loadLeads(); render(); }
-  catch (e) { $('list').innerHTML = '<div class="v2-empty">Couldn’t load: ' + esc(e.message) + '</div>'; }
-}
-$('refresh').onclick = load;
 core.installPalette({});
-load();
 }
 </script>
 </body>

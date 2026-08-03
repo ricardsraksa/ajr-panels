@@ -46,6 +46,27 @@ function isoToDmyLocal(d) {
   return `${g('day')}/${g('month')}/${g('year')}`;
 }
 const _demo = {
+  briefing: {
+    date: 'Monday, August 3, 2026', iso: new Date().toISOString().slice(0, 10),
+    counts: '1 newsletter · 2 topics · 2 news reads',
+    keydev_url: '#',
+    newsletters: [{ name: 'Nik Sharma', date: 'Aug 2', subject: '7 Practical Funnels/Buying Routes to Test', topics: [
+      { title: 'Test buying routes, not landing pages', clarifier: 'a new URL is not a new test',
+        info: 'A brand built 20-30 paid landing pages in months and its PDP still won. The unit of testing is the buying route: ad → argument → offer → checkout → customer.',
+        links: [{ headline: 'Landing Page vs. Product Page for Paid Traffic', source: 'Jordan Glickman', url: '#' }] },
+      { title: 'The ad made a promise; the page has to keep it', clarifier: 'the visitor lands holding a "mental receipt"',
+        info: 'If the ad tells one story and the page opens with another, the customer restarts the sale from zero — and most will not bother.',
+        links: [{ headline: 'Message Match: Critical Component For Ad Success', source: 'KlientBoost', url: '#' }] },
+    ] }],
+    news: [
+      { headline: 'Meta Ads Update July 2026: Three Changes Distorting Your Reports', url: '#', source: 'GoodMorning', date: 'Jul 15, 2026',
+        summary: 'Location fees appear only on invoices, the off-Meta opt-out removal is re-expanding retargeting pools, and the metrics overhaul breaks historical comparisons.',
+        takeaway: 'Re-baseline reporting from mid-June forward before "fixing" campaigns that were never broken.' },
+      { headline: 'July 2026 eCommerce News and Updates for Sellers', url: '#', source: 'Stack Influence', date: 'Aug 2, 2026',
+        summary: 'Amazon capped most product titles at 75 characters from July 27; Walmart cut referral fees across 14 categories.',
+        takeaway: 'Rewrite Amazon titles around the 75-character cap before listings get truncated.' },
+    ],
+  },
   leads: [
     { id: 1, h: 'jung.labs', url: 'https://instagram.com/jung.labs', level: 'Engaged 3', status: 'Follow up Sent', qual: 'Qualified 3', notes: 'potential referral for his students', lastContact: _ago(20), dateAdded: _ago(90), followed: _ago(950), email: 'jung@labs.io', phone: '', linkedin: '', pains: 'no time to run ads' },
     { id: 2, h: 'charlay', url: 'https://instagram.com/charlay', level: 'Engaged 3', status: 'Follow up Sent', qual: 'Qualified 3', notes: 'audit accepted, need to book meeting', lastContact: _ago(63), followed: _ago(1400), lp: true, lpQuality: 'good', lpUsed: true },
@@ -230,6 +251,19 @@ export async function loadLeads() {
   }));
   _ttlSet(BOOK_KEY, mapped);
   return mapped;
+}
+
+/** The daily DTC industry briefing, published into settings.daily_briefing by
+ *  the external briefing automation. Null when it has never been published. */
+export async function loadBriefing() {
+  if (DEMO) return _clone(_demo.briefing);
+  const { data, error } = await supa.from('settings')
+    .select('value,updated_at').eq('key', 'daily_briefing').maybeSingle();
+  if (error) throw error;
+  if (!data || !data.value) return null;
+  const b = JSON.parse(data.value);
+  b.updated_at = data.updated_at;
+  return b;
 }
 
 export async function loadDeals() {
@@ -2412,6 +2446,7 @@ const NAV_ITEMS = [
   { id: 'leadpools', label: 'Leadpools', href: 'leadpools.html' },
   { id: 'assistant', label: 'Assistant', href: 'assistant.html' },
   { id: 'report', label: 'Dashboard', href: 'report.html' },
+  { id: 'briefing', label: 'Briefing', href: 'briefing.html' },
   { grp: 'CLOSER', gap: true },
   { id: 'deals', label: 'Deals', href: 'deals.html' },
   { id: 'close-call', label: 'Voice log', href: 'close-call.html' },
