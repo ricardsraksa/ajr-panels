@@ -2953,7 +2953,7 @@ export function installScanner(opts = {}) {
           : ex ? '<span style="color:#98917f;font-size:11px">in book — skipped</span>' : '')
         : (ex ? '<span style="color:#98917f;font-size:11px">updates</span>' : '<span style="color:#2a6a4d;font-size:11px">new</span>'));
       return '<div class="sc2-ready" data-i="' + i + '" style="display:flex;align-items:center;gap:9px;padding:7px 12px;border:1px solid #e6e2da;border-radius:10px;margin:5px 4px;background:#fff;font-size:12.5px">' +
-        '<b style="font-size:13px;color:#211f1b">@' + escH(h) + '</b>' + badge +
+        '<b style="font-size:13px;color:#211f1b;flex:none">@' + escH(h) + '</b>' + badge +
         (l.qual ? '<span style="font:600 10.5px \'IBM Plex Mono\',monospace;color:#8a8375">' + escH(l.qual.replace('Qualified ', 'Q')) + '</span>' : '') +
         '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#8a8375">' + escH(l.notes || l.pains || '') + '</span>' +
         '<button type="button" data-edit style="border:none;background:none;color:#6d675b;font-size:11.5px;font-weight:600;cursor:pointer;padding:2px 6px">edit</button>' +
@@ -2999,6 +2999,7 @@ export function installScanner(opts = {}) {
           '<input class="nn" data-f="pains" value="' + escH(l.pains || '') + '" placeholder="pain points" style="margin:0">' +
         '</div>' +
         '<input class="nn" data-f="notes" value="' + escH(l.notes || '') + '" placeholder="note / sellable angle">' +
+        (l.story === 'yes' ? '<div style="color:#c13584;font-size:11px;font-weight:700;margin-top:5px">◉ story live — reply to it first</div>' : '') +
         (matched ? '<div class="ex">matched “' + escH(shownName) + '” to @' + escH(matched) + '</div>' : '') +
         (!handle ? '<div class="low">couldn’t read the full handle — type it or paste their profile link, or this one is skipped</div>' : '') +
         (l.confidence && l.confidence !== 'high' ? '<div class="low">low confidence — double-check this one</div>' : '') +
