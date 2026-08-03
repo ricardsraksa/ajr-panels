@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260803c">
+<link rel="modulepreload" href="./crm-core.js?v=20260803d">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f9f8f5}</style>
 <script type="module" blocking="render">
@@ -288,7 +288,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260803c';
+import * as core from './crm-core.js?v=20260803d';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'assistant' });
@@ -364,6 +364,13 @@ function render() {
     else if (t.nimgs) html += '<div class="imtag">📷 ' + t.nimgs + ' screenshot' + (t.nimgs === 1 ? '' : 's') + '</div>';
     if (t.text) html += esc(t.text);
     div.innerHTML = html || '&nbsp;';
+    if (t.failed) {
+      const rb = document.createElement('button');
+      rb.textContent = 'Retry';
+      rb.style.cssText = 'margin-left:10px;border:1px solid #ddd8cd;background:#fff;color:#211f1b;border-radius:8px;padding:3px 11px;font-weight:600;font-size:12px;cursor:pointer';
+      rb.onclick = () => retryTurn(i);
+      div.appendChild(rb);
+    }
     th.appendChild(div);
     if (t.role === 'assistant' && t.handle && t.updates) {
       const wrap = document.createElement('div');
@@ -496,10 +503,24 @@ async function send() {
     } catch (e) { /* the chat still works unsaved */ }
   } catch (e) {
     turns.pop();
-    turns.push({ role: 'assistant', text: 'That didn’t go through: ' + e.message, think: true });
+    // keep the question — a failed send must not cost the setter their turn
+    turns.push({ role: 'assistant', text: e.message, think: true, failed: true,
+      retry: { text, imgs: userTurn.imgs, b64s: userTurn.b64s } });
   }
   busy = false;
   render();
+}
+
+// re-send the message a failed turn was carrying
+async function retryTurn(i) {
+  const t = turns[i]; if (!t || !t.retry || busy) return;
+  const prev = turns[i - 1];
+  turns.splice(prev && prev.role === 'user' ? i - 1 : i, prev && prev.role === 'user' ? 2 : 1);
+  $('input').value = t.retry.text || '';
+  pending = (t.retry.b64s || []).map((b, k) => ({ dataUrl: (t.retry.imgs || [])[k] || '', b64: b.b64, mediaType: b.mediaType }));
+  renderPending();
+  render();
+  await send();
 }
 
 /* ---------- proposal apply / dismiss ---------- */
