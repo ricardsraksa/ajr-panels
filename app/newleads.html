@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260804b">
+<link rel="modulepreload" href="./crm-core.js?v=20260804c">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f9f8f5}</style>
 <script type="module" blocking="render">
@@ -15,7 +15,7 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 <style>
 .colw{max-width:760px}
 /* KPI card */
-.kpi{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
 .kbox{background:#fff;border:1px solid #e6e2da;border-radius:12px;padding:15px 17px}
 .kbox .lab{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#98917f}
 .kbox .big{font:600 26px 'IBM Plex Mono',monospace;color:#211f1b;margin:4px 0 2px}
@@ -233,6 +233,9 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
       <div class="kbox"><span class="lab">This week</span>
         <div class="big" id="k-week">—</div><div class="sub" id="k-week-sub"></div>
         <div class="kbar"><i id="k-week-bar"></i></div></div>
+      <div class="kbox"><span class="lab">Sent today</span>
+        <div class="big" id="k-sent">—</div><div class="sub" id="k-sent-sub"></div>
+        <div class="kbar"><i id="k-sent-bar"></i></div></div>
     </div>
 
     <div class="drop-hint" id="dropHint">
@@ -248,7 +251,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260804b';
+import * as core from './crm-core.js?v=20260804c';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'newleads' });
@@ -286,8 +289,13 @@ function renderKpi() {
     sub.textContent = v >= target ? 'target hit' : (target - v) + ' to go';
     sub.className = 'sub' + (v >= target ? ' hit' : '');
   };
+  // first DMs that went out today — the other half of this page's loop:
+  // leads come in up top, cold DMs leave from the queue below
+  const sentT = core.targetFor('outreach', t, 1) || 20;
+  const sent = state.stats.length ? state.stats[state.stats.length - 1].outreach : 0;
   put('k-today', today, dayT);
   put('k-week', week, weekT);
+  put('k-sent', sent, sentT);
 }
 
 function render() {
