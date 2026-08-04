@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260803h">
+<link rel="modulepreload" href="./crm-core.js?v=20260804a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f9f8f5}</style>
 <script type="module" blocking="render">
@@ -290,7 +290,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260803h';
+import * as core from './crm-core.js?v=20260804a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'assistant' });
@@ -507,6 +507,8 @@ async function send() {
           text: 'Came back empty — tap retry.',
           retry: { text, imgs: userTurn.imgs, b64s: userTurn.b64s } };
     const u = res.updates || {};
+    // same bar as the scanner: a note must be sellable fact, not coaching recap
+    if (u.note) u.note = core.cleanNote(u.note);
     const hasU = Object.values(u).some((v) => String(v || '').trim());
     if (hasU && reply) { t.handle = detected || chat; t.updates = u; }
     if (!t.handle) delete t.updates;

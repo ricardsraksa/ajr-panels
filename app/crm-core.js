@@ -1963,6 +1963,13 @@ const NOTE_JUNK = [
   /\b(runs|has|sells) (an )?(online (store|business)|products?|ecommerce)\b/i,
   /\b(dropshipping|lifestyle)\s*\/\s*(dropshipping|lifestyle|brand)/i,
   /^\s*(ecommerce|e-commerce|ecom) (brand|store|business)\.?\s*$/i,
+  // coaching-speak: advice to the setter is not a fact about the lead
+  /\brapport\b/i,
+  /\bkeep (it|the|that) (alive|going|warm)\b/i,
+  /\b(is|as) (the|a|your) (live |natural )?(thread|play|opening|bridge|angle|in)\b/i,
+  /^\s*(keep|wait|hit|send|ask|use|come back|circle)\b/i,
+  /\b(asked about|talking about|discussing|chatting about)\b/i,
+  /\binterested in\b/i,
 ];
 export function cleanNote(v) {
   const parts = String(v || '').split(/(?<=[.!?])\s+|\s*·\s*|\s*;\s*/)
