@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260804d">
+<link rel="modulepreload" href="./crm-core.js?v=20260804e">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f9f8f5}</style>
 <script type="module" blocking="render">
@@ -227,10 +227,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
     </header>
 
     <div class="kpi">
-      <div class="kbox"><span class="lab">Added today</span>
-        <div class="big" id="k-today">—</div><div class="sub" id="k-today-sub"></div>
-        <div class="kbar"><i id="k-today-bar"></i></div></div>
-      <div class="kbox"><span class="lab">This week</span>
+      <div class="kbox"><span class="lab">Leads this week</span>
         <div class="big" id="k-week">—</div><div class="sub" id="k-week-sub"></div>
         <div class="kbar"><i id="k-week-bar"></i></div></div>
       <div class="kbox"><span class="lab">Sent today</span>
@@ -251,7 +248,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260804d';
+import * as core from './crm-core.js?v=20260804e';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'newleads' });
@@ -276,9 +273,7 @@ function queue() {
 
 function renderKpi() {
   const t = state.targets || {};
-  const dayT = core.targetFor('newLeads', t, 1) || 20;
-  const weekT = core.targetFor('newLeads', t, 7) || 100;
-  const today = state.stats.length ? state.stats[state.stats.length - 1].newLeads : 0;
+  const weekT = 100;   // the number that matters: 100 fresh leads a week
   const week = state.stats.slice(-7).reduce((a, d) => a + d.newLeads, 0);
   const put = (id, v, target) => {
     $(id).innerHTML = v + '<span class="of"> / ' + target + '</span>';
@@ -293,7 +288,6 @@ function renderKpi() {
   // leads come in up top, cold DMs leave from the queue below
   const sentT = core.targetFor('outreach', t, 1) || 20;
   const sent = state.stats.length ? state.stats[state.stats.length - 1].outreach : 0;
-  put('k-today', today, dayT);
   put('k-week', week, weekT);
   put('k-sent', sent, sentT);
 }
