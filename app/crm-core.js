@@ -48,6 +48,7 @@ function isoToDmyLocal(d) {
 const _demo = {
   briefing: {
     date: 'Monday, August 3, 2026', iso: new Date().toISOString().slice(0, 10),
+    updated_at: 'demo-briefing',
     counts: '6 items · 4 sources', keydev_url: '#',
     groups: [
       { tag: 'Meta & paid social', items: [
@@ -2333,6 +2334,8 @@ input::placeholder,textarea::placeholder{color:var(--off)}
 .v2-side .badge-n{margin-left:auto;font:600 11px var(--mono);background:rgba(255,255,255,.18);border-radius:99px;padding:1px 7px}
 .v2-side a.nav:not(.on) .badge-n{background:transparent;color:var(--muted);padding:0}
 .v2-side .badge-red{margin-left:auto;font-size:11px;color:var(--red);font-weight:600}
+.v2-side .badge-dot{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--go);flex:none}
+.v2-side a.nav.on .badge-dot{background:var(--bg)}
 .v2-side .sp{flex:1}
 .v2-side .krow{display:flex;align-items:center;gap:8px;padding:8px 10px;color:var(--muted-2);font-size:12px;cursor:pointer}
 .v2-side .krow kbd{margin-left:auto;font:600 11px var(--mono);border:1px solid var(--line-2);border-radius:5px;padding:1px 6px;background:#fff;color:var(--ink-3)}
@@ -2687,9 +2690,26 @@ export async function installChrome(opts = {}) {
       if (w && b.waiting) w.outerHTML = '<span class="badge-n">' + b.waiting + '</span>';
       const d = side.querySelector('[data-slot="deals"]');
       if (d && b.today) d.outerHTML = '<span class="badge-red">' + b.today + ' today</span>';
+      const brNav = side.querySelector('a[data-nav="briefing"]');
+      if (b.briefingAt && b.briefingAt !== briefingSeen() && brNav && !brNav.classList.contains('on')) {
+        const br = side.querySelector('[data-slot="briefing"]');
+        if (br) br.outerHTML = '<span class="badge-dot" title="New briefing"></span>';
+      }
     } catch (e) { /* badges are decorative */ }
   })();
   return side;
+}
+
+/* The Briefing tab carries an unread dot until the page is opened. "Unread"
+   is just "the published timestamp differs from the one last seen here". */
+const BRIEF_SEEN = 'ajr_briefing_seen';
+export function briefingSeen() {
+  try { return localStorage.getItem(BRIEF_SEEN) || ''; } catch (e) { return ''; }
+}
+export function markBriefingSeen(stamp) {
+  try { localStorage.setItem(BRIEF_SEEN, String(stamp || '')); } catch (e) {}
+  const br = document.querySelector('.v2-side a[data-nav="briefing"] .badge-dot');
+  if (br) br.outerHTML = '<span class="slot" data-slot="briefing"></span>';
 }
 
 /** Let a page correct its own sidebar badge once it knows the real number
@@ -2704,13 +2724,16 @@ export function setChromeBadge(id, value) {
 }
 
 async function chromeCounts() {
-  if (DEMO) return { waiting: 9, today: 2 };
+  if (DEMO) return { waiting: 9, today: 2, briefingAt: 'demo-briefing' };
   const today = dmyToIso(todayDmy());
-  const [w, t] = await Promise.all([
+  const [w, t, b] = await Promise.all([
     supa.from('leads').select('id', { count: 'exact', head: true }).in('level', ['Engaged 1', 'Engaged 2', 'Engaged 3']),
     supa.from('deals').select('id', { count: 'exact', head: true }).eq('meeting', today),
+    // timestamp only — the briefing payload itself is never pulled for a dot
+    supa.from('settings').select('updated_at').eq('key', 'daily_briefing').maybeSingle(),
   ]);
-  return { waiting: w.count || 0, today: t.count || 0 };
+  return { waiting: w.count || 0, today: t.count || 0,
+    briefingAt: (b && b.data && b.data.updated_at) || '' };
 }
 
 /** Shared toast (v2). o: {type:'ok'|'err', html, ttl, sticky, action:{label,fn}} */
