@@ -313,6 +313,9 @@ async function logActivity(table, rowId, action, prev, next, atIso) {
 export async function setterUpdate(args) {
   const handle = String(args.handle || '').trim().toLowerCase();
   if (!handle) throw new Error('bad handle');
+  // AI-sourced notes obey the stage gate; a note the setter typed himself
+  // is his call and passes through untouched
+  if (args.note && args.fromScan) args.note = noteAllowed(args.stage) ? cleanNote(args.note) : '';
   if (DEMO) {
     const hit = _demo.leads.find((l) => l.h === handle);
     if (hit) {
@@ -1981,11 +1984,17 @@ export function cleanNote(v) {
   return out.replace(/\s*\.\s*$/, '');
 }
 
+/* Notes exist from Engaged 2 up — before business talk starts there is
+   nothing sellable to note, whatever the model thinks it saw. */
+export function noteAllowed(stage) {
+  return ['Engaged 2', 'Engaged 3', 'Booked'].includes(String(stage || '').trim());
+}
+
 export async function addProspects(cards) {
   const list = (cards || []).map((c) => ({
     h: String(c.handle || '').trim().toLowerCase().replace(/^@/, ''),
     stage: String(c.stage || '').trim(),   // empty = no stage until they reply
-    notes: cleanNote(c.notes),
+    notes: noteAllowed(c.stage) ? cleanNote(c.notes) : '',
     qual: String(c.qual || '').trim(), pains: String(c.pains || '').trim(),
     story: c.story === 'yes', priv: c.priv === 'yes',
   })).filter((c) => c.h);
@@ -2467,18 +2476,22 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 const V2_FONTS = 'https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap';
 
+/* Grouped by rhythm, not by role: the daily loop on top, the lead book
+   below it, review pages last. Deals sits in the daily group — bookings
+   get checked every day, the old CLOSER section buried it. */
 const NAV_ITEMS = [
-  { grp: 'SETTER' },
+  { grp: 'TODAY' },
   { id: 'worklist', label: 'Worklist', href: 'worklist.html' },
-  { id: 'log-lead', label: 'Log a lead', href: 'log-lead.html' },
   { id: 'newleads', label: 'New leads', href: 'newleads.html' },
+  { id: 'assistant', label: 'Assistant', href: 'assistant.html' },
+  { id: 'deals', label: 'Deals', href: 'deals.html' },
+  { grp: 'LEAD BOOK', gap: true },
+  { id: 'log-lead', label: 'Log a lead', href: 'log-lead.html' },
   { id: 'leads', label: 'All leads', href: 'leads.html' },
   { id: 'leadpools', label: 'Leadpools', href: 'leadpools.html' },
-  { id: 'assistant', label: 'Assistant', href: 'assistant.html' },
+  { grp: 'REVIEW', gap: true },
   { id: 'report', label: 'Dashboard', href: 'report.html' },
   { id: 'briefing', label: 'Briefing', href: 'briefing.html' },
-  { grp: 'CLOSER', gap: true },
-  { id: 'deals', label: 'Deals', href: 'deals.html' },
 ];
 
 /** Inject the v2 stylesheet + fonts once. Safe to call from any page. */
@@ -3333,7 +3346,8 @@ export function installScanner(opts = {}) {
       if (!handle || seen.has(handle)) continue;
       seen.add(handle);
       const fields = { handle, stage: it.stage || 'Engaged 1', status: it.status || '',
-        note: (it.notes || '').trim(), qual: (it.qual || '').trim(), pains: (it.pains || '').trim() };
+        note: (it.notes || '').trim(), qual: (it.qual || '').trim(), pains: (it.pains || '').trim(),
+        fromScan: true };
       try {
         await setterUpdate(fields);
         if (it._suggested) logAiFeedback('vision', handle, it._suggested,
