@@ -2484,6 +2484,7 @@ const NAV_ITEMS = [
   { id: 'worklist', label: 'Worklist', href: 'worklist.html' },
   { id: 'newleads', label: 'New leads', href: 'newleads.html' },
   { id: 'assistant', label: 'Assistant', href: 'assistant.html' },
+  { grp: 'CLOSING', gap: true },
   { id: 'deals', label: 'Deals', href: 'deals.html' },
   { grp: 'LEAD BOOK', gap: true },
   { id: 'log-lead', label: 'Log a lead', href: 'log-lead.html' },
