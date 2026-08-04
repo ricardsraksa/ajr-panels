@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260803f">
+<link rel="modulepreload" href="./crm-core.js?v=20260803g">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f9f8f5}</style>
 <script type="module" blocking="render">
@@ -290,7 +290,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260803f';
+import * as core from './crm-core.js?v=20260803g';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'assistant' });
@@ -385,10 +385,14 @@ function render() {
 }
 
 /* ---------- chats: load, switch, picker ---------- */
-async function openChat(h) {
+async function openChat(h, fresh) {
   chat = (h || '').toLowerCase().replace(/^@/, '');
   turns = [];
   render();
+  // opening the page starts a clean canvas: the day's first screenshot
+  // shouldn't land under yesterday's unrelated general chatter. Nothing is
+  // lost — every thread stays in the picker, this one just isn't preloaded.
+  if (fresh) return;
   try {
     const rows = await core.chatLoad(chat);
     turns = rows.map((r) => ({
@@ -480,8 +484,12 @@ async function send() {
     const res = await core.assistChat(apiMessages(), await contextBlock());
     turns.pop();
     const detected = (res.lead_handle || '').toLowerCase().replace(/^@/, '');
-    // a general-chat exchange about a recognizable lead belongs in their thread
-    if (!chat && detected) {
+    // A screenshot names its own lead, so it always lands in that lead's
+    // thread — including from inside a different lead's thread, which is the
+    // normal case when working down a list of conversations. Plain text only
+    // routes out of the unrouted chat, so follow-up questions stay put.
+    const sentImgs = (userTurn.b64s || []).length > 0;
+    if (detected && detected !== chat && (sentImgs || !chat)) {
       chat = detected;
       const prior = await core.chatLoad(chat).catch(() => []);
       turns = prior.map((r) => ({ role: r.role, text: r.content, at: r.created_at, dbId: r.id,
@@ -642,7 +650,7 @@ $('tpop').addEventListener('change', async (e) => {
 });
 
 core.installPalette({});
-openChat('');
+openChat('', true);   // fresh canvas on every page open
 }
 </script>
 </body>

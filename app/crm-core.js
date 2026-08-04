@@ -1553,6 +1553,7 @@ function _demoChats() {
   if (!_demo.chats) {
     _demo.chats = [
       { id: 1, lead_handle: 'ecom.aiden', role: 'user', content: 'he asked if we do one-off audits or only retainers, what do i say', meta: null, created_at: new Date(Date.now() - 26 * 36e5).toISOString() },
+      { id: 3, lead_handle: '', role: 'user', content: 'whats a good opener for q4 season', meta: null, created_at: new Date(Date.now() - 50 * 36e5).toISOString() },
       { id: 2, lead_handle: 'ecom.aiden', role: 'assistant', content: 'Neither answer wins in a DM. Pull it up a level: "we start everyone with the audit anyway, so lets do that and you decide what it becomes after". Keeps the retainer conversation for the call.', meta: { updates: { status: 'Mid convo' }, handle: 'ecom.aiden', fb: 'applied' }, created_at: new Date(Date.now() - 26 * 36e5 + 60e3).toISOString() },
     ];
     _demo.chatSeq = 10;
