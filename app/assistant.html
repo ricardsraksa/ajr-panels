@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260803g">
+<link rel="modulepreload" href="./crm-core.js?v=20260803h">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f9f8f5}</style>
 <script type="module" blocking="render">
@@ -290,7 +290,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260803g';
+import * as core from './crm-core.js?v=20260803h';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'assistant' });
@@ -483,7 +483,10 @@ async function send() {
   try {
     const res = await core.assistChat(apiMessages(), await contextBlock());
     turns.pop();
-    const detected = (res.lead_handle || '').toLowerCase().replace(/^@/, '');
+    // the model occasionally returns junk here (a bare comma has shipped a
+    // proposal card titled '@,'), so only an IG-shaped handle is trusted
+    const raw = (res.lead_handle || '').toLowerCase().replace(/^@/, '').trim();
+    const detected = /^[a-z0-9._]{2,30}$/.test(raw) ? raw : '';
     // A screenshot names its own lead, so it always lands in that lead's
     // thread — including from inside a different lead's thread, which is the
     // normal case when working down a list of conversations. Plain text only
@@ -497,11 +500,22 @@ async function send() {
         handle: (r.meta && r.meta.handle) || chat, fb: (r.meta && r.meta.fb) || null })).concat([userTurn]);
       toast({ type: 'ok', ttl: 6000, html: 'Moved to <b>@' + esc(chat) + '</b>’s thread.' });
     }
-    const t = { role: 'assistant', text: res.reply || '', at: new Date().toISOString() };
+    const reply = String(res.reply || '').trim();
+    const t = reply
+      ? { role: 'assistant', text: reply, at: new Date().toISOString() }
+      : { role: 'assistant', at: new Date().toISOString(), think: true, failed: true,
+          text: 'Came back empty — tap retry.',
+          retry: { text, imgs: userTurn.imgs, b64s: userTurn.b64s } };
     const u = res.updates || {};
     const hasU = Object.values(u).some((v) => String(v || '').trim());
-    if (hasU) { t.handle = detected || chat; t.updates = u; }
+    if (hasU && reply) { t.handle = detected || chat; t.updates = u; }
     if (!t.handle) delete t.updates;
+    // the model re-proposes the same change when a thread keeps discussing one
+    // lead; if it's already applied, showing it again is noise
+    if (t.updates) {
+      const key = (x) => JSON.stringify([x.handle, x.updates]);
+      if (turns.some((p) => p.updates && p.fb === 'applied' && key(p) === key(t))) delete t.updates;
+    }
     turns.push(t);
     // persist both sides now that we know which thread they belong to
     try {
