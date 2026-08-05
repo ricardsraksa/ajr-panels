@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260805c">
+<link rel="modulepreload" href="./crm-core.js?v=20260805d">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -45,11 +45,14 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .hints kbd{font:600 10.5px var(--mono);background:var(--card);border:1px solid var(--line-2);
   border-radius:5px;padding:1px 6px;color:var(--ink-3)}
 @media(max-width:760px){
-  .q-thead{display:none}
-  .q-row{grid-template-columns:1fr auto;row-gap:6px;padding:12px 14px}
-  .q-row .q-stage{grid-column:1;font-size:12px}
-  .q-row .q-note{grid-column:1/-1}
-  .q-acts{grid-row:1;grid-column:2}
+  /* V2_CSS is baked after page styles, so .v2-thead would win a tie — name both */
+  .v2-thead.q-thead{display:none}
+  .q-row{grid-template-columns:1fr auto;row-gap:7px;padding:12px 14px}
+  .q-row .q-handle{grid-column:1;grid-row:1}
+  .q-row .q-acts{grid-column:2;grid-row:1;justify-self:end}
+  .q-row .q-stage{grid-column:1;grid-row:2;font-size:12px}
+  .q-row .v2-age{grid-column:2;grid-row:2;justify-self:end}
+  .q-row .q-note{grid-column:1/-1;grid-row:3}
 }
 </style>
 <!--baked:head-->
@@ -280,7 +283,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260805c';
+import * as core from './crm-core.js?v=20260805d';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'worklist' });
