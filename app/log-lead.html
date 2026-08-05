@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260805b">
+<link rel="modulepreload" href="./crm-core.js?v=20260805c">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -149,6 +149,8 @@ input::placeholder,textarea::placeholder{color:var(--off)}
 .v2-side .grp.gap{padding-top:14px}
 .v2-side a.nav{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:var(--ink-2);font-size:13.5px}
 .v2-side a.nav:hover{background:rgba(0,0,0,.045);color:var(--ink)}
+.v2-side a.nav .ic{flex:none;opacity:.62}
+.v2-side a.nav.on .ic{opacity:1}
 .v2-side a.nav.on{background:rgba(176,84,74,.1);color:var(--accent);font-weight:600}
 .v2-side a.nav.on:hover{background:rgba(176,84,74,.14);color:var(--accent)}
 .v2-side .badge-n{margin-left:auto;font:600 11.5px var(--mono);font-variant-numeric:tabular-nums;border-radius:99px;padding:0}
@@ -388,7 +390,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260805b';
+import * as core from './crm-core.js?v=20260805c';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'log-lead' });

@@ -2366,6 +2366,8 @@ input::placeholder,textarea::placeholder{color:var(--off)}
 .v2-side .grp.gap{padding-top:14px}
 .v2-side a.nav{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:var(--ink-2);font-size:13.5px}
 .v2-side a.nav:hover{background:rgba(0,0,0,.045);color:var(--ink)}
+.v2-side a.nav .ic{flex:none;opacity:.62}
+.v2-side a.nav.on .ic{opacity:1}
 .v2-side a.nav.on{background:rgba(176,84,74,.1);color:var(--accent);font-weight:600}
 .v2-side a.nav.on:hover{background:rgba(176,84,74,.14);color:var(--accent)}
 .v2-side .badge-n{margin-left:auto;font:600 11.5px var(--mono);font-variant-numeric:tabular-nums;border-radius:99px;padding:0}
@@ -2510,6 +2512,23 @@ const V2_FONTS = 'https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@
 /* Grouped by rhythm, not by role: the daily loop on top, the lead book
    below it, review pages last. Deals sits in the daily group — bookings
    get checked every day, the old CLOSER section buried it. */
+const ICONS = {
+  worklist: '<path d="M3 6h11M3 12h11M3 18h7"/><path d="m17 15 2 2 4-4"/>',
+  newleads: '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/>',
+  assistant: '<path d="M21 12a8 8 0 0 1-8 8H5l-2 2V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/>',
+  deals: '<rect x="2" y="7" width="20" height="14" rx="3"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>',
+  'log-lead': '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  leads: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/>',
+  leadpools: '<path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7"/><path d="M3 7l9-4 9 4-9 4Z"/>',
+  report: '<path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/>',
+  briefing: '<path d="M4 4h13a2 2 0 0 1 2 2v13a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 8h7M8 12h7M8 16h4"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H7a1.7 1.7 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V7a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>',
+};
+const navIcon = (id) => ICONS[id]
+  ? '<svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[id] + '</svg>'
+  : '';
+
 const NAV_ITEMS = [
   { grp: 'TODAY' },
   { id: 'worklist', label: 'Worklist', href: 'worklist.html' },
@@ -2703,9 +2722,9 @@ export async function installChrome(opts = {}) {
     NAV_ITEMS.map((it) => it.grp
       ? '<div class="grp' + (it.gap ? ' gap' : '') + '">' + it.grp + '</div>'
       : '<a class="nav' + (it.id === active ? ' on' : '') + '" href="' + it.href + '" data-nav="' + it.id + '">' +
-        it.label + '<span class="slot" data-slot="' + it.id + '"></span></a>').join('') +
+        navIcon(it.id) + it.label + '<span class="slot" data-slot="' + it.id + '"></span></a>').join('') +
     '<div class="sp"></div>' +
-    '<a class="nav' + (active === 'settings' ? ' on' : '') + '" href="settings.html">Settings</a>' +
+    '<a class="nav' + (active === 'settings' ? ' on' : '') + '" href="settings.html">' + navIcon('settings') + 'Settings</a>' +
     '<div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div>' +
     '<div class="me"><span class="av" id="v2-av">·</span>' +
       '<span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span>' +
