@@ -433,8 +433,8 @@
 
   /* ---------------- unified command router ---------------- */
 
-  var DEFAULT_STATUSES = ['Follow up Sent', "Haven't read", 'End of convo', 'Mid convo',
-    'Lifestyle sent', 'Left on read', 'Story reply', 'Call Pitched', 'Meme sent', 'LM Sent'];
+  var DEFAULT_STATUSES = ['Follow up Sent', "Haven't read", 'Left on read',
+    'Mid convo', 'Call Pitched', 'End of convo'];
 
   // Match a spoken/typed Last Status against the vocabulary. Exact squashed
   // match wins; otherwise a unique prefix match (either direction).

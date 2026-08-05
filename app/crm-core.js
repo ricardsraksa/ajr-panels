@@ -21,8 +21,12 @@ export const STAGES = ['Engaged 1', 'Engaged 2', 'Engaged 3', 'Booked', 'No Clos
 export const POOL = 'Following';
 export const POOL_VALUES = ['Following', 'Outreach'];
 export const isPool = (lvl) => lvl === 'Following' || lvl === 'Outreach';
-export const STATUSES = ['Follow up Sent', "Haven't read", 'End of convo', 'Mid convo',
-  'Lifestyle sent', 'Left on read', 'Story reply', 'Call Pitched', 'Meme sent', 'LM Sent'];
+/* Six states, each one a different thing that is true about the conversation.
+   'Lifestyle sent', 'Story reply', 'Meme sent' and 'LM Sent' all collapsed into
+   'Follow up Sent' — they described WHAT was sent, which the note already says,
+   and split one state four ways in every filter and count. */
+export const STATUSES = ['Follow up Sent', "Haven't read", 'Left on read',
+  'Mid convo', 'Call Pitched', 'End of convo'];
 
 /* ---------- demo mode (self-contained; no backend, for design/preview) ----------
    Add ?demo=1 to any page. It sticks for the session (so cross-page links stay
@@ -221,7 +225,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260806h';
+const BUILD = '20260806i';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -294,9 +298,11 @@ const STAGE_SHORT = {
   'Archive': 'Archived', 'Following': 'Follow', 'Outreach': 'Pool',
 };
 const STATUS_SHORT = {
-  'Follow up Sent': 'FU sent', "Haven't read": 'Unread', 'End of convo': 'Ended',
-  'Mid convo': 'Mid convo', 'Lifestyle sent': 'Lifestyle', 'Left on read': 'On read',
-  'Story reply': 'Story', 'Call Pitched': 'Pitched', 'Meme sent': 'Meme', 'LM Sent': 'LM',
+  'Follow up Sent': 'FU sent', "Haven't read": 'Unread', 'Left on read': 'On read',
+  'Mid convo': 'Mid convo', 'Call Pitched': 'Pitched', 'End of convo': 'Ended',
+  // retired spellings, still readable if an old row or an AI reply uses one
+  'Follow Up Sent': 'FU sent', 'Lifestyle sent': 'FU sent', 'Story reply': 'FU sent',
+  'Meme sent': 'FU sent', 'LM Sent': 'FU sent',
 };
 export const shortStage = (v) => STAGE_SHORT[String(v || '').trim()] || String(v || '');
 export const shortStatus = (v) => STATUS_SHORT[String(v || '').trim()] || String(v || '');
