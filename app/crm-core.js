@@ -221,7 +221,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260806f';
+const BUILD = '20260806g';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -284,6 +284,23 @@ export const QUAL_TIERS = {
   'Qualified 3': 'brand $300k+/mo',
   'Unqualified': 'agency / SaaS / coach — not ICP',
 };
+/* Dense rows can't afford full labels. One shared shortener so a stage reads
+   the same on every screen — and so "Follow up Sent" stops eating a note
+   column on the page where a follow-up is the only thing anything is. */
+const STAGE_SHORT = {
+  'Engaged 1': 'E1', 'Engaged 2': 'E2', 'Engaged 3': 'E3',
+  'Booked': 'Booked', 'Closed': 'Closed',
+  'No Close': 'No close', 'No Reply': 'No reply',
+  'Archive': 'Archived', 'Following': 'Follow', 'Outreach': 'Pool',
+};
+const STATUS_SHORT = {
+  'Follow up Sent': 'FU sent', "Haven't read": 'Unread', 'End of convo': 'Ended',
+  'Mid convo': 'Mid convo', 'Lifestyle sent': 'Lifestyle', 'Left on read': 'On read',
+  'Story reply': 'Story', 'Call Pitched': 'Pitched', 'Meme sent': 'Meme', 'LM Sent': 'LM',
+};
+export const shortStage = (v) => STAGE_SHORT[String(v || '').trim()] || String(v || '');
+export const shortStatus = (v) => STATUS_SHORT[String(v || '').trim()] || String(v || '');
+
 /** "Qualified 2" -> "Q2 · brand $100–300k/mo" (short form for dense rows). */
 export function qualLabel(q, opts) {
   const key = String(q || '').trim();

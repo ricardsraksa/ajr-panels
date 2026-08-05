@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260806f">
+<link rel="modulepreload" href="./crm-core.js?v=20260806g">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -549,7 +549,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260806f';
+import * as core from './crm-core.js?v=20260806g';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
@@ -668,7 +668,7 @@ function sheetCard(d, tag) {
     '</span>' +
     '<div class="body">' +
       (l.pains ? line('PAINS', l.pains) : '<div class="none">No pain points captured — worth asking early.</div>') +
-      line('LAST DM', l.status) +
+      line('LAST DM', core.shortStatus ? core.shortStatus(l.status) : l.status) +
       (notes ? line('NOTES', core.notesOneLine ? core.notesOneLine(notes) : notes) : '') +
       (d.callType === 'Connection' && d.service ? line('ABOUT', d.service) : '') +
     '</div>' +
@@ -807,7 +807,8 @@ function renderLeadBox(d) {
     ? '<div><span class="lab">' + lab + '</span>' + esc(String(val)) + '</div>' : '';
   const qual = core.qualLabel ? core.qualLabel(l.qual, { long: true }) : (l.qual || '');
   $('f-lead').innerHTML =
-    line('STAGE', l.level) + line('LAST DM', l.status) + line('QUAL', qual) +
+    line('STAGE', core.shortStage ? core.shortStage(l.level) : l.level) +
+    line('LAST DM', core.shortStatus ? core.shortStatus(l.status) : l.status) + line('QUAL', qual) +
     (l.pains ? line('PAINS', l.pains) : '<div class="none">No pain points captured.</div>') +
     (l.notes ? '<div><span class="lab">NOTES</span>' + esc(l.notes) + '</div>' : '') +
     '<div class="lk">' +

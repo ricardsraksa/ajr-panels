@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260806f">
+<link rel="modulepreload" href="./crm-core.js?v=20260806g">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -313,7 +313,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260806f';
+import * as core from './crm-core.js?v=20260806g';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'worklist' });
@@ -545,7 +545,10 @@ function rowHtml(l, i, sweep) {
   var done = state.done[l.h];
   var focused = (i === state.cursor && !sweep);
   var dups = state.dupCount.get(l.h) || 1;
-  var note = [l.status, l.notes].filter(Boolean).join(' · ');
+  // Every row in this queue is awaiting a follow-up, so "Follow up Sent" as a
+  // note prefix says nothing and costs the width the actual note needs.
+  var st = l.status === 'Follow up Sent' ? '' : core.shortStatus(l.status);
+  var note = [st, l.notes].filter(Boolean).join(' · ');
   var acts;
   if (done) {
     acts = '<span class="q-done-at">✓ ' + esc(done) + '</span>' +
@@ -560,7 +563,7 @@ function rowHtml(l, i, sweep) {
   }
   return '<div class="v2-row q-row' + (done ? ' done' : '') + (focused ? ' cursor' : '') + '" data-h="' + esc(l.h) + '">' +
     '<a class="q-handle" href="' + esc(l.url || ('https://instagram.com/' + l.h)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
-    '<span class="q-stage">' + esc(l.level || 'no level') + '</span>' +
+    '<span class="q-stage">' + esc(core.shortStage(l.level) || '—') + '</span>' +
     daysBadge(l.lastContact) +
     '<span class="q-note" title="' + esc(note) + '">' +
       (l.qual ? '<span class="q-qual" title="' + esc(l.qual) + '">' + esc(shortQual(l.qual)) + '</span>' : '') +
