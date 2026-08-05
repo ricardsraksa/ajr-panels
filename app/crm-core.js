@@ -561,6 +561,7 @@ export async function ensureDealForLead(lead, when = {}) {
       link: (L && L.ig_url) || row.ig_link || '',
       meeting: (cal && cal.meeting) || (mIso ? isoToDmy(mIso) : ''),
       meetingTime: (cal && cal.time) || mTime,
+      dealId: created.id,   // so the alert can link straight at the deal
     });
   } catch (e) { /* never block the booking */ }
   return { created: true, row: created.id };
