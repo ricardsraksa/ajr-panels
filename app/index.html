@@ -10,35 +10,38 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+/* the sign-in gate is standalone (no sidebar, no baked chrome), so it carries
+   its own copy of the tokens — keep these in step with V2_CSS in crm-core.js */
 :root{
-  --bg:#f9f8f5; --card:#fff; --line:#e6e2da; --line-2:#ddd8cd;
-  --ink:#211f1b; --ink-2:#4d4a42; --ink-3:#6d675b; --muted:#8a8375; --off:#ccc5b6;
-  --go:#2a6a4d; --go-hi:#1d4d37; --red:#b4543e;
-  --font:'Instrument Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+  --bg:#f0f0f3; --card:#fbfbfd; --line:rgba(0,0,0,.07); --line-2:rgba(0,0,0,.12);
+  --ink:#1d1d1f; --ink-2:#3a3a3c; --ink-3:#6e6e73; --muted:#6e6e73; --off:#b9b9bf;
+  --accent:#B0544A; --accent-hi:#8F4238; --go:#1F7A4D; --go-hi:#17603C; --red:#C7392E;
+  --font:-apple-system,'SF Pro Text','SF Pro Display',system-ui,'Instrument Sans',sans-serif;
+  --mono:ui-monospace,'SF Mono','IBM Plex Mono',monospace;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:13px;line-height:1.5;
   min-height:100vh;display:flex;align-items:center;justify-content:center;-webkit-font-smoothing:antialiased}
 button,input{font:inherit;color:inherit}
 button{cursor:pointer;border:none;background:none}
-a{color:var(--go);text-decoration:none}
-a:hover{color:var(--go-hi)}
+a{color:var(--accent);text-decoration:none}
+a:hover{color:var(--accent-hi)}
 :focus{outline:none}
 :focus-visible{outline:2px solid var(--ink);outline-offset:2px;border-radius:6px}
 [hidden]{display:none!important}
 input::placeholder{color:var(--off)}
 .card{width:min(360px,calc(100vw - 40px));background:var(--card);border:1px solid var(--line);
-  border-radius:14px;padding:28px 26px}
-.wm{font-weight:700;font-size:15px;letter-spacing:.02em;margin-bottom:6px}
+  border-radius:14px;padding:28px 26px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.wm{font-weight:700;font-size:15px;letter-spacing:-.01em;margin-bottom:6px}
 .lede{color:var(--muted);font-size:12.5px;margin-bottom:22px;line-height:1.55}
 label{display:block;font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;
   color:var(--muted);margin-bottom:16px}
 input{display:block;width:100%;margin-top:7px;min-height:40px;padding:8px 12px;background:#fff;
   border:1px solid var(--line-2);border-radius:8px;color:var(--ink);font:400 13.5px var(--font)}
 input:focus{border-color:var(--muted)}
-.btn{width:100%;min-height:40px;border-radius:8px;background:var(--ink);color:var(--bg);
-  font:600 13px var(--font);margin-top:4px}
-.btn:hover:not(:disabled){filter:brightness(1.35)}
+.btn{width:100%;min-height:40px;border-radius:8px;background:var(--accent);color:#fff;
+  font:600 13px var(--font);margin-top:4px;transition:background-color .15s ease}
+.btn:hover:not(:disabled){background:var(--accent-hi)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .err{color:var(--red);font-size:12.5px;margin-top:11px;min-height:18px}
 .foot{margin-top:16px;font-size:12px;color:var(--muted);text-align:center}
@@ -62,7 +65,7 @@ input:focus{border-color:var(--muted)}
   <div class="foot"><a href="#" id="forgot">Forgot password?</a></div>
 </div>
 <script type="module">
-import { supa, signIn, isDemo, roleFor } from './crm-core.js?v=20260805d';
+import { supa, signIn, isDemo, roleFor } from './crm-core.js?v=20260805e';
 
 const qs = new URLSearchParams(location.search);
 // Role-based landing. Roles live in the settings table (Settings -> Team), so
