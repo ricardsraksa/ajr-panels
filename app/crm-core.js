@@ -225,7 +225,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260806i';
+const BUILD = '20260806j';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -2488,7 +2488,10 @@ input::placeholder,textarea::placeholder{color:var(--off)}
 .v2-side .me .nm{display:block;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .v2-side .me .rl{display:block;font-size:11px;color:var(--muted-2)}
 .v2-side .me .out{margin-left:auto;color:var(--muted-2);font-size:11px}
-.v2-main{flex:1;min-width:0;padding:30px 36px 80px;max-width:1016px}
+/* No global width cap. A reading width suits a chat or a queue and starves a
+   13-column table — pages that want one set .colw themselves. */
+.v2-main{flex:1;min-width:0;padding:30px 36px 80px}
+.colw{width:100%}
 @media(max-width:900px) and (min-width:761px){.v2-side{width:66px;padding:18px 8px}.v2-side .wm,.v2-side .grp,.v2-side .krow,.v2-side .me .nm,.v2-side .me .rl{display:none}}
 /* phone: the sidebar becomes a scrolling top strip. As a 64px rail it ate a
    third of the screen and wrapped every label onto three lines. */

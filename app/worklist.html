@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260806i">
+<link rel="modulepreload" href="./crm-core.js?v=20260806j">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -42,6 +42,13 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .sweep-list{margin-top:10px}
 .skel{padding:40px;text-align:center;color:var(--muted-2)}
 /* two sections, one page — the day's whole loop */
+/* Desktop shows the whole day at once: follow-ups and the DM queue side by
+   side. Below the breakpoint they stack, which is the phone layout and the
+   right one there. Follow-ups get more room — five columns against two. */
+.two{display:grid;gap:24px;align-items:start}
+.two .col{min-width:0}
+.two .col .sec-h:first-child{margin-top:4px}
+@media(min-width:1480px){ .two{grid-template-columns:1.45fr 1fr;gap:34px} }
 .sec-h{display:flex;align-items:baseline;gap:9px;margin:26px 0 11px;
   font:600 10.5px var(--font);letter-spacing:.07em;text-transform:uppercase;color:var(--muted-2)}
 .sec-h:first-of-type{margin-top:4px}
@@ -273,6 +280,8 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
   </section>
 
   <div id="app" hidden>
+   <div class="two">
+    <section class="col">
     <div class="sec-h"><span>Follow up</span><span class="n" id="fuN"></span></div>
     <div class="v2-chips" id="queueFilters"></div>
     <div class="hints" aria-hidden="true">
@@ -291,7 +300,9 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
       <button class="v2-btn" id="sweepToggle">Review &amp; archive</button>
     </section>
     <section class="v2-card sweep-list" id="sweepListCard" hidden><div id="sweepList"></div></section>
+    </section>
 
+    <section class="col">
     <!-- the other half of the day: first DMs out of the uncontacted queue.
          Was its own page, which meant the daily loop spanned two screens and
          the leads you just added were never where you were working. -->
@@ -307,13 +318,15 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
     <div class="v2-card" id="review" hidden style="margin-bottom:16px"></div>
     <div class="v2-card" id="queue"><div class="v2-empty" id="skel">Loading…</div></div>
+    </section>
+   </div>
   </div>
 </main>
 
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260806i';
+import * as core from './crm-core.js?v=20260806j';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'worklist' });

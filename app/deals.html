@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260806i">
+<link rel="modulepreload" href="./crm-core.js?v=20260806j">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -42,6 +42,7 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .calrow .lab{font:600 9.5px var(--mono);letter-spacing:.1em;color:var(--accent);flex:none}
 /* call sheet — everything the closer needs before dialling, assembled from
    the lead we already hold in memory. Was Slack-only until now. */
+.colw{max-width:1180px}
 .sheet{margin-bottom:14px;padding:0}
 /* live lead state inside the deal drawer — the deal's own notes are frozen at
    booking time, so this is the half that keeps changing */
@@ -553,7 +554,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260806i';
+import * as core from './crm-core.js?v=20260806j';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
