@@ -2432,6 +2432,9 @@ input::placeholder,textarea::placeholder{color:var(--off)}
 .v2-btn.go:hover:not(:disabled){background:var(--accent-hi);border-color:var(--accent-hi);color:#fff}
 .v2-btn.goline{background:transparent;border-color:var(--accent-line);color:var(--accent)}
 .v2-btn.goline:hover:not(:disabled){background:var(--accent-tint);color:var(--accent);border-color:var(--accent-line)}
+/* completion, not action: "Sent", "Mark as cold", "logged" all read green */
+.v2-btn.doneline{background:#fff;border-color:var(--go-line);color:var(--go)}
+.v2-btn.doneline:hover:not(:disabled){background:var(--go-tint);color:var(--go);border-color:var(--go-line)}
 .v2-btn.dark{background:var(--ink);border-color:var(--ink);color:#fbfbfd}
 .v2-btn.dark:hover:not(:disabled){filter:brightness(1.35)}
 .v2-btn.dash{border-style:dashed;color:var(--muted);font-weight:500;background:transparent}

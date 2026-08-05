@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260805e">
+<link rel="modulepreload" href="./crm-core.js?v=20260805g">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -215,6 +215,9 @@ input::placeholder,textarea::placeholder{color:var(--off)}
 .v2-btn.go:hover:not(:disabled){background:var(--accent-hi);border-color:var(--accent-hi);color:#fff}
 .v2-btn.goline{background:transparent;border-color:var(--accent-line);color:var(--accent)}
 .v2-btn.goline:hover:not(:disabled){background:var(--accent-tint);color:var(--accent);border-color:var(--accent-line)}
+/* completion, not action: "Sent", "Mark as cold", "logged" all read green */
+.v2-btn.doneline{background:#fff;border-color:var(--go-line);color:var(--go)}
+.v2-btn.doneline:hover:not(:disabled){background:var(--go-tint);color:var(--go);border-color:var(--go-line)}
 .v2-btn.dark{background:var(--ink);border-color:var(--ink);color:#fbfbfd}
 .v2-btn.dark:hover:not(:disabled){filter:brightness(1.35)}
 .v2-btn.dash{border-style:dashed;color:var(--muted);font-weight:500;background:transparent}
@@ -390,7 +393,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260805e';
+import * as core from './crm-core.js?v=20260805g';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'log-lead' });
