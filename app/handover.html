@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260805g">
+<link rel="modulepreload" href="./crm-core.js?v=20260805h">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f0f0f3}</style>
 <script type="module" blocking="render">
@@ -15,18 +15,18 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 <style>
 .colw{max-width:760px}
 .hrow{display:flex;align-items:center;gap:11px;flex-wrap:wrap;padding:13px 16px;border:1px solid #e8d9b4;
-  border-radius:12px;background:#faf3e6;font-size:13px;color:#4d4a42;margin-bottom:9px}
-.hrow .who{font-weight:700;color:#211f1b}
-.hrow .who a{color:#211f1b;text-decoration:none}
-.hrow .who a:hover{text-decoration:underline;text-decoration-color:#ccc5b6}
+  border-radius:12px;background:var(--amber-tint);font-size:13px;color:var(--ink-2);margin-bottom:9px}
+.hrow .who{font-weight:700;color:var(--ink)}
+.hrow .who a{color:var(--ink);text-decoration:none}
+.hrow .who a:hover{text-decoration:underline;text-decoration-color:var(--off)}
 .hrow .sp{flex:1}
-.hrow .meta{color:#8a8375;font-size:12.5px}
-.hrow button{min-height:32px;padding:0 13px;border-radius:8px;border:1px solid #e0cba0;background:#fff;
-  color:#a8762a;font-weight:600;font-size:12.5px;cursor:pointer}
+.hrow .meta{color:var(--muted);font-size:12.5px}
+.hrow button{min-height:32px;padding:0 13px;border-radius:8px;border:1px solid var(--amber);background:#fff;
+  color:var(--amber);font-weight:600;font-size:12.5px;cursor:pointer}
 .hrow button:hover{background:#f5ead2}
 .hrow button:disabled{opacity:.5}
-.allclear{padding:44px 20px;text-align:center;color:#8a8375;font-size:13px}
-.allclear b{display:block;color:#2a6a4d;font-size:15px;margin-bottom:6px}
+.allclear{padding:44px 20px;text-align:center;color:var(--muted);font-size:13px}
+.allclear b{display:block;color:var(--go);font-size:15px;margin-bottom:6px}
 </style>
 <!--baked:head-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -233,7 +233,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260805g';
+import * as core from './crm-core.js?v=20260805h';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
@@ -249,7 +249,7 @@ function render() {
   $('list').innerHTML = miss.length ? miss.map((l) =>
     '<div class="hrow" data-id="' + esc(l.id) + '">' +
       '<span class="who"><a href="' + esc(l.url || 'https://instagram.com/' + l.h) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a></span>' +
-      (l.level === 'Closed' ? '<span class="meta" style="color:#b4543e;font-weight:600">CLOSED, never recorded</span>' : '') +
+      (l.level === 'Closed' ? '<span class="meta" style="color:var(--red);font-weight:600">CLOSED, never recorded</span>' : '') +
       (l.qual ? '<span class="meta">' + esc(l.qual) + '</span>' : '') +
       (l.lastContact ? '<span class="meta">last touch ' + esc(l.lastContact) + '</span>' : '') +
       (l.notes ? '<span class="meta" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px" title="' + esc(l.notes) + '">' + esc(core.notesOneLine(l.notes)) + '</span>' : '') +

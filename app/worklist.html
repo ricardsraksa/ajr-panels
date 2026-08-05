@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260805g">
+<link rel="modulepreload" href="./crm-core.js?v=20260805h">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -286,7 +286,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260805g';
+import * as core from './crm-core.js?v=20260805h';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'worklist' });
@@ -538,7 +538,7 @@ function rowHtml(l, i, sweep) {
     '<span class="q-note" title="' + esc(note) + '">' +
       (l.qual ? '<span class="q-qual" title="' + esc(l.qual) + '">' + esc(shortQual(l.qual)) + '</span>' : '') +
       '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(note) + '</span>' +
-      (dups > 1 ? '<span class="dot">·</span><span style="color:#98917f;white-space:nowrap">' + dups + ' rows</span>' : '') +
+      (dups > 1 ? '<span class="dot">·</span><span style="color:var(--muted-2);white-space:nowrap">' + dups + ' rows</span>' : '') +
     '</span>' +
     '<span class="q-acts">' + acts + '</span>' +
   '</div>';
@@ -714,7 +714,7 @@ function start() { runBootstrap(true); }
 function boot() {
   if (typeof window.CRMParse === 'undefined') {
     document.querySelector('.v2-main').insertAdjacentHTML('beforeend',
-      '<section class="v2-card" style="padding:20px;color:#b4543e">parser.js failed to load — keep it next to worklist.html.</section>');
+      '<section class="v2-card" style="padding:20px;color:var(--red)">parser.js failed to load — keep it next to worklist.html.</section>');
     return;
   }
   restoreFilters();

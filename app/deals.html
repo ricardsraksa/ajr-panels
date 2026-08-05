@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260805g">
+<link rel="modulepreload" href="./crm-core.js?v=20260805h">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -17,127 +17,127 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 </script>
 <title>Deals · AJR</title>
 <style>
-:root{--faint:#98917f}
+:root{--faint:var(--muted-2)}
 .d-thead,.d-row{grid-template-columns:124px 88px 60px 74px 62px minmax(0,1fr)}
 .d-row{cursor:pointer}
 .d-min{min-width:600px}
 .dname{font-weight:600;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:7px}
-.dname a.ig{color:#211f1b;text-decoration:none;overflow:hidden;text-overflow:ellipsis}
-.dname a.ig:hover{text-decoration:underline;text-decoration-color:#ccc5b6}
-.d-cell{font-size:12.5px;color:#4d4a42;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.d-cell.dim{color:#8a8375}
-.d-none{color:#ddd8cd}   /* an empty cell should read as absence, not as data */
-.st-amber{color:#a8762a}
-.st-red{color:#b4543e}
-.st-green{color:#2a6a4d;font-weight:600}
-.row-won{background:#f7faf7}
-.d-mono{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d675b}
-.d-mono.today{color:#a8762a;font-weight:600}
-.d-mono.late{color:#b4543e;font-weight:600}
-.d-cash{font-family:'IBM Plex Mono',monospace;font-weight:600;color:#2a6a4d;text-align:right}
+.dname a.ig{color:var(--ink);text-decoration:none;overflow:hidden;text-overflow:ellipsis}
+.dname a.ig:hover{text-decoration:underline;text-decoration-color:var(--off)}
+.d-cell{font-size:12.5px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.d-cell.dim{color:var(--muted)}
+.d-none{color:var(--line-2)}   /* an empty cell should read as absence, not as data */
+.st-amber{color:var(--amber)}
+.st-red{color:var(--red)}
+.st-green{color:var(--go);font-weight:600}
+.row-won{background:var(--done)}
+.d-mono{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+.d-mono.today{color:var(--amber);font-weight:600}
+.d-mono.late{color:var(--red);font-weight:600}
+.d-cash{font-family:var(--mono);font-weight:600;color:var(--go);text-align:right}
 /* unlinked calendly booking */
 .calstrip{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
-.calrow{display:flex;align-items:center;gap:9px;padding:6px 11px;border:1px solid #e2d9f4;
-  border-radius:9px;background:#f6f2fb;font-size:12.5px;color:#4d4a42;min-height:34px}
-.calrow .lab{font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#7c56c9;flex:none}
-.calrow .who{font-weight:700;color:#211f1b}
+.calrow{display:flex;align-items:center;gap:9px;padding:6px 11px;border:1px solid var(--accent-line);
+  border-radius:9px;background:var(--accent-tint);font-size:12.5px;color:var(--ink-2);min-height:34px}
+.calrow .lab{font:600 9.5px var(--mono);letter-spacing:.1em;color:var(--accent);flex:none}
+.calrow .who{font-weight:700;color:var(--ink)}
 .calrow .sp{flex:1}
-.calrow select{min-height:26px;padding:0 9px;border:1px solid #ddd8cd;border-radius:8px;background:#fff;font-size:12.5px;max-width:190px;cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:28px;transition:border-color .16s ease, box-shadow .16s ease;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%238a8375%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27m6 9 6 6 6-6%27/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;background-size:13px}
-.calrow select:hover{border-color:#8a8375}
-.calrow select:focus{border-color:#211f1b;outline:none;box-shadow:0 0 0 3px rgba(33,31,27,.07)}
-.calrow .lnk{min-height:26px;padding:0 10px;border-radius:8px;border:1px solid #d5c8ef;background:#fff;color:#7c56c9;font-weight:600;font-size:12.5px}
-.calrow .lnk:hover{background:#f0eafb}
-.calrow .lnk.dim{border-color:#e6e2da;color:#8a8375}
-.calrow .lnk.dim:hover{background:#f4f2ed;color:#4d4a42}
+.calrow select{min-height:26px;padding:0 9px;border:1px solid var(--line-2);border-radius:8px;background:#fff;font-size:12.5px;max-width:190px;cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:28px;transition:border-color .16s ease, box-shadow .16s ease;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%238a8375%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27m6 9 6 6 6-6%27/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;background-size:13px}
+.calrow select:hover{border-color:var(--muted)}
+.calrow select:focus{border-color:var(--ink);outline:none;box-shadow:0 0 0 3px rgba(33,31,27,.07)}
+.calrow .lnk{min-height:26px;padding:0 10px;border-radius:8px;border:1px solid var(--accent-line);background:#fff;color:var(--accent);font-weight:600;font-size:12.5px}
+.calrow .lnk:hover{background:var(--accent-tint)}
+.calrow .lnk.dim{border-color:var(--line);color:var(--muted)}
+.calrow .lnk.dim:hover{background:var(--side);color:var(--ink-2)}
 /* booked leads that never got a deal — amber, so it reads as "needs fixing"
    rather than the purple "needs linking" of an unattached Calendly slot */
-.calrow.miss{border-color:#e8d9b4;background:#faf3e6}
-.calrow.miss .lab{color:#a8762a}
-.calrow.miss .lnk{border-color:#e0cba0;color:#a8762a}
+.calrow.miss{border-color:#e8d9b4;background:var(--amber-tint)}
+.calrow.miss .lab{color:var(--amber)}
+.calrow.miss .lnk{border-color:var(--amber);color:var(--amber)}
 .calrow.miss .lnk:hover{background:#f5ead2}
 /* drawer */
 .scrim{position:fixed;inset:0;background:rgba(33,31,27,.45);opacity:0;pointer-events:none;transition:opacity .18s;z-index:60}
 .scrim.on{opacity:1;pointer-events:auto}
-.drawer{position:fixed;top:0;right:0;height:100vh;width:min(320px,100vw);background:#fdfcf9;
-  border-left:1px solid #e6e2da;transform:translateX(100%);transition:transform .2s cubic-bezier(.2,.8,.2,1);
+.drawer{position:fixed;top:0;right:0;height:100vh;width:min(320px,100vw);background:var(--rowsel);
+  border-left:1px solid var(--line);transform:translateX(100%);transition:transform .2s cubic-bezier(.2,.8,.2,1);
   z-index:70;display:flex;flex-direction:column}
 .drawer.on{transform:none}
-.dhead{padding:18px 20px 12px;border-bottom:1px solid #f0ede6;flex:none}
-.dhead .lab{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#98917f;display:block;margin-bottom:6px}
+.dhead{padding:18px 20px 12px;border-bottom:1px solid var(--divider);flex:none}
+.dhead .lab{font:600 10px var(--mono);letter-spacing:.1em;color:var(--muted-2);display:block;margin-bottom:6px}
 .dhead h2{font-size:16px;font-weight:700;display:inline-block;margin-right:8px}
 .dbody{flex:1;overflow-y:auto;padding:16px 20px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
 .fld{margin-bottom:13px}
-.ctype{display:inline-flex;gap:2px;padding:2px;margin-top:6px;background:#f0ede6;border:1px solid #e6e2da;border-radius:9px}
+.ctype{display:inline-flex;gap:2px;padding:2px;margin-top:6px;background:var(--divider);border:1px solid var(--line);border-radius:9px}
 .ctype button{min-height:32px;padding:5px 15px;border:none;background:none;border-radius:7px;cursor:pointer;
-  font:600 12px 'Instrument Sans',system-ui,sans-serif;color:#6d675b}
-.ctype button:hover{color:#211f1b}
-.ctype button[aria-pressed="true"]{background:#fff;color:#211f1b;box-shadow:0 1px 2px rgba(33,31,27,.07)}
-.fld label{display:flex;align-items:center;gap:6px;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;
-  text-transform:uppercase;color:#98917f;margin-bottom:5px}
-.ai-box{border:1px dashed #ddd8cd;border-radius:12px;padding:13px;margin-bottom:16px}
-.ai-box .lab{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#98917f;display:block;margin-bottom:9px}
+  font:600 12px var(--font);color:var(--ink-3)}
+.ctype button:hover{color:var(--ink)}
+.ctype button[aria-pressed="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(33,31,27,.07)}
+.fld label{display:flex;align-items:center;gap:6px;font:600 10px var(--mono);letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted-2);margin-bottom:5px}
+.ai-box{border:1px dashed var(--line-2);border-radius:12px;padding:13px;margin-bottom:16px}
+.ai-box .lab{font:600 10px var(--mono);letter-spacing:.1em;color:var(--muted-2);display:block;margin-bottom:9px}
 .ai-row{display:flex;gap:8px;align-items:center}
 .ai-row input{flex:1}
-.mic{width:32px;height:32px;flex:none;border-radius:50%;background:#2a6a4d;color:#fff;display:inline-flex;
+.mic{width:32px;height:32px;flex:none;border-radius:50%;background:var(--go);color:#fff;display:inline-flex;
   align-items:center;justify-content:center;font-size:10px}
-.mic.on{background:#b4543e;animation:pul 1.3s ease infinite}
+.mic.on{background:var(--red);animation:pul 1.3s ease infinite}
 @keyframes pul{0%,100%{box-shadow:0 0 0 0 rgba(180,84,62,.4)}50%{box-shadow:0 0 0 9px rgba(180,84,62,0)}}
-.cash-card{border:1px solid #c9dfd2;border-radius:12px;background:#eef5f0;padding:13px 15px;margin-bottom:14px}
-.cash-card .lab{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#2a6a4d;display:block;margin-bottom:7px}
+.cash-card{border:1px solid var(--go-line);border-radius:12px;background:var(--go-tint);padding:13px 15px;margin-bottom:14px}
+.cash-card .lab{font:600 10px var(--mono);letter-spacing:.1em;color:var(--go);display:block;margin-bottom:7px}
 .cash-card .row{display:flex;align-items:center;gap:10px}
-.cash-card input{flex:1;font:600 16px 'IBM Plex Mono',monospace;background:transparent;border:none;color:#211f1b;padding:0}
+.cash-card input{flex:1;font:600 16px var(--mono);background:transparent;border:none;color:var(--ink);padding:0}
 .cash-card input:focus{outline:none}
-.cash-warn{color:#4d4a42;font-size:12px;margin-top:8px}
-.fu-nudge{display:flex;align-items:center;gap:6px;margin:-6px 0 13px;font-size:12px;color:#8a8375}
-.fu-nudge button{min-height:26px;padding:0 9px;border-radius:8px;border:1px solid #ddd8cd;background:#fff;font-size:11.5px;color:#4d4a42}
+.cash-warn{color:var(--ink-2);font-size:12px;margin-top:8px}
+.fu-nudge{display:flex;align-items:center;gap:6px;margin:-6px 0 13px;font-size:12px;color:var(--muted)}
+.fu-nudge button{min-height:26px;padding:0 9px;border-radius:8px;border:1px solid var(--line-2);background:#fff;font-size:11.5px;color:var(--ink-2)}
 /* ===== v2 capture bar: the one place anything gets logged =====
    Replaces the old drawer AI box, the drawer follow-up box and the separate
    close-call popup. Type or speak; confirm the one-line preview; done. */
-.cap{background:#fff;border:1px solid #e6e2da;border-radius:12px;padding:12px 14px;margin-bottom:14px}
+.cap{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
 .cap-row{display:flex;align-items:center;gap:9px}
 .cap-pin{display:inline-flex;align-items:center;gap:6px;flex:none;max-width:190px;min-height:30px;padding:0 6px 0 11px;
-  border-radius:99px;background:#211f1b;color:#f9f8f5;font-size:12.5px;font-weight:600}
-.cap-pin .x{color:#f9f8f5;opacity:.6;font-size:14px;line-height:1;padding:0 3px}
+  border-radius:99px;background:var(--ink);color:var(--bg);font-size:12.5px;font-weight:600}
+.cap-pin .x{color:var(--bg);opacity:.6;font-size:14px;line-height:1;padding:0 3px}
 .cap-pin .x:hover{opacity:1}
 .cap-pin .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cap-in{flex:1;min-width:0}
-.cap-mic{width:34px;height:34px;flex:none;border-radius:50%;background:#2a6a4d;color:#fff;display:inline-flex;
+.cap-mic{width:34px;height:34px;flex:none;border-radius:50%;background:var(--go);color:#fff;display:inline-flex;
   align-items:center;justify-content:center;font-size:11px}
-.cap-mic.on{background:#b4543e;animation:pul 1.3s ease infinite}
-.cap-go{flex:none;min-height:34px;padding:0 15px;border-radius:8px;background:#211f1b;color:#f9f8f5;font-weight:600;font-size:13px}
+.cap-mic.on{background:var(--red);animation:pul 1.3s ease infinite}
+.cap-go{flex:none;min-height:34px;padding:0 15px;border-radius:8px;background:var(--ink);color:var(--bg);font-weight:600;font-size:13px}
 .cap-go:disabled{opacity:.4}
 /* confirm-first preview — nothing is written until this is accepted */
-.cap-prev{margin-top:11px;border-top:1px solid #f0ede6;padding-top:11px;display:flex;align-items:flex-start;gap:11px;flex-wrap:wrap}
-.cap-prev .body{flex:1;min-width:200px;font-size:13px;color:#4d4a42}
-.cap-prev .who{font-weight:700;color:#211f1b}
+.cap-prev{margin-top:11px;border-top:1px solid var(--divider);padding-top:11px;display:flex;align-items:flex-start;gap:11px;flex-wrap:wrap}
+.cap-prev .body{flex:1;min-width:200px;font-size:13px;color:var(--ink-2)}
+.cap-prev .who{font-weight:700;color:var(--ink)}
 .cap-prev .chg{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
-.cap-prev .pill{font:600 11.5px 'IBM Plex Mono',monospace;border:1px solid #e2d9f4;background:#f6f2fb;color:#7c56c9;
+.cap-prev .pill{font:600 11.5px var(--mono);border:1px solid var(--accent-line);background:var(--accent-tint);color:var(--accent);
   border-radius:99px;padding:2px 9px}
-.cap-prev .pill.money{border-color:#c9dfd2;background:#eef5f0;color:#2a6a4d}
-.cap-prev .warn{color:#a8762a;font-size:12px;margin-top:6px}
+.cap-prev .pill.money{border-color:var(--go-line);background:var(--go-tint);color:var(--go)}
+.cap-prev .warn{color:var(--amber);font-size:12px;margin-top:6px}
 .cap-prev .acts{display:flex;gap:7px;flex:none}
-.cap-prev .no{min-height:32px;padding:0 12px;border-radius:8px;border:1px solid #ddd8cd;background:#fff;font-size:12.5px;color:#4d4a42}
-.cap-money{margin-top:10px;border:1px solid #c9dfd2;background:#eef5f0;border-radius:10px;padding:11px 13px}
-.cap-money .amt{font:700 22px 'IBM Plex Mono',monospace;color:#2a6a4d}
-.cap-money .sub{font-size:12px;color:#4d4a42;margin:3px 0 9px}
+.cap-prev .no{min-height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--line-2);background:#fff;font-size:12.5px;color:var(--ink-2)}
+.cap-money{margin-top:10px;border:1px solid var(--go-line);background:var(--go-tint);border-radius:10px;padding:11px 13px}
+.cap-money .amt{font:700 22px var(--mono);color:var(--go)}
+.cap-money .sub{font-size:12px;color:var(--ink-2);margin:3px 0 9px}
 /* "just hopped off a call" — ported from the retired popup */
 .cap-nudge{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 13px;border-radius:10px;
-  border:1px solid #e2d9f4;background:#f6f2fb;font-size:13px;color:#4d4a42}
-.cap-nudge .bdot{width:8px;height:8px;border-radius:50%;background:#7c56c9;flex:none;animation:pul2 1.6s ease infinite}
+  border:1px solid var(--accent-line);background:var(--accent-tint);font-size:13px;color:var(--ink-2)}
+.cap-nudge .bdot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none;animation:pul2 1.6s ease infinite}
 @keyframes pul2{0%,100%{opacity:1}50%{opacity:.35}}
-.cap-nudge .who{font-weight:700;color:#211f1b}
+.cap-nudge .who{font-weight:700;color:var(--ink)}
 .cap-nudge .sp{flex:1}
-.cap-nudge button{min-height:30px;padding:0 12px;border-radius:8px;border:1px solid #d5c8ef;background:#fff;
-  color:#7c56c9;font-weight:600;font-size:12.5px}
-.cap-nudge button.dim{border-color:#e6e2da;color:#8a8375}
-.fu-when{display:flex;align-items:center;gap:5px;margin-top:9px;font-size:11.5px;color:#8a8375}
+.cap-nudge button{min-height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--accent-line);background:#fff;
+  color:var(--accent);font-weight:600;font-size:12.5px}
+.cap-nudge button.dim{border-color:var(--line);color:var(--muted)}
+.fu-when{display:flex;align-items:center;gap:5px;margin-top:9px;font-size:11.5px;color:var(--muted)}
 .fu-when .sp{flex:1}
-.fu-when button{min-height:26px;padding:0 9px;border-radius:8px;border:1px solid #ddd8cd;background:#fff;
-  font-size:11.5px;color:#4d4a42}
-.fu-when button:hover{border-color:#8a8375}
-.fu-when button[aria-pressed="true"]{background:#211f1b;border-color:#211f1b;color:#f9f8f5;font-weight:600}
-.fu-when .fu-go{min-height:28px;padding:0 12px;background:#211f1b;border-color:#211f1b;color:#f9f8f5;
+.fu-when button{min-height:26px;padding:0 9px;border-radius:8px;border:1px solid var(--line-2);background:#fff;
+  font-size:11.5px;color:var(--ink-2)}
+.fu-when button:hover{border-color:var(--muted)}
+.fu-when button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg);font-weight:600}
+.fu-when .fu-go{min-height:28px;padding:0 12px;background:var(--ink);border-color:var(--ink);color:var(--bg);
   font-weight:600;white-space:nowrap;flex:none}
 .fu-when .fu-go:hover{background:#000}
 /* row-level one-click follow-up; hidden until hover so the table stays calm */
@@ -145,28 +145,28 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .rowacts{position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;gap:5px;
   opacity:0;transition:opacity .12s}
 .d-row:hover .rowacts,.rowacts:focus-within{opacity:1}
-.fu-quick{min-height:26px;padding:0 10px;border-radius:8px;border:1px solid #ddd8cd;background:#fff;
-  font:600 11.5px 'Instrument Sans',system-ui,sans-serif;color:#4d4a42;box-shadow:0 1px 3px rgba(33,31,27,.12)}
-.fu-quick[data-won]{border-color:#c9dfd2;color:#2a6a4d}
-.fu-quick[data-lost]{border-color:#e8cdc6;color:#b4543e}
-.fu-quick:hover{border-color:#211f1b;color:#211f1b}
+.fu-quick{min-height:26px;padding:0 10px;border-radius:8px;border:1px solid var(--line-2);background:#fff;
+  font:600 11.5px var(--font);color:var(--ink-2);box-shadow:0 1px 3px rgba(33,31,27,.12)}
+.fu-quick[data-won]{border-color:var(--go-line);color:var(--go)}
+.fu-quick[data-lost]{border-color:#e8cdc6;color:var(--red)}
+.fu-quick:hover{border-color:var(--ink);color:var(--ink)}
 .fu-quick:focus-visible{opacity:1}
-.hist{margin-top:4px;border-top:1px solid #f0ede6;padding-top:13px}
-.hist h3{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#98917f;margin-bottom:8px}
+.hist{margin-top:4px;border-top:1px solid var(--divider);padding-top:13px}
+.hist h3{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);margin-bottom:8px}
 .hist ul{list-style:none}
-.hist li{display:flex;gap:8px;padding:5px 0;font-size:12px;color:#4d4a42}
-.hist .who{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d675b;flex:none}
-.hist .who.ai{color:#7c56c9}
+.hist li{display:flex;gap:8px;padding:5px 0;font-size:12px;color:var(--ink-2)}
+.hist .who{font-family:var(--mono);font-size:11px;color:var(--ink-3);flex:none}
+.hist .who.ai{color:var(--accent)}
 .hist .what{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hist .when{color:#98917f;font-size:11px;flex:none}
-.dfoot{padding:13px 20px;border-top:1px solid #f0ede6;flex:none;display:flex;flex-direction:column;gap:8px}
+.hist .when{color:var(--muted-2);font-size:11px;flex:none}
+.dfoot{padding:13px 20px;border-top:1px solid var(--divider);flex:none;display:flex;flex-direction:column;gap:8px}
 .dfoot .v2-btn{width:100%}
 .pick{padding:16px 20px}
 .pick-list{display:flex;flex-direction:column;gap:6px;margin-top:10px;max-height:60vh;overflow-y:auto}
-.pick-list button{text-align:left;padding:9px 12px;border:1px solid #e6e2da;border-radius:9px;background:#fff;font-size:13px}
-.pick-list button:hover{background:#fdfcf9}
+.pick-list button{text-align:left;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:13px}
+.pick-list button:hover{background:var(--rowsel)}
 .pick-list .pn{font-weight:600}
-.pick-list .ps{color:#8a8375;font-size:12px;margin-left:8px}
+.pick-list .ps{color:var(--muted);font-size:12px;margin-left:8px}
 
 </style>
 <!--baked:head-->
@@ -397,9 +397,9 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <!-- inbound deal: straight to the closer, never touches the setter's book -->
 <div id="nd-modal" style="position:fixed;inset:0;z-index:80;background:rgba(33,31,27,.45);display:none;align-items:flex-start;justify-content:center;padding:10vh 16px" hidden>
-  <div style="width:min(400px,100%);background:#f9f8f5;border:1px solid #e6e2da;border-radius:14px;padding:18px 20px">
+  <div style="width:min(400px,100%);background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:18px 20px">
     <div style="font-size:16px;font-weight:700;margin-bottom:3px">New deal</div>
-    <div style="color:#8a8375;font-size:12.5px;margin-bottom:14px">For inbound leads. Goes straight to the closing CRM, not the setter's book.</div>
+    <div style="color:var(--muted);font-size:12.5px;margin-bottom:14px">For inbound leads. Goes straight to the closing CRM, not the setter's book.</div>
     <div class="fld"><label>Name or @handle</label><input class="v2-in" id="nd-name" placeholder="@brandowner or Jane Doe" spellcheck="false"></div>
     <div class="g2">
       <div class="fld"><label>Meeting</label><input class="v2-in" id="nd-meeting" type="date"></div>
@@ -421,7 +421,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
     <h2 id="d-name">Deal</h2>
     <button class="v2-btn sm" id="d-close" style="float:right;min-height:24px;padding:0 8px">×</button>
     <div id="f-ff-wrap" hidden style="margin-top:4px">
-      <span class="lab" style="font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#98917f;display:block;margin-bottom:4px">Calls</span>
+      <span class="lab" style="font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);display:block;margin-bottom:4px">Calls</span>
       <div id="f-calls" style="display:flex;flex-direction:column;gap:4px;font-size:12.5px"></div>
     </div>
   </div>
@@ -471,7 +471,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
     <div class="cash-card">
       <span class="lab">Cash collected<span class="v2-ai" id="tag-f-cash" hidden style="margin-left:6px">AI</span></span>
       <div class="row">
-        <span style="font:600 16px 'IBM Plex Mono',monospace;color:#2a6a4d">$</span>
+        <span style="font:600 16px var(--mono);color:var(--go)">$</span>
         <input id="f-cash" type="number" min="0" step="1" inputmode="numeric" placeholder="0">
       </div>
       <div class="cash-warn" id="cash-warn" hidden></div>
@@ -506,7 +506,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260805g';
+import * as core from './crm-core.js?v=20260805h';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
@@ -605,7 +605,7 @@ function render() {
     <div class="v2-row d-row${d.status === 'Closed' ? ' row-won' : ''}" data-id="${d.row}">
       <span class="dname">${d.link
         ? `<a class="ig" href="${esc(d.link)}" target="_blank" rel="noopener" title="Open Instagram">${esc(displayName(d))}</a>`
-        : esc(displayName(d))}${d.hasFF ? '<span title="Call transcript attached" style="color:#2a6a4d">◆</span>' : ''}</span>
+        : esc(displayName(d))}${d.hasFF ? '<span title="Call transcript attached" style="color:var(--go)">◆</span>' : ''}</span>
       <span>${statusBadge(d.status)}</span>
       ${dateCell(d.meeting)}
       ${dateCell(d.followup, true)}
@@ -679,7 +679,7 @@ function openDrawer(id) {
     $('f-calls').innerHTML = calls.map((c) => {
       const day = c.at ? esc(String(c.at).slice(8, 10) + '/' + String(c.at).slice(5, 7)) : '';
       return '<a href="' + esc(c.url) + '" target="_blank" rel="noopener">' +
-        (day ? '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11.5px;color:#8a8375">' + day + '</span> · ' : '') +
+        (day ? '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11.5px;color:var(--muted)">' + day + '</span> · ' : '') +
         esc(c.title) + ' ↗</a>';
     }).join('');
     ffWrap.hidden = false;
@@ -892,7 +892,7 @@ async function pollPending() {
     cap.pendingId = fresh.id;
     el.hidden = false;
     el.innerHTML = '<span class="bdot"></span><div style="flex:1;min-width:0">' +
-      '<div style="font:600 10px \'IBM Plex Mono\',monospace;letter-spacing:.1em;color:#7c56c9">JUST HOPPED OFF A CALL</div>' +
+      '<div style="font:600 10px \'IBM Plex Mono\',monospace;letter-spacing:.1em;color:var(--accent)">JUST HOPPED OFF A CALL</div>' +
       '<div class="who">' + esc(displayName(d)) + '</div></div>' +
       '<button id="nudgeLog">Log it</button><button class="dim" id="nudgeSkip">Not now</button>';
     $('nudgeLog').onclick = () => { capPin(d.row); $('capIn').focus(); };
@@ -1094,7 +1094,7 @@ async function missingChip() {
     return '<a class="calrow miss" href="handover.html" style="text-decoration:none">' +
       '<span class="lab">HANDOVER</span>' +
       '<span>' + miss.length + ' lead' + (miss.length === 1 ? '' : 's') + ' missing from deals</span>' +
-      '<span class="sp"></span><span style="color:#a8762a;font-weight:600">Review →</span></a>';
+      '<span class="sp"></span><span style="color:var(--amber);font-weight:600">Review →</span></a>';
   } catch (e) { return ''; }
 }
 async function loadStrip() {

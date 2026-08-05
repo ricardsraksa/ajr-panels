@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260805g">
+<link rel="modulepreload" href="./crm-core.js?v=20260805h">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f0f0f3}</style>
 <script type="module" blocking="render">
@@ -16,39 +16,39 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 </script>
 <title>Settings · AJR</title>
 <style>
-.demo-banner{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;
-  color:#8a8375;text-align:center;padding:6px 12px;border:1px solid #e6e2da;border-radius:8px;
-  background:#f4f2ed;margin-bottom:14px}
+.demo-banner{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);text-align:center;padding:6px 12px;border:1px solid var(--line);border-radius:8px;
+  background:var(--side);margin-bottom:14px}
 .colw{max-width:640px}
-.card{background:#fff;border:1px solid #e6e2da;border-radius:12px;margin-bottom:16px}
-.card h2{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#98917f;
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:16px}
+.card h2{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);
   padding:14px 18px 0}
-.card .sub{color:#8a8375;font-size:12.5px;padding:5px 18px 0}
+.card .sub{color:var(--muted);font-size:12.5px;padding:5px 18px 0}
 .rows{list-style:none;padding:10px 0 4px}
-.rows li{display:flex;align-items:center;gap:11px;padding:9px 18px;border-top:1px solid #f0ede6;font-size:13px}
+.rows li{display:flex;align-items:center;gap:11px;padding:9px 18px;border-top:1px solid var(--divider);font-size:13px}
 .rows li:first-child{border-top:none}
-.rows .k{color:#4d4a42;flex:1}
-.rows .v{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d675b}
+.rows .k{color:var(--ink-2);flex:1}
+.rows .v{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
 .st{width:8px;height:8px;border-radius:50%;flex:none}
-.st.ok{background:#2a6a4d}.st.warn{background:#a8762a}.st.bad{background:#b4543e}.st.off{background:#ccc5b6}
-.rows li.stale{background:#faf3e6;box-shadow:inset 3px 0 0 #a8762a}
-.rows li.stale .k{color:#a8762a}
-.blk{padding:12px 18px 16px;border-top:1px solid #f0ede6}
+.st.ok{background:var(--go)}.st.warn{background:var(--amber)}.st.bad{background:var(--red)}.st.off{background:var(--off)}
+.rows li.stale{background:var(--amber-tint);box-shadow:inset 3px 0 0 var(--amber)}
+.rows li.stale .k{color:var(--amber)}
+.blk{padding:12px 18px 16px;border-top:1px solid var(--divider)}
 .blk:first-of-type{border-top:none}
 .blk .nm{font-size:13px;font-weight:600;margin-bottom:3px}
-.blk .hint{color:#8a8375;font-size:12px;margin-bottom:9px}
+.blk .hint{color:var(--muted);font-size:12px;margin-bottom:9px}
 .urlbox{display:flex;gap:8px;flex-wrap:wrap}
-.urlbox input{flex:1;min-width:180px;font-family:'IBM Plex Mono',monospace;font-size:11.5px}
+.urlbox input{flex:1;min-width:180px;font-family:var(--mono);font-size:11.5px}
 .msg{font-size:12.5px;margin-top:9px;min-height:16px}
-.msg.ok{color:#2a6a4d}.msg.err{color:#b4543e}
-.team-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid #f0ede6}
+.msg.ok{color:var(--go)}.msg.err{color:var(--red)}
+.team-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--divider)}
 .team-row:first-child{border-top:none}
 .team-row .em{flex:1;font-size:13px}
 .team-row select{width:auto;min-width:110px}
-.rule-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid #f0ede6}
+.rule-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--divider)}
 .rule-row:first-child{border-top:none}
-.rule-row .k{flex:1;font-size:13px;color:#4d4a42}
-.rule-row input{width:74px;text-align:center;font-family:'IBM Plex Mono',monospace}
+.rule-row .k{flex:1;font-size:13px;color:var(--ink-2)}
+.rule-row input{width:74px;text-align:center;font-family:var(--mono)}
 </style>
 <!--baked:head-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -307,7 +307,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
     <div class="sub">The Dashboard and the daily Slack report measure against these.</div>
     <div class="blk" id="targets"></div>
     <div class="blk"><div class="rule-row"><span class="k">Currency symbol<br>
-      <span style="color:#98917f;font-size:11.5px">how deal values print on the Dashboard</span></span>
+      <span style="color:var(--muted-2);font-size:11.5px">how deal values print on the Dashboard</span></span>
       <input class="v2-in" id="currency" maxlength="4" style="max-width:90px"></div></div>
     <div class="blk" style="padding-top:0">
       <button class="v2-btn dark" id="targets-save">Save targets</button>
@@ -333,7 +333,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
       <div class="ff-row" style="margin-bottom:8px">
         <input class="v2-in" id="kn-title" placeholder="doc title, e.g. Objection scripts v2" spellcheck="false">
       </div>
-      <textarea class="v2-in" id="kn-content" rows="6" placeholder="paste the content…" style="width:100%;font-size:12.5px;font-family:'IBM Plex Mono',monospace;resize:vertical"></textarea>
+      <textarea class="v2-in" id="kn-content" rows="6" placeholder="paste the content…" style="width:100%;font-size:12.5px;font-family:var(--mono);resize:vertical"></textarea>
       <div class="ff-row" style="margin-top:8px">
         <button class="v2-btn dark" id="kn-save">Add doc</button>
         <button class="v2-btn" id="kn-cancel" hidden>Cancel edit</button>
@@ -345,7 +345,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 
 <script type="module">
-import * as core from './crm-core.js?v=20260805g';
+import * as core from './crm-core.js?v=20260805h';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'settings' });
@@ -516,7 +516,7 @@ const RULE_DEFS = [
 let rules = {};
 function renderRules() {
   $('rules').innerHTML = RULE_DEFS.map(([k, label, hint]) =>
-    `<div class="rule-row"><span class="k">${esc(label)}<br><span style="color:#98917f;font-size:11.5px">${esc(hint)}</span></span>` +
+    `<div class="rule-row"><span class="k">${esc(label)}<br><span style="color:var(--muted-2);font-size:11.5px">${esc(hint)}</span></span>` +
     `<input class="v2-in" type="number" min="1" max="365" data-r="${k}" value="${Number(rules[k]) || ''}"></div>`).join('');
 }
 $('rules-save').onclick = async () => {
@@ -545,7 +545,7 @@ const TIME_DEFS = [
 let alertTimes = {};
 function renderTimes() {
   $('alerttimes').innerHTML = TIME_DEFS.map(([k, label, hint]) =>
-    `<div class="rule-row"><span class="k">${esc(label)}<br><span style="color:#98917f;font-size:11.5px">${esc(hint)}</span></span>` +
+    `<div class="rule-row"><span class="k">${esc(label)}<br><span style="color:var(--muted-2);font-size:11.5px">${esc(hint)}</span></span>` +
     `<input class="v2-in" type="time" step="900" data-time="${k}" value="${esc(alertTimes[k] || '')}" style="width:110px"></div>`).join('');
 }
 $('times-save').onclick = async () => {
@@ -579,7 +579,7 @@ const TARGET_DEFS = [
 let targets = {};
 function renderTargets() {
   $('targets').innerHTML = TARGET_DEFS.map(([k, label, hint]) =>
-    `<div class="rule-row"><span class="k">${esc(label)}<br><span style="color:#98917f;font-size:11.5px">${esc(hint)}</span></span>` +
+    `<div class="rule-row"><span class="k">${esc(label)}<br><span style="color:var(--muted-2);font-size:11.5px">${esc(hint)}</span></span>` +
     `<input class="v2-in" type="number" min="0" max="1000" data-t="${k}" value="${Number(targets[k]) || 0}"></div>`).join('');
 }
 $('targets-save').onclick = async () => {
@@ -625,11 +625,11 @@ async function renderKn() {
     ul.innerHTML = docs.length ? docs.map((d) =>
       '<li><span class="k">' + esc(d.title) + '</span>' +
       '<span class="v">' + Math.round(d.size / 1000) + 'k · ' + esc(String(d.updated_at || '').slice(0, 10)) + '</span>' +
-      '<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#6d675b;cursor:pointer">' +
-        '<input type="checkbox" data-kn-on="' + d.id + '"' + (d.enabled ? ' checked' : '') + ' style="accent-color:#2a6a4d">on</label>' +
+      '<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-3);cursor:pointer">' +
+        '<input type="checkbox" data-kn-on="' + d.id + '"' + (d.enabled ? ' checked' : '') + ' style="accent-color:var(--go)">on</label>' +
       '<button class="v2-btn sm" data-kn-edit="' + d.id + '">Edit</button>' +
-      '<button class="v2-btn sm" data-kn-del="' + d.id + '" style="color:#b4543e">Delete</button></li>').join('')
-      : '<li><span class="k" style="color:#8a8375">No docs yet — the assistant runs on the built-in playbook definitions only.</span></li>';
+      '<button class="v2-btn sm" data-kn-del="' + d.id + '" style="color:var(--red)">Delete</button></li>').join('')
+      : '<li><span class="k" style="color:var(--muted)">No docs yet — the assistant runs on the built-in playbook definitions only.</span></li>';
   } catch (e) { ul.innerHTML = '<li><span class="k">Couldn’t load: ' + esc(e.message) + '</span></li>'; }
 }
 $('kn-list').addEventListener('click', async (e) => {

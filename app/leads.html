@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260805g">
+<link rel="modulepreload" href="./crm-core.js?v=20260805h">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -19,75 +19,75 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 <style>
 /* the column set is user-chosen, so the track list is computed per render */
 .l-thead,.l-row{grid-template-columns:var(--l-cols,26px 116px 100px 120px 58px 50px minmax(0,1fr))}
-.l-tick{width:15px;height:15px;flex:none;cursor:pointer;accent-color:#2a6a4d;align-self:center}
+.l-tick{width:15px;height:15px;flex:none;cursor:pointer;accent-color:var(--go);align-self:center}
 /* sheet-style cells: plain text until hovered/focused, then obviously editable */
 .l-edit{width:100%;min-width:0;border:1px solid transparent;border-radius:6px;background:none;
-  font:inherit;font-size:12.5px;color:#4d4a42;padding:2px 16px 2px 5px;cursor:pointer;
+  font:inherit;font-size:12.5px;color:var(--ink-2);padding:2px 16px 2px 5px;cursor:pointer;
   appearance:none;-webkit-appearance:none;text-overflow:ellipsis;
   background-repeat:no-repeat;background-position:right 3px center;background-size:12px;
   transition:border-color .16s ease, background-color .16s ease, box-shadow .16s ease}
 /* the chevron only appears on hover/focus, so the table still reads as text —
    the space for it is always reserved, so nothing shifts */
-.l-edit:hover,.l-edit:focus{border-color:#ddd8cd;background-color:#fff;
+.l-edit:hover,.l-edit:focus{border-color:var(--line-2);background-color:#fff;
   background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8375' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")}
-.l-edit:focus{border-color:#8a8375;outline:none;box-shadow:0 0 0 3px rgba(33,31,27,.07)}
+.l-edit:focus{border-color:var(--muted);outline:none;box-shadow:0 0 0 3px rgba(33,31,27,.07)}
 .l-edit.busy{opacity:.5}
-.l-edit.booked{color:#2a6a4d;font-weight:600}
-.l-edit.noclose{color:#b4543e}
-.l-edit.q3{color:#2a6a4d;font-weight:600}
+.l-edit.booked{color:var(--go);font-weight:600}
+.l-edit.noclose{color:var(--red)}
+.l-edit.q3{color:var(--go);font-weight:600}
 .l-edit.qun{color:#a29a89}
 /* column picker */
 .colwrap{position:relative;display:inline-flex}
 .colpop{position:absolute;top:calc(100% + 6px);left:0;z-index:40;min-width:186px;padding:6px;
-  background:#fff;border:1px solid #e6e2da;border-radius:11px;
+  background:#fff;border:1px solid var(--line);border-radius:11px;
   box-shadow:0 12px 30px rgba(33,31,27,.13),0 2px 6px rgba(33,31,27,.06);
   animation:colpop .13s ease}
 @keyframes colpop{from{opacity:0;transform:translateY(-4px)}}
-.colpop .ttl{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;
-  color:#98917f;padding:6px 9px 7px}
+.colpop .ttl{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted-2);padding:6px 9px 7px}
 .colpop label{display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:7px;
-  font-size:13px;color:#211f1b;cursor:pointer;user-select:none}
+  font-size:13px;color:var(--ink);cursor:pointer;user-select:none}
 .colpop label:hover{background:#f4f1ea}
 .colpop label.lock{color:#a29a89;cursor:default}
 .colpop label.lock:hover{background:none}
-.colpop input{width:14px;height:14px;flex:none;accent-color:#211f1b;cursor:pointer}
+.colpop input{width:14px;height:14px;flex:none;accent-color:var(--ink);cursor:pointer}
 .colpop input:disabled{cursor:default}
-.colpop .foot{border-top:1px solid #f0ede6;margin-top:5px;padding:7px 9px 3px}
-.colpop .foot button{font:inherit;font-size:12px;color:#8a8375;background:none;border:0;padding:0;cursor:pointer}
-.colpop .foot button:hover{color:#211f1b;text-decoration:underline}
+.colpop .foot{border-top:1px solid var(--divider);margin-top:5px;padding:7px 9px 3px}
+.colpop .foot button{font:inherit;font-size:12px;color:var(--muted);background:none;border:0;padding:0;cursor:pointer}
+.colpop .foot button:hover{color:var(--ink);text-decoration:underline}
 .l-row{cursor:pointer}
-.lh{font-weight:600;font-size:13.5px;color:#211f1b;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lh:hover{color:#211f1b;text-decoration:underline;text-decoration-color:#ccc5b6}
-.l-cell{font-size:12.5px;color:#4d4a42;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.l-cell.dim{color:#8a8375}
-.l-mono{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6d675b}
+.lh{font-weight:600;font-size:13.5px;color:var(--ink);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lh:hover{color:var(--ink);text-decoration:underline;text-decoration-color:var(--off)}
+.l-cell{font-size:12.5px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.l-cell.dim{color:var(--muted)}
+.l-mono{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
 .l-min{min-width:600px}
-.pager{display:flex;align-items:center;gap:10px;padding:11px 18px;border-top:1px solid #f0ede6;color:#8a8375;font-size:12.5px}
+.pager{display:flex;align-items:center;gap:10px;padding:11px 18px;border-top:1px solid var(--divider);color:var(--muted);font-size:12.5px}
 .pager .sp{flex:1}
 /* drawer */
 .scrim{position:fixed;inset:0;background:rgba(33,31,27,.45);opacity:0;pointer-events:none;transition:opacity .18s;z-index:60}
 .scrim.on{opacity:1;pointer-events:auto}
-.drawer{position:fixed;top:0;right:0;height:100vh;width:min(300px,100vw);background:#fdfcf9;
-  border-left:1px solid #e6e2da;transform:translateX(100%);transition:transform .2s cubic-bezier(.2,.8,.2,1);
+.drawer{position:fixed;top:0;right:0;height:100vh;width:min(300px,100vw);background:var(--rowsel);
+  border-left:1px solid var(--line);transform:translateX(100%);transition:transform .2s cubic-bezier(.2,.8,.2,1);
   z-index:70;display:flex;flex-direction:column}
 .drawer.on{transform:none}
-.dhead{padding:18px 20px 12px;border-bottom:1px solid #f0ede6;flex:none}
-.dhead .lab{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#98917f;display:block;margin-bottom:6px}
+.dhead{padding:18px 20px 12px;border-bottom:1px solid var(--divider);flex:none}
+.dhead .lab{font:600 10px var(--mono);letter-spacing:.1em;color:var(--muted-2);display:block;margin-bottom:6px}
 .dhead h2{font-size:16px;font-weight:700;display:inline-block;margin-right:8px}
 .dbody{flex:1;overflow-y:auto;padding:16px 20px}
-.dbody .meta{color:#8a8375;font-size:12px;font-family:'IBM Plex Mono',monospace;margin-bottom:14px}
+.dbody .meta{color:var(--muted);font-size:12px;font-family:var(--mono);margin-bottom:14px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
 .fld{margin-bottom:13px}
-.fld label{display:block;font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#98917f;margin-bottom:5px}
-.hist{margin-top:4px;border-top:1px solid #f0ede6;padding-top:13px}
-.hist h3{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#98917f;margin-bottom:8px}
+.fld label{display:block;font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);margin-bottom:5px}
+.hist{margin-top:4px;border-top:1px solid var(--divider);padding-top:13px}
+.hist h3{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);margin-bottom:8px}
 .hist ul{list-style:none}
-.hist li{display:flex;gap:8px;padding:5px 0;font-size:12px;color:#4d4a42}
-.hist .who{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6d675b;flex:none}
-.hist .who.ai{color:#7c56c9}
+.hist li{display:flex;gap:8px;padding:5px 0;font-size:12px;color:var(--ink-2)}
+.hist .who{font-family:var(--mono);font-size:11px;color:var(--ink-3);flex:none}
+.hist .who.ai{color:var(--accent)}
 .hist .what{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hist .when{color:#98917f;font-size:11px;flex:none}
-.dfoot{padding:13px 20px;border-top:1px solid #f0ede6;flex:none;display:flex;flex-direction:column;gap:8px}
+.hist .when{color:var(--muted-2);font-size:11px;flex:none}
+.dfoot{padding:13px 20px;border-top:1px solid var(--divider);flex:none;display:flex;flex-direction:column;gap:8px}
 .dfoot .v2-btn{width:100%}
 /* outreach pool */
 /* floating batch bar: the real one sits at the top of the table and scrolls
@@ -95,14 +95,14 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .fbar{position:fixed;left:50%;transform:translateX(-50%) translateY(8px);
   bottom:calc(18px + env(safe-area-inset-bottom));z-index:75;
   display:flex;align-items:center;gap:12px;padding:9px 10px 9px 16px;
-  background:#fff;border:1px solid #e6e2da;border-radius:999px;
+  background:#fff;border:1px solid var(--line);border-radius:999px;
   box-shadow:0 10px 30px rgba(33,31,27,.16),0 2px 6px rgba(33,31,27,.07);
-  font-size:13px;color:#4d4a42;max-width:calc(100vw - 24px);
+  font-size:13px;color:var(--ink-2);max-width:calc(100vw - 24px);
   opacity:0;pointer-events:none;transition:opacity .16s ease, transform .16s ease}
 .fbar.on{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
-.fbar b{font-family:'IBM Plex Mono',monospace;color:#211f1b}
-.fbar .sent{color:#2a6a4d;font-weight:600;white-space:nowrap}
-.fbar .dot{color:#ddd8cd}
+.fbar b{font-family:var(--mono);color:var(--ink)}
+.fbar .sent{color:var(--go);font-weight:600;white-space:nowrap}
+.fbar .dot{color:var(--line-2)}
 .fbar .lab{white-space:nowrap}
 .fbar button{white-space:nowrap}
 /* toasts land bottom-centre too — lift them above the bar instead of under it */
@@ -113,32 +113,32 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
   .fbar.on{transform:translateY(0)}
   .fbar .lab{display:none}
 }
-.poolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid #f0ede6;font-size:13px;color:#4d4a42}
+.poolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--divider);font-size:13px;color:var(--ink-2)}
 .poolbar .sp{flex:1}
-.poolbar b{font-family:'IBM Plex Mono',monospace;color:#211f1b}
+.poolbar b{font-family:var(--mono);color:var(--ink)}
 /* ONE column, like Instagram's list. Three columns filled left-to-right,
    so reading down a column skipped two accounts per line and the order
    looked wrong against the phone — density is worthless if the sequence
    can't be followed. */
 .poolgrid{display:grid;grid-template-columns:1fr}
-.poolcell{display:flex;align-items:center;gap:9px;padding:10px 18px;border-top:1px solid #f0ede6;min-width:0;cursor:pointer}
-.poolcell input{width:15px;height:15px;flex:none;cursor:pointer;accent-color:#2a6a4d}
+.poolcell{display:flex;align-items:center;gap:9px;padding:10px 18px;border-top:1px solid var(--divider);min-width:0;cursor:pointer}
+.poolcell input{width:15px;height:15px;flex:none;cursor:pointer;accent-color:var(--go)}
 .poolcell a{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sentbtn{flex:none;min-height:30px;padding:0 11px;border-radius:8px;border:1px solid #c9dfd2;
-  background:#fff;color:#2a6a4d;font:600 12px 'Instrument Sans',system-ui,sans-serif;cursor:pointer}
-.sentbtn:hover{background:#eef5f0}
+.sentbtn{flex:none;min-height:30px;padding:0 11px;border-radius:8px;border:1px solid var(--go-line);
+  background:#fff;color:var(--go);font:600 12px var(--font);cursor:pointer}
+.sentbtn:hover{background:var(--go-tint)}
 .sentbtn:disabled{opacity:.5}
 .ckspace{width:15px;flex:none}
-.stagetag{flex:none;font:600 9.5px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;
-  color:#4d4a42;background:#f0ede6;border-radius:5px;padding:2px 6px}
-.uptobtn{flex:none;min-height:28px;padding:0 9px;border-radius:7px;border:1px solid #e6e2da;background:#fff;
-  color:#8a8375;font:600 11px 'Instrument Sans',system-ui,sans-serif;cursor:pointer}
-.uptobtn:hover{color:#211f1b;border-color:#ccc5b6}
+.stagetag{flex:none;font:600 9.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-2);background:var(--divider);border-radius:5px;padding:2px 6px}
+.uptobtn{flex:none;min-height:28px;padding:0 9px;border-radius:7px;border:1px solid var(--line);background:#fff;
+  color:var(--muted);font:600 11px var(--font);cursor:pointer}
+.uptobtn:hover{color:var(--ink);border-color:var(--off)}
 .nalbtn{flex:none;width:28px;min-height:28px;border-radius:7px;border:1px solid transparent;background:none;
-  color:#ccc5b6;font-size:13px;cursor:pointer}
-.nalbtn:hover{color:#b4543e;border-color:#e6d3ce;background:#fff}
-.senttoday{flex-wrap:wrap;background:#f7faf7;border-bottom:1px solid #e6e2da}
-.st-h{font:500 12.5px 'IBM Plex Mono',monospace}
+  color:var(--off);font-size:13px;cursor:pointer}
+.nalbtn:hover{color:var(--red);border-color:#e6d3ce;background:#fff}
+.senttoday{flex-wrap:wrap;background:var(--done);border-bottom:1px solid var(--line)}
+.st-h{font:500 12.5px var(--mono)}
 @media(max-width:760px){
   /* three 83px columns on a phone truncated every handle to nothing */
   .poolgrid{grid-template-columns:1fr}
@@ -151,17 +151,17 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
   .poolbar{padding:10px 14px;gap:8px}
   .poolage{font-size:11.5px}
 }
-.poolage{margin-left:auto;font:400 11px 'IBM Plex Mono',monospace;color:#98917f;flex:none}
-.tf{display:inline-flex;background:#f0ede6;border:1px solid #e6e2da;border-radius:9px;padding:2px;gap:2px}
+.poolage{margin-left:auto;font:400 11px var(--mono);color:var(--muted-2);flex:none}
+.tf{display:inline-flex;background:var(--divider);border:1px solid var(--line);border-radius:9px;padding:2px;gap:2px}
 .tf button{border-radius:7px;padding:5px 12px;min-height:30px;border:none;background:none;cursor:pointer;
-  font:600 11.5px 'Instrument Sans',system-ui,sans-serif;color:#6d675b}
-.tf button:hover{color:#211f1b}
-.tf button[aria-pressed="true"]{background:#fff;color:#211f1b;box-shadow:0 1px 2px rgba(33,31,27,.07)}
-.impbar{display:flex;align-items:center;gap:12px;padding:13px 18px;margin-bottom:14px;border:1px solid #c9dfd2;
-  border-radius:12px;background:#eef5f0;color:#4d4a42;font-size:13px}
-.impbar b{font-family:'IBM Plex Mono',monospace;color:#211f1b}
+  font:600 11.5px var(--font);color:var(--ink-3)}
+.tf button:hover{color:var(--ink)}
+.tf button[aria-pressed="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(33,31,27,.07)}
+.impbar{display:flex;align-items:center;gap:12px;padding:13px 18px;margin-bottom:14px;border:1px solid var(--go-line);
+  border-radius:12px;background:var(--go-tint);color:var(--ink-2);font-size:13px}
+.impbar b{font-family:var(--mono);color:var(--ink)}
 .impbar .sp{flex:1}
-.pooldash{border:1px dashed #ddd8cd;border-radius:12px;padding:34px;text-align:center;color:#8a8375}
+.pooldash{border:1px dashed var(--line-2);border-radius:12px;padding:34px;text-align:center;color:var(--muted)}
 </style>
 <!--baked:head-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -415,7 +415,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
     <div class="fld"><label>Notes</label><textarea class="v2-in mono" id="f-notes" style="font-size:12px"></textarea></div>
     <div class="fld"><label>LinkedIn</label><input class="v2-in" id="f-linkedin" type="text"></div>
     <div class="fld" id="lp-fld">
-      <label style="cursor:pointer"><input type="checkbox" id="f-lp" style="width:13px;height:13px;accent-color:#2a6a4d;cursor:pointer;margin-right:2px">Leadpool — their audience is a lead source</label>
+      <label style="cursor:pointer"><input type="checkbox" id="f-lp" style="width:13px;height:13px;accent-color:var(--go);cursor:pointer;margin-right:2px">Leadpool — their audience is a lead source</label>
       <div id="lp-marks" style="display:flex;gap:8px;margin-top:7px" hidden>
         <div class="tf" id="f-lpq" role="group" aria-label="Pool quality">
           <button type="button" data-q="good">Good</button>
@@ -441,7 +441,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260805g';
+import * as core from './crm-core.js?v=20260805h';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -622,11 +622,11 @@ function renderPool() {
   if (!todo.length) {
     t.innerHTML = tabs + '<div class="pooldash" style="margin:18px">' +
       (state.src === 'pool'
-        ? '<div style="font-weight:600;color:#211f1b;margin-bottom:6px">Nothing imported yet</div>' +
+        ? '<div style="font-weight:600;color:var(--ink);margin-bottom:6px">Nothing imported yet</div>' +
           '<div style="margin-bottom:14px">Takes <b>following.json</b> from your Instagram data export, or a CSV with a column of handles or profile links. ' +
           'Pool entries stay out of the lead book and the Worklist.</div>' +
           '<button class="v2-btn dark" id="poolImport2">Import IG following…</button>'
-        : '<div style="font-weight:600;color:#211f1b;margin-bottom:6px">Nobody is overdue</div>' +
+        : '<div style="font-weight:600;color:var(--ink);margin-bottom:6px">Nobody is overdue</div>' +
           '<div>Every live lead has been touched inside the overdue window. Nothing to batch.</div>') +
       '</div>';
     $('count').textContent = state.src === 'pool' ? '0 followed' : '0 due';
@@ -640,7 +640,7 @@ function renderPool() {
         : '<b>' + todo.length.toLocaleString() + '</b><span>waiting on a follow-up</span>') +
       '<span class="sp"></span>' +
       (state.src === 'pool'
-        ? '<span style="color:#8a8375">followed</span>' +
+        ? '<span style="color:var(--muted)">followed</span>' +
           '<div class="tf" id="poolSort" role="group" aria-label="Sort by follow date">' +
             '<button data-sort="new" aria-pressed="' + (state.poolSort === 'new') + '">Newest</button>' +
             '<button data-sort="old" aria-pressed="' + (state.poolSort === 'old') + '">Oldest</button>' +
@@ -655,7 +655,7 @@ function renderPool() {
       (state.prevSel ? '<button class="v2-btn sm" id="selRestore">Restore selection (' + state.prevSel.size + ')</button>' : '') +
       '<button class="v2-btn sm" id="poolCopy">Copy handles</button>' +
       '<span class="sp"></span>' +
-      '<span style="color:#8a8375">counts as</span>' +
+      '<span style="color:var(--muted)">counts as</span>' +
       '<div class="tf" id="kindTabs" role="group" aria-label="Counts as">' +
         '<button data-kind="followup" aria-pressed="' + (state.kind === 'followup') + '">Follow-up</button>' +
         '<button data-kind="cold" aria-pressed="' + (state.kind === 'cold') + '">Cold DM</button>' +
@@ -788,7 +788,7 @@ function renderTable() {
       '<button class="v2-btn sm" id="tableSelAll">Select all ' + rows.length.toLocaleString() + '</button>' +
       (state.sel.size ? '<button class="v2-btn sm" id="tableClear">Clear</button>' : '') +
       '<span class="sp"></span>' +
-      '<span style="color:#8a8375">counts as</span>' +
+      '<span style="color:var(--muted)">counts as</span>' +
       '<div class="tf" id="kindTabs" role="group" aria-label="Counts as">' +
         '<button type="button" data-kind="followup" aria-pressed="' + (state.kind === 'followup') + '">Follow-up</button>' +
         '<button type="button" data-kind="cold" aria-pressed="' + (state.kind === 'cold') + '">Cold DM</button>' +
@@ -800,7 +800,7 @@ function renderTable() {
       switchKindBtn() +
       (state.filter === 'Archive'
         ? '<button class="v2-btn sm" id="purgeBtn"' + (state.sel.size ? '' : ' disabled') +
-          ' style="color:#b4543e;border-color:#e8cec6">Delete ' + (state.sel.size || 0) + ' permanently</button>'
+          ' style="color:var(--red);border-color:rgba(199,57,46,.3)">Delete ' + (state.sel.size || 0) + ' permanently</button>'
         : '') +
     '</div>';
   t.innerHTML = bar + '<div class="v2-scroll"><div class="l-min">' + head + page.map((l) =>
@@ -850,8 +850,8 @@ function cellHtml(l, k) {
   if (k === 'email' || k === 'phone') return `<span class="l-mono" title="${esc(l[k])}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l[k] || '')}</span>`;
   if (k === 'lpmark') {
     if (!l.lp) return '<span class="l-cell dim">—</span>';
-    const q = l.lpQuality === 'good' ? '<span style="color:#2a6a4d;font-weight:600">good</span>'
-      : l.lpQuality === 'bad' ? '<span style="color:#b4543e;font-weight:600">bad</span>' : 'pool';
+    const q = l.lpQuality === 'good' ? '<span style="color:var(--go);font-weight:600">good</span>'
+      : l.lpQuality === 'bad' ? '<span style="color:var(--red);font-weight:600">bad</span>' : 'pool';
     return `<span class="l-cell">${q} · ${l.lpUsed ? 'used' : 'unused'}</span>`;
   }
   return `<span class="l-cell dim" title="${esc(l[k])}">${esc(l[k] || '')}</span>`;

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260805g">
+<link rel="modulepreload" href="./crm-core.js?v=20260805h">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -18,8 +18,8 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 <title>Log a lead · AJR</title>
 <style>
 .wrapc{max-width:720px}
-.demo-banner{font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;
-  color:#8a8375;text-align:center;padding:6px 12px;border-bottom:1px solid #e6e2da;background:#f4f2ed;margin-bottom:16px}
+.demo-banner{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);text-align:center;padding:6px 12px;border-bottom:1px solid var(--line);background:var(--side);margin-bottom:16px}
 @media(max-width:760px){
   /* the handle box was squeezed to ~170px between the mic and the scan button */
   .srch{flex-wrap:wrap}
@@ -30,80 +30,80 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 }
 .srch{display:flex;gap:9px;align-items:center;margin-bottom:16px;position:relative}
 .srch input{flex:1}
-.ac{position:absolute;top:calc(100% + 5px);left:0;right:0;background:#fff;border:1px solid #e6e2da;
+.ac{position:absolute;top:calc(100% + 5px);left:0;right:0;background:#fff;border:1px solid var(--line);
   border-radius:10px;box-shadow:0 12px 30px -14px rgba(33,31,27,.3);z-index:20;overflow:hidden;max-height:300px;overflow-y:auto}
 .ac div{padding:9px 13px;font-size:13px;cursor:pointer;display:flex;gap:9px;align-items:center}
-.ac div:hover,.ac div.on{background:#fdfcf9}
+.ac div:hover,.ac div.on{background:var(--rowsel)}
 .ac .h{font-weight:600}
-.ac .m{color:#8a8375;font-size:12px;margin-left:auto}
-.lead-card{background:#fff;border:1px solid #e6e2da;border-radius:12px;padding:16px 18px;margin-bottom:16px}
+.ac .m{color:var(--muted);font-size:12px;margin-left:auto}
+.lead-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
 .lead-card .top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:5px}
 .lead-card .hh{font-size:15px;font-weight:700}
-.lead-card .meta{color:#6d675b;font-size:12.5px}
-.lead-card .note{color:#4d4a42;font-size:12.5px;margin-top:2px}
+.lead-card .meta{color:var(--ink-3);font-size:12.5px}
+.lead-card .note{color:var(--ink-2);font-size:12.5px;margin-top:2px}
 .sect{margin-bottom:15px}
 .sect > .v2-lab{display:block;margin-bottom:7px}
 .stg{display:flex;gap:7px;flex-wrap:wrap}
-.stg button{min-height:34px;padding:0 14px;border-radius:99px;border:1px solid #ddd8cd;background:#fff;
-  font-size:12.5px;font-weight:500;color:#4d4a42}
-.stg button:hover{border-color:#8a8375;color:#211f1b}
-.stg button.now{border:2px solid #211f1b;background:#f4f2ed;color:#211f1b;font-weight:600}
-.stg button.booked{border-color:#c9dfd2;color:#2a6a4d}
-.stg button.booked:hover{background:#eef5f0}
-.stg.sec button{color:#8a8375;font-size:12px}
+.stg button{min-height:34px;padding:0 14px;border-radius:99px;border:1px solid var(--line-2);background:#fff;
+  font-size:12.5px;font-weight:500;color:var(--ink-2)}
+.stg button:hover{border-color:var(--muted);color:var(--ink)}
+.stg button.now{border:2px solid var(--ink);background:var(--side);color:var(--ink);font-weight:600}
+.stg button.booked{border-color:var(--go-line);color:var(--go)}
+.stg button.booked:hover{background:var(--go-tint)}
+.stg.sec button{color:var(--muted);font-size:12px}
 .chips-r{display:flex;gap:7px;flex-wrap:wrap}
-.chips-r button{min-height:30px;padding:0 12px;border-radius:99px;border:1px solid #ddd8cd;background:#fff;
-  font-size:12px;color:#4d4a42}
-.chips-r button.on{background:#211f1b;border-color:#211f1b;color:#f9f8f5;font-weight:600}
-.chips-r button.hot.on{background:#faf3e6;border-color:#e0cba0;color:#a8762a}
-.conf{display:flex;align-items:center;gap:11px;flex-wrap:wrap;padding:13px 16px;border:1px solid #c9dfd2;
-  border-radius:12px;background:#eef5f0;margin-bottom:15px}
+.chips-r button{min-height:30px;padding:0 12px;border-radius:99px;border:1px solid var(--line-2);background:#fff;
+  font-size:12px;color:var(--ink-2)}
+.chips-r button.on{background:var(--ink);border-color:var(--ink);color:var(--bg);font-weight:600}
+.chips-r button.hot.on{background:var(--amber-tint);border-color:var(--amber);color:var(--amber)}
+.conf{display:flex;align-items:center;gap:11px;flex-wrap:wrap;padding:13px 16px;border:1px solid var(--go-line);
+  border-radius:12px;background:var(--go-tint);margin-bottom:15px}
 .conf .sp{flex:1}
 .recent{margin-top:24px}
 .recent ul{list-style:none;margin-top:8px}
-.recent li{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid #f0ede6;font-size:12.5px;color:#4d4a42}
+.recent li{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--divider);font-size:12.5px;color:var(--ink-2)}
 .recent li:first-child{border-top:none}
-.recent .t{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#98917f;flex:none}
+.recent .t{font-family:var(--mono);font-size:11.5px;color:var(--muted-2);flex:none}
 .recent .sp{flex:1}
-.mic{width:34px;height:34px;flex:none;border-radius:50%;background:#2a6a4d;color:#fff;display:inline-flex;
+.mic{width:34px;height:34px;flex:none;border-radius:50%;background:var(--go);color:#fff;display:inline-flex;
   align-items:center;justify-content:center;font-size:11px}
-.mic.on{background:#b4543e;animation:pul 1.3s ease infinite}
+.mic.on{background:var(--red);animation:pul 1.3s ease infinite}
 @keyframes pul{0%,100%{box-shadow:0 0 0 0 rgba(180,84,62,.4)}50%{box-shadow:0 0 0 9px rgba(180,84,62,0)}}
 .drop{position:fixed;inset:0;background:rgba(33,31,27,.45);z-index:75;display:flex;align-items:center;
-  justify-content:center;color:#f9f8f5;font-size:15px;font-weight:600}
+  justify-content:center;color:var(--bg);font-size:15px;font-weight:600}
 /* dead-token aliases still referenced by scripts */
-:root{--dim:#8a8375;--mono-font:'IBM Plex Mono',ui-monospace,monospace}
+:root{--dim:var(--muted);--mono-font:var(--mono)}
 /* local scanner review cards (lc-*) */
 .lc-top{display:flex;align-items:center;gap:8px;margin-bottom:9px}
-.lc-h{flex:1;min-height:34px;padding:0 11px;background:#fff;border:1px solid #ddd8cd;border-radius:8px;
-  color:#211f1b;font-weight:600;font-size:13.5px}
-.lc-x{width:30px;height:30px;border-radius:8px;color:#8a8375;display:inline-flex;align-items:center;
+.lc-h{flex:1;min-height:34px;padding:0 11px;background:#fff;border:1px solid var(--line-2);border-radius:8px;
+  color:var(--ink);font-weight:600;font-size:13.5px}
+.lc-x{width:30px;height:30px;border-radius:8px;color:var(--muted);display:inline-flex;align-items:center;
   justify-content:center;cursor:pointer;background:none;border:none}
-.lc-x:hover{color:#b4543e}
+.lc-x:hover{color:var(--red)}
 .lc-x svg{width:14px;height:14px}
 .lc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px}
 .lc-grid select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:28px;transition:border-color .16s ease, box-shadow .16s ease;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%238a8375%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27m6 9 6 6 6-6%27/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;background-size:13px}
-.lc-grid select:hover{border-color:#8a8375}
-.lc-grid select:focus{border-color:#211f1b;outline:none;box-shadow:0 0 0 3px rgba(33,31,27,.07)}
-.lc-grid select{width:100%;min-height:32px;padding:4px 9px;background:#fff;border:1px solid #ddd8cd;
-  border-radius:8px;color:#211f1b;font-size:12.5px}
-.lc-note{width:100%;min-height:32px;padding:5px 10px;background:#fff;border:1px solid #ddd8cd;
-  border-radius:8px;color:#211f1b;font-size:12.5px}
-.sc-card .exists{font-size:11px;color:#a8762a;margin-top:6px}
-.thinking{padding:26px;text-align:center;color:#8a8375;font-size:13px}
-.recent-extra{color:#98917f;font-size:11.5px}
+.lc-grid select:hover{border-color:var(--muted)}
+.lc-grid select:focus{border-color:var(--ink);outline:none;box-shadow:0 0 0 3px rgba(33,31,27,.07)}
+.lc-grid select{width:100%;min-height:32px;padding:4px 9px;background:#fff;border:1px solid var(--line-2);
+  border-radius:8px;color:var(--ink);font-size:12.5px}
+.lc-note{width:100%;min-height:32px;padding:5px 10px;background:#fff;border:1px solid var(--line-2);
+  border-radius:8px;color:var(--ink);font-size:12.5px}
+.sc-card .exists{font-size:11px;color:var(--amber);margin-top:6px}
+.thinking{padding:26px;text-align:center;color:var(--muted);font-size:13px}
+.recent-extra{color:var(--muted-2);font-size:11.5px}
 /* screenshot review modal */
 .modal{position:fixed;inset:0;background:rgba(33,31,27,.45);z-index:80;display:flex;align-items:flex-start;
   justify-content:center;padding:40px 20px;overflow-y:auto}
-.modal .box{width:min(680px,100%);background:#f9f8f5;border:1px solid #e6e2da;border-radius:14px}
-.modal .mh{padding:18px 22px;border-bottom:1px solid #e6e2da}
+.modal .box{width:min(680px,100%);background:var(--bg);border:1px solid var(--line);border-radius:14px}
+.modal .mh{padding:18px 22px;border-bottom:1px solid var(--line)}
 .modal .mh h2{font-size:16px;font-weight:700}
-.modal .mh p{color:#8a8375;font-size:12.5px;margin-top:3px}
+.modal .mh p{color:var(--muted);font-size:12.5px;margin-top:3px}
 .modal .mb{padding:16px 22px;display:flex;flex-direction:column;gap:11px}
-.modal .mf{padding:14px 22px;border-top:1px solid #e6e2da;display:flex;align-items:center;gap:10px}
+.modal .mf{padding:14px 22px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px}
 .modal .mf .sp{flex:1}
-.sc-card{background:#fff;border:1px solid #e6e2da;border-radius:12px;padding:13px 15px}
-.sc-card.low{border-color:#e0cba0}
+.sc-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px}
+.sc-card.low{border-color:var(--amber)}
 .sc-card.dupe{opacity:.6}
 </style>
 <!--baked:head-->
@@ -306,9 +306,9 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
     <button class="v2-btn sm" id="refreshBtn" disabled>Refresh</button>
   </header>
 
-  <section id="skeleton" class="v2-card" style="padding:30px;text-align:center;color:#8a8375" hidden>Loading…</section>
+  <section id="skeleton" class="v2-card" style="padding:30px;text-align:center;color:var(--muted)" hidden>Loading…</section>
   <section id="loadError" class="v2-card" style="padding:24px;text-align:center" hidden>
-    <p id="loadErrorMsg" style="margin-bottom:12px;color:#8a8375">Couldn’t load.</p>
+    <p id="loadErrorMsg" style="margin-bottom:12px;color:var(--muted)">Couldn’t load.</p>
     <button class="v2-btn" id="loadRetry">Retry</button>
   </section>
 
@@ -382,7 +382,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
     </div>
     <div class="mb" id="scanBody"></div>
     <div class="mf">
-      <span id="scanCount" style="color:#8a8375;font-size:12.5px"></span>
+      <span id="scanCount" style="color:var(--muted);font-size:12.5px"></span>
       <span class="sp"></span>
       <button class="v2-btn" id="scanCancel">Cancel</button>
       <button class="v2-btn go" id="scanAdd">Add leads</button>
@@ -393,7 +393,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260805g';
+import * as core from './crm-core.js?v=20260805h';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'log-lead' });
@@ -595,7 +595,7 @@ function renderChip() {
       (l.notes ? '<div class="note">' + esc(l.notes) + '</div>' : '');
   } else if (a.mode === 'new') {
     chip.innerHTML = '<div class="top"><span class="hh">@' + esc(a.handle) + '</span>' +
-      '<span class="v2-ai" style="color:#2a6a4d;border-color:#c9dfd2">new</span></div>' +
+      '<span class="v2-ai" style="color:var(--go);border-color:var(--go-line)">new</span></div>' +
       '<div class="meta">Not in the CRM yet — pick a stage to create it.</div>';
   } else {
     chip.innerHTML = '<div class="meta">Press Enter to run this command.</div>';
@@ -610,7 +610,7 @@ function renderAc(results) {
   list.innerHTML = results.map(function (l, i) {
     return '<div class="ac-item" id="ac-opt-' + i + '" role="option" aria-selected="false" data-i="' + i + '">' +
       '<span class="h">@' + esc(l.h) + '</span>' +
-      '<span style="color:#6d675b;font-size:12px">' + esc(l.level || '—') + '</span>' +
+      '<span style="color:var(--ink-3);font-size:12px">' + esc(l.level || '—') + '</span>' +
       '<span class="m">' + esc(l.status || '') + (l.lastContact ? ' · ' + esc(l.lastContact) : '') + '</span>' +
       '</div>';
   }).join('');
@@ -1217,7 +1217,7 @@ function bindScan() {
 function boot() {
   if (typeof window.CRMParse === 'undefined') {
     document.querySelector('.v2-main').insertAdjacentHTML('beforeend',
-      '<section class="v2-card" style="padding:20px;color:#b4543e">parser.js failed to load — ' +
+      '<section class="v2-card" style="padding:20px;color:var(--red)">parser.js failed to load — ' +
       'the page can’t run without it.</section>');
     return;
   }
