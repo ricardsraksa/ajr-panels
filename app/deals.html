@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260804e">
+<link rel="modulepreload" href="./crm-core.js?v=20260805a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f9f8f5}</style>
@@ -484,7 +484,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260804e';
+import * as core from './crm-core.js?v=20260805a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
@@ -1080,7 +1080,12 @@ async function loadStrip() {
   try {
     const missHtml = await missingChip();
     const loose = await core.looseBookings();
-    if ((!loose || !loose.length) && !missHtml) { el.hidden = true; el.innerHTML = ''; return; }
+    // the check-now row stands alone when there is nothing else to show —
+    // "no bookings yet" is exactly when you want to be able to ask again
+    const checkRow = '<div class="calrow" id="ckrow"><span class="lab">CALENDLY</span>' +
+      '<span class="d-cell dim" id="ckmsg" style="min-width:0">Checked automatically every 10 min</span>' +
+      '<span class="sp"></span><button class="lnk dim" id="ckbtn">Check now</button></div>';
+    if ((!loose || !loose.length) && !missHtml) { el.innerHTML = checkRow; el.hidden = false; return; }
     const open = state.deals.filter((d) => d.status !== 'Closed' && d.status !== 'No Close');
     el.innerHTML = missHtml + (loose || []).map((b) => {
       const opts = open.map((d) => '<option value="' + d.row + '">' + esc(displayName(d)) + '</option>').join('');
@@ -1093,7 +1098,7 @@ async function loadStrip() {
         '<button class="lnk">Link</button>' +
         '<button class="lnk dim" data-newdeal title="Create a new deal from this booking">New</button>' +
         '<button class="lnk dim" data-ignore title="Ignore this booking">✕</button></div>';
-    }).join('');
+    }).join('') + checkRow;
     el.hidden = false;
   } catch (e) { el.hidden = true; }
 }
@@ -1127,6 +1132,28 @@ $('nd-create').onclick = async () => {
 $('calstrip').addEventListener('click', async (e) => {
   const btn = e.target.closest('.lnk'); if (!btn) return;
   const rowEl = btn.closest('.calrow');
+  if (btn.id === 'ckbtn') {
+    const msg = document.getElementById('ckmsg');
+    btn.disabled = true; btn.textContent = 'Checking…';
+    try {
+      const r = await core.checkBookingsNow();
+      const added = Number(r.added || r.created || 0);
+      if (added) {
+        // the new rows are the feedback; loadStrip rebuilds this whole row
+        toast({ type: 'ok', html: added + (added === 1 ? ' new booking' : ' new bookings') + ' pulled in.' });
+        state.deals = await core.loadDeals(); render();
+        await loadStrip();
+      } else {
+        // leave the strip alone so this answer survives on screen
+        msg.textContent = 'Nothing new as of just now';
+        btn.disabled = false; btn.textContent = 'Check now';
+      }
+    } catch (err) {
+      msg.textContent = 'Check failed: ' + err.message;
+      btn.disabled = false; btn.textContent = 'Check now';
+    }
+    return;
+  }
   if (btn.hasAttribute('data-newdeal')) {
     // inbound who booked straight through Calendly: deal + link in one go
     btn.disabled = true;

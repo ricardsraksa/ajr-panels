@@ -846,6 +846,20 @@ export async function unignoreBooking(undo) {
 }
 
 /** Manually link a booking to a deal (the strip's one-click attach). */
+/* Ask Calendly for new bookings right now. The cron poll runs every 10
+   minutes, which is invisible most of the time but not in the one moment
+   that matters: a lead books while the closer is watching the screen. */
+export async function checkBookingsNow() {
+  if (DEMO) {
+    await new Promise((r) => setTimeout(r, 600));
+    return { ok: true, added: 0, demo: true };
+  }
+  const { data, error } = await supa.functions.invoke('calendly?poll=1', { method: 'POST' });
+  if (error) throw new Error(error.message);
+  if (data && data.ok === false) throw new Error(data.error || 'check failed');
+  return data || {};
+}
+
 export async function linkBooking(bookingId, dealRow) {
   if (DEMO) {
     const b = _demo.calendly.find((x) => x.id === bookingId);
