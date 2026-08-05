@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260805j">
+<link rel="modulepreload" href="./crm-core.js?v=20260806a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -441,7 +441,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260805j';
+import * as core from './crm-core.js?v=20260806a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -995,7 +995,7 @@ async function saveDrawer() {
   };
   state.busy = true; $('d-save').disabled = true;
   try {
-    const res = await core.setLead(l.id, fields);
+    const res = await core.setLead(l.id, fields, { touch: true });
     l.level = fields.level; l.status = fields.status; l.qual = fields.qual;
     l.notes = fields.notes; l.pains = fields.pains; l.email = fields.email; l.phone = fields.phone; l.linkedin = fields.linkedin;
     l.lp = fields.lp; l.lpQuality = fields.lpQuality; l.lpUsed = fields.lpUsed;
@@ -1104,7 +1104,7 @@ $('table').addEventListener('change', (e) => {
     if (before === after) return;
     cell.classList.add('busy'); cell.disabled = true;
     const y = window.scrollY;
-    core.setLead(id, { [field]: after }).then((res) => {
+    core.setLead(id, { [field]: after }, { touch: true }).then((res) => {
       l[field] = after;
       renderSumbar(); renderTable(); window.scrollTo(0, y);
       toast({ type: 'ok', ttl: 7000,

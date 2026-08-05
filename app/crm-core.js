@@ -213,7 +213,7 @@ async function pagedSelect(table, cols, order = 'id') {
    minute in sessionStorage; every write path drops the cache, so the only
    staleness window is another person's edit, and 60s of that is fine for a
    2-person team. */
-const BOOK_KEY = 'ajr_book_v1';
+const BOOK_KEY = 'ajr_book_v2';
 const BOOK_TTL = 60000;
 const _ttlGet = (k) => {
   try {
@@ -224,7 +224,7 @@ const _ttlGet = (k) => {
 };
 const _ttlSet = (k, v) => { try { sessionStorage.setItem(k, JSON.stringify({ t: Date.now(), v })); } catch (e) { /* quota */ } };
 function dropBookCache() {
-  try { ['ajr_book_v1', 'ajr_stale_v1', 'ajr_deals_v1'].forEach((k) => sessionStorage.removeItem(k)); } catch (e) { /* private mode */ }
+  try { ['ajr_book_v1', 'ajr_stale_v1', 'ajr_deals_v1', 'ajr_book_v2', 'ajr_deals_v2'].forEach((k) => sessionStorage.removeItem(k)); } catch (e) { /* private mode */ }
 }
 
 export async function loadLeads() {
@@ -232,7 +232,7 @@ export async function loadLeads() {
   const hit = _ttlGet(BOOK_KEY);
   if (hit) return hit;
   const out = await pagedSelect('leads',
-    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,followed_ts,ig_status,ig_last_post,ig_name,outreach_hidden,prospected_at,pain_points,email,phone,linkedin,lp,lp_quality,lp_used,story_seen_at');
+    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,followed_ts,ig_status,ig_last_post,ig_name,outreach_hidden,prospected_at,pain_points,email,phone,linkedin,lp,lp_quality,lp_used,story_seen_at,snoozed_until');
   const mapped = out.map((l) => ({
     id: l.id, h: l.handle, url: l.ig_url || '',
     level: l.level || '', status: l.last_status || '',
@@ -246,6 +246,7 @@ export async function loadLeads() {
     pains: l.pain_points || '', email: l.email || '', phone: l.phone || '', linkedin: l.linkedin || '',
     lp: !!l.lp, lpQuality: l.lp_quality || '', lpUsed: !!l.lp_used,
     storySeenAt: l.story_seen_at || '',
+    snoozedUntil: l.snoozed_until || '',   // device-independent snooze (was localStorage)
   }));
   _ttlSet(BOOK_KEY, mapped);
   return mapped;
@@ -266,10 +267,10 @@ export async function loadBriefing() {
 
 export async function loadDeals() {
   if (DEMO) return _demo.deals.map(_clone);
-  const hit = _ttlGet('ajr_deals_v1');
+  const hit = _ttlGet('ajr_deals_v2');
   if (hit) return hit;
   const { data, error } = await supa.from('deals')
-    .select('id,lead_id,name,ig_link,status,meeting,meeting_time,followup,qualification,cash,notes,fireflies_link,no_close_reason,phone,email,service_type')
+    .select('id,lead_id,name,ig_link,status,meeting,meeting_time,followup,qualification,cash,notes,fireflies_link,no_close_reason,phone,email,service_type,call_type')
     .order('id');
   if (error) throw new Error(error.message);
   const mapped = data.map((d) => ({
@@ -282,7 +283,7 @@ export async function loadDeals() {
     phone: d.phone || '', email: d.email || '', service: d.service_type || '',
     callType: d.call_type || '',
   }));
-  _ttlSet('ajr_deals_v1', mapped);
+  _ttlSet('ajr_deals_v2', mapped);
   return mapped;
 }
 
@@ -388,10 +389,12 @@ export async function closerUpdate(args) {
     if (f.cash != null && f.cash !== '' && args.cashConfirmed !== true) throw new Error('cash requires confirmation');
     const d = _demo.deals.find((x) => x.row === args.row);
     if (!d) throw new Error('deal not found');
-    const prev = { status: d.status, meeting: d.meeting, followup: d.followup, cash: d.cash, notes: d.notes };
+    const prev = { status: d.status, meeting: d.meeting, meetingTime: d.meetingTime,
+      followup: d.followup, cash: d.cash, notes: d.notes };
     const oldStatus = d.status;
     if (f.status) d.status = f.status;
     if (f.meeting) d.meeting = f.meeting;
+    if (f.meeting_time) d.meetingTime = f.meeting_time;
     if (f.followup) d.followup = f.followup;
     if (f.cash != null && f.cash !== '') d.cash = Number(f.cash);
     if (f.no_close_reason != null) d.noCloseReason = f.no_close_reason || '';
@@ -407,11 +410,14 @@ export async function closerUpdate(args) {
   if (qErr) throw new Error(qErr.message);
   if (!d) throw new Error('deal not found');
 
-  const prev = { status: d.status, meeting: d.meeting, followup: d.followup,
-    cash: d.cash, notes: d.notes };
+  const prev = { status: d.status, meeting: d.meeting, meeting_time: d.meeting_time,
+    followup: d.followup, cash: d.cash, notes: d.notes };
   const patch = {};
   if (f.status) patch.status = f.status;
   if (f.meeting) patch.meeting = dmyToIso(f.meeting);
+  // the capture bar has always parsed a time ("moved to tuesday at 3pm") and
+  // shown it as a confirmed pill — it just never reached the row
+  if (f.meeting_time) patch.meeting_time = f.meeting_time;
   if (f.followup) patch.followup = dmyToIso(f.followup);
   if (f.cash != null && f.cash !== '') patch.cash = Number(f.cash);
   if (f.no_close_reason != null) patch.no_close_reason = f.no_close_reason || null;
@@ -506,8 +512,11 @@ export async function ensureDealForLead(lead, when = {}) {
   // there'll be exactly one fresh unattached booking — attach it now so the
   // deal (and the ping below) carry the confirmed slot + contact info.
   // Any ambiguity is left for the closing page's one-click strip.
+  // ...but NOT for a silent backfill. handover.html repairs historical leads
+  // through this path, and a loose booking there is tomorrow's real call, not
+  // theirs — one "Add all" could hand next week's slot to a lead from March.
   let cal = null;
-  if (!mIso) {
+  if (!mIso && !when.silent) {
     try { cal = await attachLooseBooking(created.id, row, lead.id); } catch (e) { /* never block the booking */ }
   }
   // one place for the booked ping, so it fires from every path that books a
@@ -1168,7 +1177,7 @@ export async function markBatchSent(ids, opts = {}) {
       if (s.has(l.id)) {
         prev.push({ id: l.id, lastContact: l.lastContact, status: l.status, level: l.level });
         l.lastContact = whenDmy; l.status = status;
-        if (isPool(l.level)) l.level = 'Engaged 1'; // a messaged follow is a lead now
+        if (isPool(l.level) || !l.level) l.level = 'Engaged 1'; // a messaged prospect is a lead now
       }
     });
     // demo parity: the batch has to be re-classifiable afterwards like a real
@@ -1194,9 +1203,12 @@ export async function markBatchSent(ids, opts = {}) {
       .in('id', ids.slice(i, i + 500));
     if (error) throw new Error(error.message);
   }
-  // a DM'd follow enters the book as Engaged 1; anyone already tracked keeps
-  // their stage. Done as its own targeted update so only pool rows move.
-  const poolIds = before.filter((b) => isPool(b.level)).map((b) => b.id);
+  // A first DM makes someone a lead. That covers both intake paths: an
+  // imported follow (level 'Following'/'Outreach') AND a screenshot prospect,
+  // which addProspects deliberately stores with no level at all. Missing that
+  // second case meant every cold DM sent dropped straight out of the
+  // follow-up queue, which defaults to Engaged 1-3.
+  const poolIds = before.filter((b) => isPool(b.level) || !b.level).map((b) => b.id);
   for (let i = 0; i < poolIds.length; i += 500) {
     const { error } = await supa.from('leads')
       .update({ level: 'Engaged 1' })
@@ -1325,15 +1337,24 @@ export async function undoOutreachSent(undo) {
 }
 
 /** Direct-set a lead's fields (leads-browser editor). Only present keys write. */
-export async function setLead(id, fields) {
+/* opts.touch — say "this edit was a real contact".
+   setterUpdate always stamps last_contact; setLead never did, so applying an
+   AI proposal or changing a stage inline advanced the lead while leaving its
+   contact clock untouched: it stayed overdue in the worklist and the day's
+   stats counted nothing. Callers that merely repair data (email, pool marks,
+   a qualification typo) leave touch off, so fixing a phone number still can't
+   pretend to be a conversation. */
+export async function setLead(id, fields, opts) {
   const MAP = { level: 'level', status: 'last_status', qual: 'qualification',
     notes: 'notes', pains: 'pain_points', email: 'email', phone: 'phone', linkedin: 'linkedin',
-    lp: 'lp', lpQuality: 'lp_quality', lpUsed: 'lp_used' };
+    lp: 'lp', lpQuality: 'lp_quality', lpUsed: 'lp_used', snoozedUntil: 'snoozed_until' };
+  const touch = !!(opts && opts.touch) && ('level' in fields || 'status' in fields);
   if (DEMO) {
     const l = _demo.leads.find((x) => x.id === id);
     if (!l) throw new Error('lead not found');
     const prev = {};
     Object.keys(fields).forEach((k) => { if (k in MAP || k === 'lastContact') { prev[k] = l[k]; l[k] = fields[k] || ''; } });
+    if (touch) { prev.lastContact = prev.lastContact === undefined ? l.lastContact : prev.lastContact; l.lastContact = todayDmy(); }
     return { ok: true, row: id, handle: l.h, prev, undo: _demoUndoToken('leads', 'id', id, prev) };
   }
   const { data: l, error: qErr } = await supa.from('leads').select('*').eq('id', id).maybeSingle();
@@ -1343,6 +1364,7 @@ export async function setLead(id, fields) {
   Object.keys(MAP).forEach((k) => {
     if (k in fields) { patch[MAP[k]] = fields[k] === '' ? null : fields[k]; prev[MAP[k]] = l[MAP[k]]; }
   });
+  if (touch) { patch.last_contact = dmyToIso(todayDmy()); prev.last_contact = l.last_contact; }
   if (!Object.keys(patch).length) return { ok: true, row: id, noop: true };
   const { error } = await supa.from('leads').update(patch).eq('id', id);
   if (error) throw new Error(error.message);
@@ -1440,13 +1462,18 @@ export async function undoWrite(undo) {
 /* ---------- pending calls + AI ---------- */
 
 export async function pendingCalls() {
-  if (DEMO) return [];
+  // demo: one deal fresh off a call so the post-call nudge is verifiable
+  if (DEMO) {
+    const d = _demo.deals.find((x) => x.status !== 'Closed' && x.status !== 'No Close');
+    return d ? [{ id: 9001, deal_id: d.row, row: d.row, name: d.name }] : [];
+  }
   const dayAgo = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
   const { data, error } = await supa.from('pending_calls')
     .select('id,deal_id,name,created_at')
     .eq('consumed', false).gte('created_at', dayAgo);
   if (error) throw new Error(error.message);
-  return (data || []).map((c) => ({ id: c.id, row: c.deal_id, name: c.name }));
+  // deals.html reads c.deal_id; `row` stays as an alias for anything older
+  return (data || []).map((c) => ({ id: c.id, deal_id: c.deal_id, row: c.deal_id, name: c.name }));
 }
 
 export async function markPendingConsumed(id) {
@@ -2008,7 +2035,10 @@ export async function addProspects(cards) {
   const list = (cards || []).map((c) => ({
     h: String(c.handle || '').trim().toLowerCase().replace(/^@/, ''),
     stage: String(c.stage || '').trim(),   // empty = no stage until they reply
-    notes: noteAllowed(c.stage) ? cleanNote(c.notes) : '',
+    // Profile-scan notes are the only context that exists BEFORE a DM, so the
+    // stage gate doesn't apply here — it exists to stop the mid-conversation
+    // scanner inventing notes for leads that haven't talked business yet.
+    notes: cleanNote(c.notes),
     qual: String(c.qual || '').trim(), pains: String(c.pains || '').trim(),
     story: c.story === 'yes', priv: c.priv === 'yes',
   })).filter((c) => c.h);

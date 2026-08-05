@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260805j">
+<link rel="modulepreload" href="./crm-core.js?v=20260806a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f0f0f3}</style>
 <script type="module" blocking="render">
@@ -290,7 +290,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260805j';
+import * as core from './crm-core.js?v=20260806a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'newleads' });
@@ -493,18 +493,27 @@ function renderReview() {
       const h = itemH(it);
       if (!h || seen.has(h)) return;
       seen.add(h);
-      batch.push({ handle: h, stage: '', notes: (it.notes || '').trim(),
+      batch.push({ handle: h, stage: it.stage || '', notes: (it.notes || '').trim(),
         qual: (it.qual || '').trim(), pains: (it.pains || '').trim(),
         story: it.story || '', priv: it.priv || '' });
     });
     $('rvAdd').disabled = true;
     try {
       const res = await core.addProspects(batch);
-      await core.clearScanJobs(review.jobIds);
-      review = { items: [], jobIds: [], pending: review.pending };
+      // Anything still missing a handle STAYS. Clearing the whole review (and
+      // its scan_jobs) used to delete those rows and the only record of the
+      // screenshot they came from — silent data loss on the import path.
+      const kept = review.items.filter((it) => !itemH(it));
+      if (kept.length) {
+        review = { items: kept, jobIds: review.jobIds, pending: review.pending };
+      } else {
+        await core.clearScanJobs(review.jobIds);
+        review = { items: [], jobIds: [], pending: review.pending };
+      }
       toast({ type: 'ok', ttl: 10000,
         html: 'Added <b>' + res.added + '</b>' + (res.revived ? ' · <b>' + res.revived + '</b> back from archive' : '') +
-          (res.skipped ? ' · ' + res.skipped + ' already in the book' : '') + '.',
+          (res.skipped ? ' · ' + res.skipped + ' already in the book' : '') +
+          (kept.length ? ' · <b>' + kept.length + '</b> still need a handle' : '') + '.',
         action: res.undo && res.added ? { label: 'Undo', fn: async () => { await core.undoProspects(res.undo); load(); } } : null });
       load(); pollJobs();
     } catch (err) { toast({ type: 'err', html: esc(err.message), sticky: true }); renderReview(); }
