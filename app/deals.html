@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260806b">
+<link rel="modulepreload" href="./crm-core.js?v=20260806c">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -548,7 +548,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260806b';
+import * as core from './crm-core.js?v=20260806c';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
@@ -633,7 +633,7 @@ function visibleDeals() {
    current. Everything is assembled from state.leads, which this page already
    loads and only used for the parser's fuzzy match. */
 function leadOf(d) {
-  try { return core.dealForLead ? core.dealForLead(state.leads, d) : null; } catch (e) { return null; }
+  try { return core.leadForDeal ? core.leadForDeal(state.leads, d) : null; } catch (e) { return null; }
 }
 function minsUntilCall(d) {
   if (daysUntil(d.meeting) !== 0 || !d.meetingTime) return null;
@@ -653,7 +653,7 @@ function sheetCard(d, tag) {
     ? '<div><span class="lab">' + lab + '</span>' + esc(String(val)) + '</div>' : '';
   const phone = d.phone || l.phone || '', email = d.email || l.email || '';
   const notes = (l.notes || d.notes || '');
-  const h = (l.h || String(d.igLink || '').replace(/.*instagram\.com\//i, '').split(/[/?#]/)[0] || '').replace(/^@/, '');
+  const h = (l.h || String(d.igLink || d.link || '').replace(/.*instagram\.com\//i, '').split(/[/?#]/)[0] || '').replace(/^@/, '');
   return '<div class="cs' + (soon ? ' soon' : '') + '">' +
     (d.meetingTime ? '<span class="t">' + t + '</span>' : t) +
     '<span class="who"><b>' + esc(displayName(d)) + '</b>' +

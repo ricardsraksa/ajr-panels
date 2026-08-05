@@ -69,7 +69,7 @@ const _demo = {
     { id: 1, h: 'jung.labs', url: 'https://instagram.com/jung.labs', level: 'Engaged 3', status: 'Follow up Sent', qual: 'Qualified 3', notes: 'potential referral for his students', lastContact: _ago(20), dateAdded: _ago(90), followed: _ago(950), email: 'jung@labs.io', phone: '', linkedin: '', pains: 'no time to run ads' },
     { id: 2, h: 'charlay', url: 'https://instagram.com/charlay', level: 'Engaged 3', status: 'Follow up Sent', qual: 'Qualified 3', notes: 'audit accepted, need to book meeting', lastContact: _ago(63), followed: _ago(1400), lp: true, lpQuality: 'good', lpUsed: true },
     { id: 3, h: 'akram_meza', url: 'https://instagram.com/akram_meza', level: 'Engaged 3', status: 'Follow up Sent', qual: 'Qualified 1', notes: 'showed interest from story', lastContact: _ago(63) },
-    { id: 4, h: 'oscarwxng', url: 'https://instagram.com/oscarwxng', level: 'Engaged 2', status: 'Story reply', qual: 'Qualified 2', notes: '', lastContact: _ago(4), followed: _ago(200) },
+    { id: 4, h: 'oscarwxng', url: 'https://instagram.com/oscarwxng', level: 'Booked', status: 'Call Pitched', qual: 'Qualified 2', notes: 'runs everything off one weekly campaign', pains: 'Sending one campaign a week, no flows at all. Says email is under 10% of revenue and he knows it should be triple that.', lastContact: _ago(1), followed: _ago(200) },
     { id: 5, h: 'kayla.growth', url: 'https://instagram.com/kayla.growth', level: 'Engaged 2', status: 'Meme sent', qual: '', notes: '', lastContact: _ago(6) },
     { id: 6, h: 'sofia_scales', url: 'https://instagram.com/sofia_scales', level: 'Engaged 1', status: "Haven't read", qual: '', notes: '', lastContact: _ago(10) },
     { id: 7, h: 'nina.creates', url: 'https://instagram.com/nina.creates', level: 'Engaged 1', status: 'Lifestyle sent', qual: '', notes: '', lastContact: _ago(8) },
@@ -586,6 +586,13 @@ function _dealMatches(d, l) {
 /** The deal (from the loaded deals list) belonging to this lead, or null. */
 export function dealForLead(deals, lead) {
   return (deals || []).find((d) => _dealMatches(d, lead)) || null;
+}
+
+/** The inverse: the lead behind a deal. The closer's page holds both lists,
+ *  so this is what puts the setter's live pains and notes on a call sheet. */
+export function leadForDeal(leads, deal) {
+  if (!deal) return null;
+  return (leads || []).find((l) => _dealMatches(deal, l)) || null;
 }
 
 /** Every recorded call for a deal, newest first — the Fireflies call log. */
