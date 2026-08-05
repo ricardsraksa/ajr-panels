@@ -96,11 +96,11 @@ const _demo = {
     { id: 24, h: 'peakform.fit', url: 'https://instagram.com/peakform.fit', level: 'Engaged 1', status: '', qual: '', notes: 'fitness apparel, big reels', lastContact: '', dateAdded: _ago(1), prospected: new Date(Date.now() - 86400000).toISOString() }
   ],
   deals: [
-    { row: 101, id: 101, leadId: null, name: 'Oscar Wong', link: 'https://instagram.com/oscarwxng', status: 'Discovery Call', meeting: _ago(0), followup: '', qual: 'Qualified 2', cash: '', notes: 'supplement brand ~40k/mo', hasFF: true, fireflies_link: 'https://app.fireflies.ai/view/demo' },
-    { row: 102, id: 102, leadId: null, name: 'Awais', link: 'https://instagram.com/awais.designs', status: 'Closing call', meeting: _ago(0), followup: '', qual: '', cash: '', notes: '', hasFF: false, fireflies_link: '' },
+    { row: 101, id: 101, leadId: null, name: '@oscarwxng', link: 'https://instagram.com/oscarwxng', status: 'Discovery Call', meeting: _ago(0), meetingTime: '10:00', followup: '', qual: 'Qualified 2', cash: '', notes: 'supplement brand ~40k/mo', hasFF: true, fireflies_link: 'https://app.fireflies.ai/view/demo' },
+    { row: 102, id: 102, leadId: null, name: 'Awais', link: 'https://instagram.com/awais.designs', status: 'Closing call', meeting: _ago(0), meetingTime: '15:30', followup: '', qual: 'Qualified 1', cash: '', notes: '', hasFF: false, fireflies_link: '' },
     { row: 103, id: 103, leadId: null, name: 'Lena Ruiz', link: 'https://instagram.com/lena.builds', status: 'Followup', meeting: '', followup: _ago(6), qual: 'Qualified 3', cash: '', notes: 'sent proposal', hasFF: false, fireflies_link: '' },
     { row: 104, id: 104, leadId: null, name: 'Marcus Media', link: 'https://instagram.com/marcus_media', status: 'Closed', meeting: _ago(20), followup: '', qual: 'Qualified 3', cash: 4000, notes: 'paid in full', hasFF: true, fireflies_link: 'https://app.fireflies.ai/view/demo2' },
-    { row: 105, id: 105, leadId: null, name: 'Viktor A.', link: 'https://instagram.com/viktorandersson1u', status: 'Discovery Call', meeting: _ago(-2), followup: '', qual: '', cash: '', notes: 'need to book', hasFF: false, fireflies_link: '' },
+    { row: 105, id: 105, leadId: null, name: '@ecom.aiden', link: 'https://instagram.com/ecom.aiden', status: 'Discovery Call', meeting: _ago(-1), meetingTime: '11:15', followup: '', qual: 'Qualified 2', callType: 'Connection', service: 'flows', cash: '', notes: 'need to book', hasFF: false, fireflies_link: '' },
     { row: 106, id: 106, leadId: null, name: 'Greg Leet', link: 'https://instagram.com/gregleet', status: 'No Close', meeting: _ago(30), followup: '', qual: 'Qualified 1', cash: '', notes: 'went cold', hasFF: false, fireflies_link: '' }
   ],
   calendly: [
@@ -250,6 +250,27 @@ export async function loadLeads() {
   }));
   _ttlSet(BOOK_KEY, mapped);
   return mapped;
+}
+
+/* What a qualification tier actually means. The tiers come from the playbook
+   and are enforced in the AI prompts; until now the app rendered the bare
+   token, so "Qualified 2" told the closer nothing he didn't already have to
+   remember. Keep the wording in step with supabase/functions/interpret. */
+export const QUAL_TIERS = {
+  'Qualified 1': 'dropship $50–100k/mo',
+  'Qualified 2': 'brand $100–300k/mo',
+  'Qualified 3': 'brand $300k+/mo',
+  'Unqualified': 'agency / SaaS / coach — not ICP',
+};
+/** "Qualified 2" -> "Q2 · brand $100–300k/mo" (short form for dense rows). */
+export function qualLabel(q, opts) {
+  const key = String(q || '').trim();
+  if (!key) return '';
+  const meaning = QUAL_TIERS[key] || '';
+  const m = /^Qualified\s*(\d)/i.exec(key);
+  const short = m ? 'Q' + m[1] : (/^unqual/i.test(key) ? 'Unqualified' : key);
+  if (!meaning) return short;
+  return (opts && opts.long) ? key + ' — ' + meaning : short + ' · ' + meaning;
 }
 
 /** The daily DTC industry briefing, published into settings.daily_briefing by
