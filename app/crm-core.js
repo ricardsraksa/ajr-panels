@@ -213,6 +213,28 @@ async function pagedSelect(table, cols, order = 'id') {
    minute in sessionStorage; every write path drops the cache, so the only
    staleness window is another person's edit, and 60s of that is fine for a
    2-person team. */
+/* Stale-HTML self-heal.
+   Every page imports this module as crm-core.js?v=<token>. The browser caches
+   the HTML happily, so a page can go on importing an old token for days while
+   the file it receives is always current — which is why "I don't see the new
+   button" kept happening on a phone, where a hard refresh is awkward.
+   The token the page ASKED for is visible in import.meta.url; BUILD below is
+   whatever shipped. If they disagree the HTML is stale, so reload it once,
+   guarded by sessionStorage so a mismatch can never loop. */
+const BUILD = '20260806e';
+(function selfHeal() {
+  try {
+    const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
+    if (!asked || asked === BUILD) return;
+    const seen = sessionStorage.getItem('ajr_heal');
+    if (seen === BUILD) return;                 // already tried for this build
+    sessionStorage.setItem('ajr_heal', BUILD);
+    const u = new URL(location.href);
+    u.searchParams.set('_v', BUILD);
+    location.replace(u.toString());
+  } catch (e) { /* never let a cache trick break the app */ }
+})();
+
 const BOOK_KEY = 'ajr_book_v2';
 const BOOK_TTL = 60000;
 const _ttlGet = (k) => {
