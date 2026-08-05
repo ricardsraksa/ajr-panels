@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260806e">
+<link rel="modulepreload" href="./crm-core.js?v=20260806f">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -41,6 +41,15 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .nudge .sp{flex:1}
 .sweep-list{margin-top:10px}
 .skel{padding:40px;text-align:center;color:var(--muted-2)}
+/* two sections, one page — the day's whole loop */
+.sec-h{display:flex;align-items:baseline;gap:9px;margin:26px 0 11px;
+  font:600 10.5px var(--font);letter-spacing:.07em;text-transform:uppercase;color:var(--muted-2)}
+.sec-h:first-of-type{margin-top:4px}
+.sec-h .n{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink)}
+.sec-h .sp{flex:1}
+.sec-h .kmini{font:600 11px var(--mono);letter-spacing:0;text-transform:none;color:var(--muted)}
+.sec-h .kmini b{color:var(--ink)}
+.sec-h .kmini .hit{color:var(--go)}
 .hints{display:flex;gap:15px;flex-wrap:wrap;color:var(--muted-2);font-size:11.5px;margin:-2px 0 13px}
 .hints kbd{font:600 10.5px var(--mono);background:var(--card);border:1px solid var(--line-2);
   border-radius:5px;padding:1px 6px;color:var(--ink-3)}
@@ -244,15 +253,16 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 <!--/baked:head-->
 </head>
 <body class="v2-shell">
-<!--baked:side--><nav class="v2-side"><div class="grp">TODAY</div><a class="nav on" href="worklist.html" data-nav="worklist"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h11M3 12h11M3 18h7"/><path d="m17 15 2 2 4-4"/></svg>Worklist<span class="slot" data-slot="worklist"></span></a><a class="nav" href="newleads.html" data-nav="newleads"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg>New leads<span class="slot" data-slot="newleads"></span></a><a class="nav" href="assistant.html" data-nav="assistant"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H5l-2 2V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/></svg>Assistant<span class="slot" data-slot="assistant"></span></a><div class="grp gap">CLOSING</div><a class="nav" href="deals.html" data-nav="deals"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="3"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Deals<span class="slot" data-slot="deals"></span></a><div class="grp gap">LEAD BOOK</div><a class="nav" href="log-lead.html" data-nav="log-lead"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Log a lead<span class="slot" data-slot="log-lead"></span></a><a class="nav" href="leads.html" data-nav="leads"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>All leads<span class="slot" data-slot="leads"></span></a><a class="nav" href="leadpools.html" data-nav="leadpools"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7"/><path d="M3 7l9-4 9 4-9 4Z"/></svg>Leadpools<span class="slot" data-slot="leadpools"></span></a><div class="grp gap">REVIEW</div><a class="nav" href="report.html" data-nav="report"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></svg>Dashboard<span class="slot" data-slot="report"></span></a><a class="nav" href="briefing.html" data-nav="briefing"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h13a2 2 0 0 1 2 2v13a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 8h7M8 12h7M8 16h4"/></svg>Briefing<span class="slot" data-slot="briefing"></span></a><div class="sp"></div><a class="nav" href="settings.html"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H7a1.7 1.7 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V7a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
+<!--baked:side--><nav class="v2-side"><div class="grp">TODAY</div><a class="nav on" href="worklist.html" data-nav="worklist"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h11M3 12h11M3 18h7"/><path d="m17 15 2 2 4-4"/></svg>Today<span class="slot" data-slot="worklist"></span></a><a class="nav" href="assistant.html" data-nav="assistant"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H5l-2 2V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/></svg>Assistant<span class="slot" data-slot="assistant"></span></a><div class="grp gap">CLOSING</div><a class="nav" href="deals.html" data-nav="deals"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="3"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Deals<span class="slot" data-slot="deals"></span></a><div class="grp gap">LEAD BOOK</div><a class="nav" href="log-lead.html" data-nav="log-lead"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Log a lead<span class="slot" data-slot="log-lead"></span></a><a class="nav" href="leads.html" data-nav="leads"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>All leads<span class="slot" data-slot="leads"></span></a><a class="nav" href="leadpools.html" data-nav="leadpools"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7"/><path d="M3 7l9-4 9 4-9 4Z"/></svg>Leadpools<span class="slot" data-slot="leadpools"></span></a><div class="grp gap">REVIEW</div><a class="nav" href="report.html" data-nav="report"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></svg>Dashboard<span class="slot" data-slot="report"></span></a><a class="nav" href="briefing.html" data-nav="briefing"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h13a2 2 0 0 1 2 2v13a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 8h7M8 12h7M8 16h4"/></svg>Briefing<span class="slot" data-slot="briefing"></span></a><div class="sp"></div><a class="nav" href="settings.html"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H7a1.7 1.7 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V7a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
 <main class="v2-main">
   <div class="demo-banner" id="demoBanner" hidden>DEMO — writes go nowhere</div>
 
   <header class="v2-h">
-    <h1>Worklist</h1>
-    <span class="sub"><span class="mono" id="qTotal">—</span> waiting</span>
+    <h1>Today</h1>
+    <span class="sub"><span class="mono" id="qTotal">—</span> to follow up<span id="dmSub"></span></span>
     <span class="sp"></span>
     <span id="doneChip" hidden style="font-size:12.5px;font-weight:600;color:var(--go)">✓ <span id="doneCount">0</span> logged today</span>
+    <button class="v2-btn go" id="addBtn" type="button">Add screenshots</button>
     <button class="v2-btn sm" id="refreshBtn" disabled>Refresh</button>
   </header>
 
@@ -263,6 +273,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
   </section>
 
   <div id="app" hidden>
+    <div class="sec-h"><span>Follow up</span><span class="n" id="fuN"></span></div>
     <div class="v2-chips" id="queueFilters"></div>
     <div class="hints" aria-hidden="true">
       <span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>L</kbd> log</span>
@@ -280,13 +291,29 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
       <button class="v2-btn" id="sweepToggle">Review &amp; archive</button>
     </section>
     <section class="v2-card sweep-list" id="sweepListCard" hidden><div id="sweepList"></div></section>
+
+    <!-- the other half of the day: first DMs out of the uncontacted queue.
+         Was its own page, which meant the daily loop spanned two screens and
+         the leads you just added were never where you were working. -->
+    <div class="sec-h" id="dmHead"><span>Send cold DMs</span><span class="n" id="count"></span>
+      <span class="sp"></span>
+      <span class="kmini" id="kmini"></span></div>
+
+    <div class="drop-hint" id="dropHint">
+      <b>Drop or paste screenshots — they upload and you can leave.</b><br>
+      Processing runs in the background; results wait here for review, even if
+      you close the page mid-batch.
+    </div>
+
+    <div class="v2-card" id="review" hidden style="margin-bottom:16px"></div>
+    <div class="v2-card" id="queue"><div class="v2-empty" id="skel">Loading…</div></div>
   </div>
 </main>
 
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260806e';
+import * as core from './crm-core.js?v=20260806f';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'worklist' });
@@ -550,6 +577,7 @@ function renderQueue() {
   var el = $('queueList');
   var waiting = state.rows.filter(function (l) { return !state.done[l.h]; }).length;
   $('qTotal').textContent = String(waiting);
+  var fuN = $('fuN'); if (fuN) fuN.textContent = String(waiting);
   core.setChromeBadge('worklist', waiting); // keep the sidebar honest
   if (!state.rows.length) { el.innerHTML = '<div class="v2-empty">All caught up.</div>'; return; }
   el.innerHTML = state.rows.slice(0, 120).map(function (l, i) { return rowHtml(l, i, false); }).join('') +
@@ -723,7 +751,296 @@ function boot() {
   start();
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+
+/* ---------- cold-DM half ----------
+   Lifted whole from the old New leads page. It keeps its own $, state and
+   render inside this block: both halves want those names, and block scope
+   is cheaper and safer than renaming 300 lines. */
+{
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const toast = core.toast;
+
+const state = { leads: [], sel: new Set(), targets: null, stats: [] };
+
+const storyLive = (l) => l.storySeenAt && (Date.now() - new Date(l.storySeenAt).getTime()) < 24 * 36e5;
+function queue() {
+  return state.leads
+    .filter((l) => l.prospected && !l.lastContact && l.level !== 'Archive' && !core.isPool(l.level))
+    .sort((a, b) => {
+      // an active story is the warmest opener there is, and it expires —
+      // those leads jump the queue while the story is still live
+      const sa = storyLive(a) ? 1 : 0, sb = storyLive(b) ? 1 : 0;
+      if (sa !== sb) return sb - sa;
+      return String(b.prospected).localeCompare(String(a.prospected));
+    });
+}
+
+function renderKpi() {
+  // one line instead of two cards: this page is the doing surface, the
+  // Dashboard is where targets get studied
+  const t = state.targets || {};
+  const sentT = core.targetFor('outreach', t, 1) || 20;
+  const sent = state.stats.length ? state.stats[state.stats.length - 1].outreach : 0;
+  const week = state.stats.slice(-7).reduce((a, d) => a + d.newLeads, 0);
+  const el = $('kmini');
+  if (el) el.innerHTML =
+    '<b class="' + (sent >= sentT ? 'hit' : '') + '">' + sent + '</b>/' + sentT + ' sent today' +
+    ' · <b>' + week + '</b>/100 added this week';
+}
+
+function render() {
+  const q = queue();
+  $('count').textContent = String(q.length);
+  const el = $('queue');
+  if (!q.length) {
+    el.innerHTML = '<div class="empty-q">Nothing waiting for a first DM.<br>' +
+      'Add profiles from screenshots and they queue here until you message them.</div>';
+    return;
+  }
+  const allTicked = q.every((l) => state.sel.has(l.id));
+  el.innerHTML = '<div class="qbar">' +
+      '<input type="checkbox" class="q-tick" id="tickAll"' + (allTicked ? ' checked' : '') + '>' +
+      '<b>' + state.sel.size + '</b><span>selected</span>' +
+      '<span class="sp"></span>' +
+      '<button class="v2-btn doneline sm" id="markSent"' + (state.sel.size ? '' : ' disabled') + '>Mark ' +
+        (state.sel.size || 0) + ' DM’d as cold</button>' +
+    '</div>' +
+    q.map((l) => '<div class="q-row" data-id="' + l.id + '">' +
+      '<input type="checkbox" class="q-tick" data-id="' + l.id + '"' + (state.sel.has(l.id) ? ' checked' : '') + '>' +
+      '<a class="q-h" href="' + esc(l.url || 'https://instagram.com/' + l.h) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
+      (storyLive(l) ? '<span class="q-story" title="Had an active story when added — story-reply them first">◉ story</span>' : '') +
+      (l.igStatus === 'private' ? '<span class="q-priv" title="Private account — your DM lands in their requests">🔒</span>' : '') +
+      '<span class="sp" style="flex:1"></span>' +
+      '<span class="q-meta" title="Added to the CRM">' + esc((l.prospected || '').slice(5, 10).split('-').reverse().join('/')) + '</span>' +
+      '<button class="q-sent" data-sent="' + l.id + '">Sent</button>' +
+      '<button class="q-x" data-x="' + l.id + '" title="Not a lead — deletes it">✕</button>' +
+    '</div>').join('');
+}
+
+async function load() {
+  try {
+    const [leads, targets, stats] = await Promise.all([
+      core.loadLeads(), core.setterTargets(), core.setterStats(7),
+    ]);
+    state.leads = leads; state.targets = targets; state.stats = stats;
+    state.sel = new Set([...state.sel].filter((id) => queue().some((l) => l.id === id)));
+    renderKpi(); render();
+  } catch (e) {
+    $('queue').innerHTML = '<div class="v2-empty">Couldn’t load: ' + esc(e.message) + '</div>';
+  }
+}
+
+$('queue').addEventListener('click', async (e) => {
+  const tickAll = e.target.closest('#tickAll');
+  if (tickAll) {
+    const q = queue();
+    if (tickAll.checked) q.forEach((l) => state.sel.add(l.id)); else state.sel = new Set();
+    render(); return;
+  }
+  const cb = e.target.closest('input.q-tick[data-id]');
+  if (cb) {
+    const id = +cb.getAttribute('data-id');
+    if (cb.checked) state.sel.add(id); else state.sel.delete(id);
+    render(); return;
+  }
+  const sent = e.target.closest('[data-sent]');
+  if (sent) {
+    const id = +sent.getAttribute('data-sent');
+    sent.disabled = true;
+    try {
+      const res = await core.markBatchSent([id], { kind: 'cold' });
+      const l = state.leads.find((x) => x.id === id);
+      if (l) l.lastContact = core.todayDmy();
+      state.sel.delete(id);
+      render();
+      toast({ type: 'ok', ttl: 8000, html: '<span class="mono">@' + esc(l ? l.h : id) + '</span> marked DM’d.',
+        action: res.undo ? { label: 'Undo', fn: async () => { await core.undoOutreachSent(res.undo); load(); } } : null });
+    } catch (err) { sent.disabled = false; toast({ type: 'err', html: esc(err.message), sticky: true }); }
+    return;
+  }
+  const x = e.target.closest('[data-x]');
+  if (x) {
+    const id = +x.getAttribute('data-x');
+    x.disabled = true;
+    try {
+      const l = state.leads.find((q2) => q2.id === id);
+      const res = await core.noContact([id]);
+      state.leads = state.leads.filter((q2) => q2.id !== id);
+      state.sel.delete(id);
+      render();
+      toast({ type: 'ok', ttl: 9000, html: '<span class="mono">@' + esc(l ? l.h : id) + '</span> removed — not a lead.',
+        action: res.undo ? { label: 'Undo', fn: async () => { await core.undoNoContact(res.undo); load(); } } : null });
+    } catch (err) { x.disabled = false; toast({ type: 'err', html: esc(err.message), sticky: true }); }
+    return;
+  }
+  const mark = e.target.closest('#markSent');
+  if (mark && !mark.disabled) {
+    const ids = [...state.sel];
+    mark.disabled = true;
+    try {
+      const res = await core.markBatchSent(ids, { kind: 'cold' });
+      state.leads.forEach((l) => { if (state.sel.has(l.id)) l.lastContact = core.todayDmy(); });
+      state.sel = new Set();
+      render();
+      toast({ type: 'ok', ttl: 10000, html: 'Marked <b>' + res.marked + '</b> DM’d — counted as cold DMs.',
+        action: res.undo ? { label: 'Undo', fn: async () => { await core.undoOutreachSent(res.undo); load(); } } : null });
+    } catch (err) { mark.disabled = false; toast({ type: 'err', html: esc(err.message), sticky: true }); }
+  }
+});
+
+/* ---------- walk-away uploads ----------
+   Screenshots upload to storage and a server-side worker extracts the leads;
+   the page only has to survive the upload itself. Results queue in the
+   review card until Add — reload, phone-lock, whatever, they wait. */
+let review = { items: [], jobIds: [] };
+const cleanH = (v) => {
+  v = String(v || '').trim();
+  const m = v.match(/instagram\.com\/(?:_u\/)?(?:stories\/)?([a-z0-9._]{2,30})/i);
+  if (m && !/^(p|reel|reels|tv|explore|direct|accounts|stories)$/i.test(m[1])) return m[1].toLowerCase();
+  return v.toLowerCase().replace(/^@+/, '');
+};
+const itemH = (it) => {
+  const h = cleanH(it.handle);
+  if (h) return h;
+  const nm = (it.name || '').trim();
+  return nm ? (core.makeNameResolver(state.leads)(nm) || '') : '';
+};
+
+function renderReview() {
+  const el = $('review');
+  const pend = review.pending || 0;
+  if (!pend && !review.items.length) { el.hidden = true; el.innerHTML = ''; return; }
+  const needy = review.items.filter((it) => !itemH(it));
+  const ready = review.items.filter((it) => itemH(it));
+  const badge = (it) =>
+    (it.story === 'yes' ? '<span class="q-story">◉ story</span>' : '') +
+    (it.priv === 'yes' ? '<span title="Private — DM lands in requests">🔒</span>' : '');
+  const inBook = (h) => state.leads.some((l) => l.h === h);
+  el.innerHTML =
+    '<div class="qbar"><b>' + review.items.length + '</b><span>scanned' +
+      (needy.length ? ' · ' + needy.length + ' need a handle' : '') + '</span>' +
+      (pend ? '<span style="color:var(--amber);font-size:12.5px">⏳ ' + pend + ' still processing…</span>' : '') +
+      '<span class="sp"></span>' +
+      '<button class="v2-btn go sm" id="rvAdd"' + (ready.length ? '' : ' disabled') + '>Add ' + ready.length + ' to uncontacted</button>' +
+    '</div>' +
+    review.items.map((it, i) => {
+      const h = itemH(it);
+      return '<div class="q-row" data-i="' + i + '">' +
+        (h
+          ? '<span class="q-h">@' + esc(h) + '</span>' + badge(it) +
+            (inBook(h) ? '<span class="q-meta">in book — skipped</span>' : '')
+          : '<input class="v2-in" data-hfix value="" placeholder="' + esc((it.name || 'unknown') + ' — @handle or IG link') + '" style="flex:1;min-height:34px;max-width:240px">' + badge(it)) +
+        '<span class="sp" style="flex:1"></span>' +
+        '<button class="q-x" data-rvx title="Skip this one">✕</button>' +
+      '</div>';
+    }).join('');
+  el.hidden = false;
+  $('rvAdd').onclick = async () => {
+    // pull typed handle fixes back in first
+    el.querySelectorAll('[data-hfix]').forEach((inp) => {
+      const it = review.items[+inp.closest('.q-row').getAttribute('data-i')];
+      if (it && inp.value.trim()) it.handle = cleanH(inp.value);
+    });
+    const seen = new Set();
+    const batch = [];
+    review.items.forEach((it) => {
+      const h = itemH(it);
+      if (!h || seen.has(h)) return;
+      seen.add(h);
+      batch.push({ handle: h, stage: it.stage || '', notes: (it.notes || '').trim(),
+        qual: (it.qual || '').trim(), pains: (it.pains || '').trim(),
+        story: it.story || '', priv: it.priv || '' });
+    });
+    $('rvAdd').disabled = true;
+    try {
+      const res = await core.addProspects(batch);
+      // Anything still missing a handle STAYS. Clearing the whole review (and
+      // its scan_jobs) used to delete those rows and the only record of the
+      // screenshot they came from — silent data loss on the import path.
+      const kept = review.items.filter((it) => !itemH(it));
+      if (kept.length) {
+        review = { items: kept, jobIds: review.jobIds, pending: review.pending };
+      } else {
+        await core.clearScanJobs(review.jobIds);
+        review = { items: [], jobIds: [], pending: review.pending };
+      }
+      toast({ type: 'ok', ttl: 10000,
+        html: 'Added <b>' + res.added + '</b>' + (res.revived ? ' · <b>' + res.revived + '</b> back from archive' : '') +
+          (res.skipped ? ' · ' + res.skipped + ' already in the book' : '') +
+          (kept.length ? ' · <b>' + kept.length + '</b> still need a handle' : '') + '.',
+        action: res.undo && res.added ? { label: 'Undo', fn: async () => { await core.undoProspects(res.undo); load(); } } : null });
+      load(); pollJobs();
+    } catch (err) { toast({ type: 'err', html: esc(err.message), sticky: true }); renderReview(); }
+  };
+  el.querySelectorAll('[data-rvx]').forEach((b) => {
+    b.onclick = () => { review.items.splice(+b.closest('.q-row').getAttribute('data-i'), 1); renderReview(); };
+  });
+}
+
+let pollTimer = null;
+async function pollJobs() {
+  let js;
+  try { js = await core.scanJobs(); } catch (e) { return; }
+  review.pending = js.pending;
+  review.jobIds = js.done.map((j) => j.id);
+  // flatten + dedup by handle/name across every processed screenshot
+  const have = new Set();
+  const items = [];
+  js.done.forEach((j) => (j.leads || []).forEach((l) => {
+    if (!(l.handle || l.name || '').trim()) return;
+    const keys = [];
+    const h = cleanH(l.handle); if (h) keys.push('h:' + h);
+    const nm = core.normName(l.name || ''); if (nm) keys.push('n:' + nm);
+    if (keys.length && keys.some((k) => have.has(k))) return;
+    keys.forEach((k) => have.add(k));
+    items.push(l);
+  }));
+  // keep the user's typed fixes and removals: only grow the list
+  const existing = new Set(review.items.map((it) => itemH(it) || core.normName(it.name || '')));
+  items.forEach((it) => {
+    const k = itemH(it) || core.normName(it.name || '');
+    if (!existing.has(k)) review.items.push(it);
+  });
+  renderReview();
+  if (js.pending > 0 && !pollTimer) {
+    pollTimer = core.pageInterval(() => pollJobs(), 4000);
+  }
+  if (js.errors) $('dropHint').innerHTML = '<b>' + js.errors + ' screenshot' + (js.errors === 1 ? '' : 's') + ' couldn’t be read.</b><br>They were skipped — re-upload them if they mattered.';
+}
+
+async function doUpload(files) {
+  const imgs = [].slice.call(files || []).filter((f) => f && (f.type || '').indexOf('image/') === 0);
+  if (!imgs.length) return;
+  $('addBtn').disabled = true;
+  try {
+    await core.uploadShots(imgs, (d, t) => { $('addBtn').textContent = 'Uploading ' + d + '/' + t + '…'; });
+    toast({ type: 'ok', ttl: 9000, html: '<b>' + imgs.length + '</b> uploaded — processing in the background. You can leave this page.' });
+  } catch (err) { toast({ type: 'err', html: 'Upload failed: ' + esc(err.message), sticky: true }); }
+  $('addBtn').disabled = false; $('addBtn').textContent = 'Add screenshots';
+  pollJobs();
+}
+$('addBtn').onclick = () => {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+  inp.onchange = () => doUpload(inp.files);
+  inp.click();
+};
+core.pageListen(window, 'paste', (e) => {
+  const its = (e.clipboardData && e.clipboardData.items) || [];
+  const files = [];
+  for (const it of its) if (it.type && it.type.indexOf('image/') === 0) { const f = it.getAsFile(); if (f) files.push(f); }
+  if (files.length) { e.preventDefault(); doUpload(files); }
+});
+core.pageListen(window, 'dragover', (e) => e.preventDefault());
+core.pageListen(window, 'drop', (e) => { e.preventDefault(); if (e.dataTransfer && e.dataTransfer.files.length) doUpload(e.dataTransfer.files); });
+if (matchMedia('(max-width: 760px)').matches) $('dropHint').innerHTML =
+  '<b>Tap Add screenshots, then leave.</b> They process in the background and the results wait here.';
+
+core.installPalette({});
+load();
+core.kickScanWorker();   // resume any batch an earlier session left behind
+pollJobs();
+}
 }
 </script>
-</body>
-</html>

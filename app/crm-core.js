@@ -221,7 +221,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260806e';
+const BUILD = '20260806f';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -2615,8 +2615,7 @@ const navIcon = (id) => ICONS[id]
 
 const NAV_ITEMS = [
   { grp: 'TODAY' },
-  { id: 'worklist', label: 'Worklist', href: 'worklist.html' },
-  { id: 'newleads', label: 'New leads', href: 'newleads.html' },
+  { id: 'worklist', label: 'Today', href: 'worklist.html' },
   { id: 'assistant', label: 'Assistant', href: 'assistant.html' },
   { grp: 'CLOSING', gap: true },
   { id: 'deals', label: 'Deals', href: 'deals.html' },
