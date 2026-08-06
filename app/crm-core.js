@@ -225,7 +225,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260806k';
+const BUILD = '20260806l';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -642,6 +642,32 @@ export function leadForDeal(leads, deal) {
 }
 
 /** Every recorded call for a deal, newest first — the Fireflies call log. */
+/* Attach a recording by hand. Automatic matching now leads on call time,
+   which is right far more often than the old title match — but a call moved
+   in the moment, or recorded from someone else's account, will always slip
+   through, and pasting the link should not require a developer. */
+export async function attachCall(dealId, url, whenIso) {
+  const u = String(url || '').trim();
+  if (!/^https?:\/\//i.test(u)) throw new Error('paste the full Fireflies link');
+  if (DEMO) {
+    _demo.calls = _demo.calls || [];
+    _demo.calls.unshift({ id: 'manual-' + Date.now(), deal_id: dealId, url: u,
+      title: 'Attached by hand', call_at: whenIso || new Date().toISOString(), consumed: true });
+    return { ok: true };
+  }
+  // the Fireflies id keeps rows unique; a hand-attached one has no transcript
+  // id, so key it on the URL to stay idempotent if the same link is pasted twice
+  const id = 'manual:' + u.slice(0, 180);
+  const { error } = await supa.from('pending_calls').upsert({
+    id, deal_id: dealId, name: null, url: u, title: 'Attached by hand',
+    call_at: whenIso || new Date().toISOString(),
+    consumed: true,   // manual attach is not a "you just hopped off a call" nudge
+    drafted: true,    // and must not trigger the AI outcome draft
+  });
+  if (error) throw error;
+  return { ok: true };
+}
+
 export async function dealCalls(dealId) {
   if (DEMO) {
     if (dealId !== 101) return [];
