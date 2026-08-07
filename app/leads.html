@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260807a">
+<link rel="modulepreload" href="./crm-core.js?v=20260807b">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -86,6 +86,17 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .hist{margin-top:4px;border-top:1px solid var(--divider);padding-top:13px}
 .hist h3{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);margin-bottom:8px}
 .hist ul{list-style:none}
+.hist li{padding:9px 0;border-top:1px solid var(--divider)}
+.hist li:first-child{border-top:none}
+.hist .hrow{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
+.hist .who{font-weight:600;color:var(--ink-2);font-size:12px}
+.hist .when{margin-left:auto;font:400 11px var(--mono);color:var(--muted-2);cursor:help}
+.hist .ch{font-size:12.5px;color:var(--ink-2);padding:1px 0}
+.hist .ch.warn{color:var(--red)}
+.hist .chd{color:var(--muted);font-size:12px;white-space:pre-wrap;margin:2px 0 0 0;
+  padding-left:9px;border-left:2px solid var(--line-2)}
+.hist .chw{color:var(--muted-2);font-size:11.5px;margin-top:3px;padding-left:9px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hist li{display:flex;gap:8px;padding:5px 0;font-size:12px;color:var(--ink-2)}
 .hist .who{font-family:var(--mono);font-size:11px;color:var(--ink-3);flex:none}
 .hist .who.ai{color:var(--accent)}
@@ -445,7 +456,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260807a';
+import * as core from './crm-core.js?v=20260807b';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -956,11 +967,17 @@ async function openDrawer(id) {
     const acts = await core.loadActivity('leads', id, 8);
     if (acts.length && state.editing === id) {
       $('hist-list').innerHTML = acts.map((a) => {
-        const who = a.actor === 'ai:fireflies' ? 'AI (call)' : (a.actor || '').split('@')[0] || 'someone';
-        const what = a.action === 'restore' ? 'undid a change' :
-          a.action === 'create' ? 'created the lead' :
-          'set ' + Object.keys(a.next || {}).join(', ');
-        return `<li><span class="who">${esc(who)}</span><span class="what">${esc(what)}</span><span class="when">${esc(core.relTime(a.created_at))}</span></li>`;
+        const who = a.actor === 'ai:fireflies' ? 'AI · call' :
+          String(a.actor || '').startsWith('ai:') ? 'AI · ' + a.actor.slice(3) :
+          (a.actor || '').split('@')[0] || 'someone';
+        const when = new Date(a.created_at);
+        const stamp = when.toLocaleString('en-GB', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const lines = core.describeChange(a).map((c) =>
+          `<div class="ch${c.warn ? ' warn' : ''}">${esc(c.text)}` +
+          (c.detail ? `<div class="chd">${esc(c.detail)}</div>` : '') +
+          (c.was ? `<div class="chw" title="${esc(c.was)}">was: ${esc(c.was)}</div>` : '') + '</div>').join('');
+        return `<li><div class="hrow"><span class="who">${esc(who)}</span>` +
+          `<span class="when" title="${esc(stamp)}">${esc(core.relTime(a.created_at))}</span></div>${lines}</li>`;
       }).join('');
       $('hist').hidden = false;
     }

@@ -225,7 +225,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260807a';
+const BUILD = '20260807b';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -1490,6 +1490,54 @@ export async function setLead(id, fields, opts) {
 }
 
 /** Recent history for one record, newest first. */
+/* Turn one activity row into readable lines.
+   The drawers used to render Object.keys(next) — "set last_status, notes" —
+   which tells you something changed and nothing about what, and is useless
+   for the question actually being asked: what did this note say before? */
+const CH_LABEL = {
+  level: 'Stage', last_status: 'Status', qualification: 'Qual', notes: 'Note',
+  pain_points: 'Pains', last_contact: 'Contacted', ig_status: 'IG', lp: 'Pool',
+  status: 'Status', meeting: 'Meeting', meeting_time: 'Time', followup: 'Follow-up',
+  cash: 'Cash', no_close_reason: 'Reason', call_type: 'Call type', email: 'Email', phone: 'Phone',
+};
+const chVal = (k, v) => {
+  if (v == null || v === '') return '—';
+  if (k === 'level') return shortStage(v);
+  if (k === 'last_status' || k === 'status') return shortStatus(v);
+  if (k === 'cash') return '$' + Number(v).toLocaleString('en-US');
+  if (k === 'lp') return v ? 'yes' : 'no';
+  return String(v);
+};
+export function describeChange(a) {
+  if (a.action === 'create') return [{ text: 'created' }];
+  if (a.action === 'restore') return [{ text: 'undid a change' }];
+  const next = a.next || {}, prev = a.prev || {};
+  const out = [];
+  for (const k of Object.keys(next)) {
+    const label = CH_LABEL[k] || k;
+    if (k === 'notes' || k === 'pain_points') {
+      const before = String(prev[k] == null ? '' : prev[k]);
+      const after = String(next[k] == null ? '' : next[k]);
+      // notes are appended far more often than rewritten, and the appended
+      // line is the whole story — show it, and flag a rewrite as the rarer,
+      // more destructive thing it is
+      if (before && after.startsWith(before)) {
+        const added = after.slice(before.length).trim();
+        if (added) out.push({ text: label + ' added', detail: added });
+      } else if (!before) {
+        out.push({ text: label + ' set', detail: after });
+      } else {
+        out.push({ text: label + ' rewritten', detail: after, was: before, warn: true });
+      }
+      continue;
+    }
+    const b = chVal(k, prev[k]), n = chVal(k, next[k]);
+    if (b === n) continue;
+    out.push({ text: label + ' ' + b + ' → ' + n });
+  }
+  return out.length ? out : [{ text: 'no visible change' }];
+}
+
 export async function loadActivity(table, rowId, limit = 10) {
   if (DEMO) return [
     { actor: 'demo@ajr.crm', action: 'update', next: { last_status: 'Follow up Sent' }, created_at: new Date(Date.now() - 3600e3).toISOString() },
