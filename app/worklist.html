@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260807c">
+<link rel="modulepreload" href="./crm-core.js?v=20260807d">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -362,7 +362,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260807c';
+import * as core from './crm-core.js?v=20260807d';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'worklist' });
@@ -813,7 +813,22 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const toast = core.toast;
 
+/* The selection is a working set, not a UI detail: ticking twenty leads is
+   several minutes of work, and it used to die on a refresh, a nav away, or
+   anything that re-ran load(). Persisted per device and pruned to whatever
+   is still in the queue when it comes back. */
+const LS_SEL = 'ajr_dm_sel';
 const state = { leads: [], sel: new Set(), targets: null, stats: [] };
+function loadSel() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS_SEL) || '[]');
+    return new Set(Array.isArray(raw) ? raw.map(Number).filter(Boolean) : []);
+  } catch (e) { return new Set(); }
+}
+function saveSel() {
+  try { localStorage.setItem(LS_SEL, JSON.stringify([...state.sel])); } catch (e) { /* private mode */ }
+}
+state.sel = loadSel();
 
 const storyLive = (l) => l.storySeenAt && (Date.now() - new Date(l.storySeenAt).getTime()) < 24 * 36e5;
 function queue() {
@@ -876,7 +891,11 @@ async function load() {
       core.loadLeads(), core.setterTargets(), core.setterStats(7),
     ]);
     state.leads = leads; state.targets = targets; state.stats = stats;
-    state.sel = new Set([...state.sel].filter((id) => queue().some((l) => l.id === id)));
+    // keep only what is still uncontacted and still exists; a lead marked or
+    // deleted elsewhere should not linger as a phantom tick
+    const live = new Set(queue().map((l) => l.id));
+    state.sel = new Set([...state.sel].filter((id) => live.has(id)));
+    saveSel();
     renderKpi(); render();
   } catch (e) {
     $('queue').innerHTML = '<div class="v2-empty">Couldn’t load: ' + esc(e.message) + '</div>';
@@ -888,12 +907,14 @@ $('queue').addEventListener('click', async (e) => {
   if (tickAll) {
     const q = queue();
     if (tickAll.checked) q.forEach((l) => state.sel.add(l.id)); else state.sel = new Set();
+  saveSel();
     render(); return;
   }
   const cb = e.target.closest('input.q-tick[data-id]');
   if (cb) {
     const id = +cb.getAttribute('data-id');
     if (cb.checked) state.sel.add(id); else state.sel.delete(id);
+    saveSel();
     render(); return;
   }
   const sent = e.target.closest('[data-sent]');
@@ -904,7 +925,7 @@ $('queue').addEventListener('click', async (e) => {
       const res = await core.markBatchSent([id], { kind: 'cold' });
       const l = state.leads.find((x) => x.id === id);
       if (l) l.lastContact = core.todayDmy();
-      state.sel.delete(id);
+      state.sel.delete(id); saveSel();
       render();
       toast({ type: 'ok', ttl: 8000, html: '<span class="mono">@' + esc(l ? l.h : id) + '</span> marked DM’d.',
         action: res.undo ? { label: 'Undo', fn: async () => { await core.undoOutreachSent(res.undo); load(); } } : null });
@@ -919,7 +940,7 @@ $('queue').addEventListener('click', async (e) => {
       const l = state.leads.find((q2) => q2.id === id);
       const res = await core.noContact([id]);
       state.leads = state.leads.filter((q2) => q2.id !== id);
-      state.sel.delete(id);
+      state.sel.delete(id); saveSel();
       render();
       toast({ type: 'ok', ttl: 9000, html: '<span class="mono">@' + esc(l ? l.h : id) + '</span> removed — not a lead.',
         action: res.undo ? { label: 'Undo', fn: async () => { await core.undoNoContact(res.undo); load(); } } : null });
@@ -933,7 +954,7 @@ $('queue').addEventListener('click', async (e) => {
     try {
       const res = await core.markBatchSent(ids, { kind: 'cold' });
       state.leads.forEach((l) => { if (state.sel.has(l.id)) l.lastContact = core.todayDmy(); });
-      state.sel = new Set();
+      state.sel = new Set(); saveSel();
       render();
       toast({ type: 'ok', ttl: 10000, html: 'Marked <b>' + res.marked + '</b> DM’d — counted as cold DMs.',
         action: res.undo ? { label: 'Undo', fn: async () => { await core.undoOutreachSent(res.undo); load(); } } : null });
