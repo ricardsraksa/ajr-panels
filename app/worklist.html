@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260807d">
+<link rel="modulepreload" href="./crm-core.js?v=20260807e">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -362,7 +362,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260807d';
+import * as core from './crm-core.js?v=20260807e';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'worklist' });
@@ -907,10 +907,10 @@ $('queue').addEventListener('click', async (e) => {
   if (tickAll) {
     const q = queue();
     if (tickAll.checked) q.forEach((l) => state.sel.add(l.id)); else state.sel = new Set();
-  saveSel();
+    saveSel();
     render(); return;
   }
-  const cb = e.target.closest('input.q-tick[data-id]');
+  const cb = e.target.closest('input.dm-tick[data-id]');
   if (cb) {
     const id = +cb.getAttribute('data-id');
     if (cb.checked) state.sel.add(id); else state.sel.delete(id);
@@ -1012,7 +1012,7 @@ function renderReview() {
   $('rvAdd').onclick = async () => {
     // pull typed handle fixes back in first
     el.querySelectorAll('[data-hfix]').forEach((inp) => {
-      const it = review.items[+inp.closest('.q-row').getAttribute('data-i')];
+      const it = review.items[+inp.closest('.dm-row').getAttribute('data-i')];
       if (it && inp.value.trim()) it.handle = cleanH(inp.value);
     });
     const seen = new Set();
@@ -1047,7 +1047,7 @@ function renderReview() {
     } catch (err) { toast({ type: 'err', html: esc(err.message), sticky: true }); renderReview(); }
   };
   el.querySelectorAll('[data-rvx]').forEach((b) => {
-    b.onclick = () => { review.items.splice(+b.closest('.q-row').getAttribute('data-i'), 1); renderReview(); };
+    b.onclick = () => { review.items.splice(+b.closest('.dm-row').getAttribute('data-i'), 1); renderReview(); };
   });
 }
 
