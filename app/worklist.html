@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260807e">
+<link rel="modulepreload" href="./crm-core.js?v=20260807f">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -362,7 +362,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260807e';
+import * as core from './crm-core.js?v=20260807f';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'worklist' });
@@ -868,7 +868,7 @@ function render() {
   const allTicked = q.every((l) => state.sel.has(l.id));
   el.innerHTML = '<div class="dm-bar">' +
       '<input type="checkbox" class="dm-tick" id="tickAll"' + (allTicked ? ' checked' : '') + '>' +
-      '<b>' + state.sel.size + '</b><span>selected</span>' +
+      '<b id="selN">' + state.sel.size + '</b><span>selected</span>' +
       '<span class="sp"></span>' +
       '<button class="v2-btn doneline sm" id="markSent"' + (state.sel.size ? '' : ' disabled') + '>Mark ' +
         (state.sel.size || 0) + ' DM’d as cold</button>' +
@@ -902,6 +902,15 @@ async function load() {
   }
 }
 
+function syncBar() {
+  const n = state.sel.size, q = queue();
+  const selN = document.getElementById('selN'); if (selN) selN.textContent = String(n);
+  const mark = document.getElementById('markSent');
+  if (mark) { mark.disabled = !n; mark.textContent = 'Mark ' + n + ' DM’d as cold'; }
+  const all = document.getElementById('tickAll');
+  if (all) all.checked = q.length > 0 && q.every((l) => state.sel.has(l.id));
+}
+
 $('queue').addEventListener('click', async (e) => {
   const tickAll = e.target.closest('#tickAll');
   if (tickAll) {
@@ -915,7 +924,9 @@ $('queue').addEventListener('click', async (e) => {
     const id = +cb.getAttribute('data-id');
     if (cb.checked) state.sel.add(id); else state.sel.delete(id);
     saveSel();
-    render(); return;
+    // only the counter changes — re-rendering the whole list per tick drops
+    // clicks when you're going down twenty of them, and stutters on a phone
+    syncBar(); return;
   }
   const sent = e.target.closest('[data-sent]');
   if (sent) {
