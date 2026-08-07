@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260807b">
+<link rel="modulepreload" href="./crm-core.js?v=20260807c">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -200,17 +200,13 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .hist .hrow{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
 .hist .who{font-weight:600;color:var(--ink-2);font-size:12px}
 .hist .when{margin-left:auto;font:400 11px var(--mono);color:var(--muted-2);cursor:help}
-.hist .ch{font-size:12.5px;color:var(--ink-2);padding:1px 0}
+.hist .ch{font-size:12.5px;color:var(--ink-2);padding:1px 0;overflow-wrap:anywhere}
 .hist .ch.warn{color:var(--red)}
-.hist .chd{color:var(--muted);font-size:12px;white-space:pre-wrap;margin-top:2px;
+.hist .chd{color:var(--muted);font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:130px;overflow-y:auto;margin-top:2px;
   padding-left:9px;border-left:2px solid var(--line-2)}
 .hist .chw{color:var(--muted-2);font-size:11.5px;margin-top:3px;padding-left:9px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hist li{display:flex;gap:8px;padding:5px 0;font-size:12px;color:var(--ink-2)}
-.hist .who{font-family:var(--mono);font-size:11px;color:var(--ink-3);flex:none}
 .hist .who.ai{color:var(--accent)}
-.hist .what{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hist .when{color:var(--muted-2);font-size:11px;flex:none}
 .dfoot{padding:13px 20px;border-top:1px solid var(--divider);flex:none;display:flex;flex-direction:column;gap:8px}
 .dfoot .v2-btn{width:100%}
 .pick{padding:16px 20px}
@@ -570,7 +566,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260807b';
+import * as core from './crm-core.js?v=20260807c';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
