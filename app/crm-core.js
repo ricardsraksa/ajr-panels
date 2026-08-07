@@ -225,7 +225,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260806l';
+const BUILD = '20260807a';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -655,9 +655,13 @@ export async function attachCall(dealId, url, whenIso) {
       title: 'Attached by hand', call_at: whenIso || new Date().toISOString(), consumed: true });
     return { ok: true };
   }
-  // the Fireflies id keeps rows unique; a hand-attached one has no transcript
-  // id, so key it on the URL to stay idempotent if the same link is pasted twice
-  const id = 'manual:' + u.slice(0, 180);
+  // Fireflies puts the transcript id in every URL form it hands out
+  // (/view/<id>, /live/<id>?ref=…). Keying on that id means a link pasted by
+  // hand lands on the SAME row the poll would create, instead of doubling the
+  // call up in the drawer — which is exactly what happened the first time both
+  // paths caught one call.
+  const ffid = (u.match(/\/(?:view|live)\/([A-Za-z0-9]{16,})/) || [])[1];
+  const id = ffid || ('manual:' + u.slice(0, 180));
   const { error } = await supa.from('pending_calls').upsert({
     id, deal_id: dealId, name: null, url: u, title: 'Attached by hand',
     call_at: whenIso || new Date().toISOString(),
