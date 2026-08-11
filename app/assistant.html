@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260807f">
+<link rel="modulepreload" href="./crm-core.js?v=20260811a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f0f0f3}</style>
 <script type="module" blocking="render">
@@ -327,7 +327,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260807f';
+import * as core from './crm-core.js?v=20260811a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'assistant' });
@@ -489,6 +489,44 @@ $('clearBtn').onclick = async () => {
 
 /* ---------- sending ---------- */
 function leadFor(h) { return book.leads.find((l) => l.h === h) || null; }
+
+/* Strip proposal fields that would not change the CRM. Selects drop on exact
+   match; prose drops when it says what the CRM already says — contained in it,
+   or nearly the same words. norm() folds case and punctuation so 'No flows,
+   sends weekly!' equals 'no flows sends weekly'; overlap() catches the light
+   rephrase ('one campaign a week' vs 'sends one campaign per week'). */
+function norm(v) { return String(v || '').toLowerCase().replace(/[^a-z0-9$%\s]/g, ' ').replace(/\s+/g, ' ').trim(); }
+// grammar words carry no meaning here, and 'sends'/'sending' are one word —
+// without this, every natural rephrase scores as new information
+const STOP = new Set(['a','an','the','per','at','all','to','of','for','is','are','was','be','and','or','with','on','in','it','they','he','she','has','have','their','his','her']);
+function stem(w) { return w.replace(/(ing|ed|es|s)$/, ''); }
+function sig(v) { return new Set(norm(v).split(' ').filter((w) => w && !STOP.has(w)).map(stem).filter(Boolean)); }
+function overlap(a, b) {
+  // share of the PROPOSAL already present in the existing text. The proposal's
+  // size is the denominator on purpose: 'no flows' known + a new $2k/mo fact
+  // must read as mostly-new, not as fully-covered because the short side matched
+  const A = sig(a), B = sig(b);
+  if (!A.size || !B.size) return 0;
+  let hit = 0; A.forEach((w) => { if (B.has(w)) hit++; });
+  return hit / A.size;
+}
+function saysNothingNew(proposed, existing) {
+  const p = norm(proposed), e = norm(existing);
+  if (!p) return true;
+  if (!e) return false;
+  return e.includes(p) || overlap(p, e) >= 0.8;
+}
+function dropKnown(u, l) {
+  if (!l) return;
+  if (u.level && u.level === (l.level || '')) u.level = '';
+  if (u.qual && u.qual === (l.qual || '')) u.qual = '';
+  if (u.status && u.status === (l.status || '')) u.status = '';
+  if (u.pains && saysNothingNew(u.pains, l.pains)) u.pains = '';
+  // notes append, so "new" means: not already somewhere in the notes — and the
+  // angle usually restates the pains, which is the same information twice
+  if (u.note && (saysNothingNew(u.note, l.notes) || saysNothingNew(u.note, l.pains))) u.note = '';
+  if (u.angle && (saysNothingNew(u.angle, l.notes) || saysNothingNew(u.angle, l.pains))) u.angle = '';
+}
 async function contextBlock() {
   const l = leadFor(chat);
   if (!l) return '';
@@ -550,6 +588,10 @@ async function send() {
       const lvl = u.level || (leadFor(detected || chat) || {}).level || '';
       u.note = core.noteAllowed(lvl) ? core.cleanNote(u.note) : '';
     }
+    // A proposal earns its card by CHANGING something. The model restates the
+    // CRM constantly — same qual it was told in the context, pains reworded —
+    // and every restatement costs a human decision that changes nothing.
+    dropKnown(u, leadFor(detected || chat));
     const hasU = Object.values(u).some((v) => String(v || '').trim());
     if (hasU && reply) { t.handle = detected || chat; t.updates = u; }
     if (!t.handle) delete t.updates;
