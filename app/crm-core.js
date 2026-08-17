@@ -225,7 +225,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260817c';
+const BUILD = '20260817d';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -1949,6 +1949,41 @@ export async function logAiFeedback(source, context, suggested, final) {
     const email = await userEmail();
     await supa.from('ai_feedback').insert({ source, context: String(context || ''), suggested, final, actor: email });
   } catch (e) { /* never block the user on telemetry */ }
+}
+
+/* Which proposal FIELDS have earned auto-apply.
+   Every Apply/Dismiss has been logged to ai_feedback since launch. A field kind
+   with a long unbroken run of accepted-unedited proposals has demonstrated it
+   doesn't need a decision; one dismissal or edit resets it to confirm-first.
+   Deliberately excluded: level (stage moves cascade into deals and alerts) and
+   anything deal-side or money-shaped. Those always ask. */
+const AUTO_ELIGIBLE = ['status', 'qual', 'pains', 'note', 'angle'];
+const AUTO_STREAK = 10;
+export async function autoApplyFields() {
+  if (DEMO) return [];
+  try {
+    const { data } = await supa.from('ai_feedback')
+      .select('suggested,final')
+      .eq('source', 'assist')
+      .order('id', { ascending: false }).limit(200);
+    const rows = data || [];
+    if (rows.length < AUTO_STREAK) return [];
+    const out = [];
+    for (const k of AUTO_ELIGIBLE) {
+      let streak = 0;
+      for (const r of rows) {                       // newest first
+        const sug = (r.suggested || {})[k];
+        if (!sug) continue;                         // this row didn't propose k
+        const fin = r.final && (r.final[k] !== undefined ? r.final[k] : null);
+        if (r.final === null || fin === null || fin === '') break;   // dismissed
+        if (String(fin).trim() !== String(sug).trim()) break;        // edited
+        streak++;
+        if (streak >= AUTO_STREAK) break;
+      }
+      if (streak >= AUTO_STREAK) out.push(k);
+    }
+    return out;
+  } catch (e) { return []; }
 }
 
 /** Ping the team channel that a lead just booked. Takes a payload object so the
