@@ -225,7 +225,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260817d';
+const BUILD = '20260817e';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -1228,21 +1228,6 @@ export async function undoImport(ids) {
     deleted += (data || []).length;
   }
   return { ok: true, deleted, kept: ids.length - deleted };
-}
-
-/** The un-messaged part of the pool, oldest-added first. */
-export async function outreachPool(opts = {}) {
-  const limit = opts.limit || 500;
-  if (DEMO) {
-    return _demo.leads.filter((l) => isPool(l.level) && !l.lastContact)
-      .slice(0, limit).map(_clone);
-  }
-  const { data, error } = await supa.from('leads')
-    .select('id,handle,ig_url,date_added')
-    .in('level', POOL_VALUES).is('last_contact', null)
-    .order('date_added', { ascending: true }).limit(limit);
-  if (error) throw new Error(error.message);
-  return data.map((l) => ({ id: l.id, h: l.handle, url: l.ig_url || '', dateAdded: isoToDmy(l.date_added) }));
 }
 
 /** Mark a batch as messaged today. One bulk write (a 100-lead batch shouldn't be
