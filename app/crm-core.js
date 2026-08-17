@@ -225,7 +225,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260817e';
+const BUILD = '20260817f';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -2792,6 +2792,80 @@ export function installTheme() {
 }
 
 /** Render the shared sidebar and wrap the page's <main>. Badges fill in async. */
+export function installSelectMenu() {
+  if (document.getElementById('v2-menu')) return;
+  if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+  const esc = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const TICK = '<svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg>';
+  const menu = document.createElement('div');
+  menu.id = 'v2-menu'; menu.hidden = true; menu.setAttribute('role', 'listbox');
+  document.body.appendChild(menu);
+  let cur = null;
+
+  const close = () => { menu.hidden = true; cur = null; };
+  function open(sel) {
+    cur = sel;
+    menu.innerHTML = [...sel.options].map((o, i) =>
+      `<button type="button" role="option" data-i="${i}" class="${o.value === sel.value ? 'on' : ''}">` +
+      TICK + esc(o.textContent) + '</button>').join('');
+    menu.style.top = '-9999px'; menu.hidden = false;      // measure before placing
+    const r = sel.getBoundingClientRect();
+    menu.style.minWidth = Math.max(r.width, 150) + 'px';
+    const mh = menu.offsetHeight, mw = menu.offsetWidth;
+    // some embedded/preview contexts report innerHeight 0 — fall back rather
+    // than clamp the menu to the top-left corner
+    const vh = window.innerHeight || document.documentElement.clientHeight || 800;
+    const vw = window.innerWidth || document.documentElement.clientWidth || 1200;
+    // below unless it would run off the bottom and there's more room above
+    const below = vh - r.bottom;
+    const top = (below >= mh + 8 || r.top < mh + 8) ? r.bottom + 4 : r.top - mh - 4;
+    menu.style.top = Math.max(8, Math.min(top, Math.max(8, vh - mh - 8))) + 'px';
+    menu.style.left = Math.max(8, Math.min(r.left, Math.max(8, vw - mw - 8))) + 'px';
+    const on = menu.querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest' });
+    try { sel.focus({ preventScroll: true }); } catch (e) { sel.focus(); } // keep arrow keys working
+  }
+  function pick(i) {
+    if (!cur) return;
+    if (cur.selectedIndex !== i) {
+      cur.selectedIndex = i;
+      cur.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    close();
+  }
+
+  document.addEventListener('mousedown', (e) => {
+    const sel = e.target.closest('select');
+    if (sel && !sel.disabled && !sel.multiple) {
+      e.preventDefault();               // stops the OS popup
+      if (cur === sel) close(); else open(sel);
+      return;
+    }
+    if (!e.target.closest('#v2-menu')) close();
+  }, true);
+  menu.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-i]');
+    if (b) pick(+b.getAttribute('data-i'));
+  });
+  // scrolling or resizing would leave the menu stranded next to nothing
+  window.addEventListener('scroll', () => { if (cur) close(); }, true);
+  window.addEventListener('resize', () => { if (cur) close(); });
+  document.addEventListener('v2-menu-close', close);   // SPA navigation
+  document.addEventListener('keydown', (e) => {
+    if (!cur) return;
+    if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+    const btns = [...menu.querySelectorAll('button[data-i]')];
+    let i = btns.findIndex((b) => b.classList.contains('cur'));
+    if (i < 0) i = btns.findIndex((b) => b.classList.contains('on'));
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      i = Math.max(0, Math.min(btns.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)));
+      btns.forEach((b) => b.classList.remove('cur'));
+      btns[i].classList.add('cur'); btns[i].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter' && i >= 0) { e.preventDefault(); pick(i); }
+  });
+}
+
 export async function installChrome(opts = {}) {
   installTheme();
   installSelectMenu();
