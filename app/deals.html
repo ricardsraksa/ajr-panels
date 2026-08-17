@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260817f">
+<link rel="modulepreload" href="./crm-core.js?v=20260817g">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -564,7 +564,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260817f';
+import * as core from './crm-core.js?v=20260817g';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
@@ -750,7 +750,6 @@ function render() {
   $('n-closed').textContent = state.deals.filter(isDone).length;
   $('n-today').textContent = state.deals.filter((d) => daysUntil(d.meeting) === 0 || daysUntil(d.followup) === 0).length;
   $('n-all').textContent = state.deals.length;
-  $('count').textContent = state.deals.length + ' deals';
   const meetsToday = state.deals.filter((d) => daysUntil(d.meeting) === 0 && !isDone(d)).length;
   const fuOver = state.deals.filter((d) => { const n = daysUntil(d.followup); return n !== null && n < 0 && !isDone(d); }).length;
   const strip = $('today');
