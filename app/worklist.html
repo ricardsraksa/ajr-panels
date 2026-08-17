@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260817b">
+<link rel="modulepreload" href="./crm-core.js?v=20260817c">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -18,8 +18,6 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 <title>Worklist · AJR</title>
 <style>
 /* page-specific only — tokens, sidebar and shared components come from crm-core */
-.demo-banner{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;
-  color:var(--muted);text-align:center;padding:6px 12px;border-bottom:1px solid var(--line);background:var(--card)}
 .q-thead,.q-row{grid-template-columns:148px 84px 46px minmax(0,1fr) 158px}
 .q-row{cursor:default}
 .q-row:hover{background:transparent}
@@ -168,7 +166,10 @@ input::placeholder,textarea::placeholder{color:var(--off)}
 .v2-side .me .nm{display:block;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .v2-side .me .rl{display:block;font-size:11px;color:var(--muted-2)}
 .v2-side .me .out{margin-left:auto;color:var(--muted-2);font-size:11px}
-.v2-main{flex:1;min-width:0;padding:30px 36px 80px;max-width:1016px}
+/* No global width cap. A reading width suits a chat or a queue and starves a
+   13-column table — pages that want one set .colw themselves. */
+.v2-main{flex:1;min-width:0;padding:30px 36px 80px}
+.colw{width:100%}
 @media(max-width:900px) and (min-width:761px){.v2-side{width:66px;padding:18px 8px}.v2-side .wm,.v2-side .grp,.v2-side .krow,.v2-side .me .nm,.v2-side .me .rl{display:none}}
 /* phone: the sidebar becomes a scrolling top strip. As a 64px rail it ate a
    third of the screen and wrapped every label onto three lines. */
@@ -296,9 +297,8 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 <!--/baked:head-->
 </head>
 <body class="v2-shell">
-<!--baked:side--><nav class="v2-side"><div class="grp">TODAY</div><a class="nav on" href="worklist.html" data-nav="worklist"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h11M3 12h11M3 18h7"/><path d="m17 15 2 2 4-4"/></svg>Today<span class="slot" data-slot="worklist"></span></a><a class="nav" href="assistant.html" data-nav="assistant"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H5l-2 2V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/></svg>Assistant<span class="slot" data-slot="assistant"></span></a><div class="grp gap">CLOSING</div><a class="nav" href="deals.html" data-nav="deals"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="3"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Deals<span class="slot" data-slot="deals"></span></a><div class="grp gap">LEAD BOOK</div><a class="nav" href="log-lead.html" data-nav="log-lead"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Log a lead<span class="slot" data-slot="log-lead"></span></a><a class="nav" href="leads.html" data-nav="leads"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>All leads<span class="slot" data-slot="leads"></span></a><a class="nav" href="leadpools.html" data-nav="leadpools"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7"/><path d="M3 7l9-4 9 4-9 4Z"/></svg>Leadpools<span class="slot" data-slot="leadpools"></span></a><div class="grp gap">REVIEW</div><a class="nav" href="report.html" data-nav="report"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></svg>Dashboard<span class="slot" data-slot="report"></span></a><a class="nav" href="briefing.html" data-nav="briefing"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h13a2 2 0 0 1 2 2v13a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 8h7M8 12h7M8 16h4"/></svg>Briefing<span class="slot" data-slot="briefing"></span></a><div class="sp"></div><a class="nav" href="settings.html"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H7a1.7 1.7 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V7a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
+<!--baked:side--><nav class="v2-side"><div class="grp">TODAY</div><a class="nav on" href="worklist.html" data-nav="worklist"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h11M3 12h11M3 18h7"/><path d="m17 15 2 2 4-4"/></svg>Today<span class="slot" data-slot="worklist"></span></a><a class="nav" href="assistant.html" data-nav="assistant"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H5l-2 2V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/></svg>Assistant<span class="slot" data-slot="assistant"></span></a><div class="grp gap">CLOSING</div><a class="nav" href="deals.html" data-nav="deals"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="3"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Deals<span class="slot" data-slot="deals"></span></a><div class="grp gap">LEAD BOOK</div><a class="nav" href="leads.html" data-nav="leads"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>All leads<span class="slot" data-slot="leads"></span></a><div class="grp gap">REVIEW</div><a class="nav" href="report.html" data-nav="report"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></svg>Dashboard<span class="slot" data-slot="report"></span></a><a class="nav" href="briefing.html" data-nav="briefing"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h13a2 2 0 0 1 2 2v13a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 8h7M8 12h7M8 16h4"/></svg>Briefing<span class="slot" data-slot="briefing"></span></a><div class="sp"></div><a class="nav" href="settings.html"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H7a1.7 1.7 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V7a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
 <main class="v2-main">
-  <div class="demo-banner" id="demoBanner" hidden>DEMO — writes go nowhere</div>
 
   <header class="v2-h">
     <h1>Today</h1>
@@ -362,7 +362,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260817b';
+import * as core from './crm-core.js?v=20260817c';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'worklist' });
@@ -869,6 +869,7 @@ function render() {
   el.innerHTML = '<div class="dm-bar">' +
       '<input type="checkbox" class="dm-tick" id="tickAll"' + (allTicked ? ' checked' : '') + '>' +
       '<b id="selN">' + state.sel.size + '</b><span>selected</span>' +
+      '<button class="v2-btn sm" id="pick20" style="margin-left:8px">Your ' + core.targetFor('outreach', state.targets || {}, 1) + '</button>' +
       '<span class="sp"></span>' +
       '<button class="v2-btn doneline sm" id="markSent"' + (state.sel.size ? '' : ' disabled') + '>Mark ' +
         (state.sel.size || 0) + ' DM’d as cold</button>' +
@@ -909,6 +910,8 @@ function syncBar() {
   if (mark) { mark.disabled = !n; mark.textContent = 'Mark ' + n + ' DM’d as cold'; }
   const all = document.getElementById('tickAll');
   if (all) all.checked = q.length > 0 && q.every((l) => state.sel.has(l.id));
+  const p20 = document.getElementById('pick20');
+  if (p20) p20.disabled = q.length === 0;
 }
 
 $('queue').addEventListener('click', async (e) => {
@@ -918,6 +921,15 @@ $('queue').addEventListener('click', async (e) => {
     if (tickAll.checked) q.forEach((l) => state.sel.add(l.id)); else state.sel = new Set();
     saveSel();
     render(); return;
+  }
+  if (e.target.closest('#pick20')) {
+    // the queue is already sorted story-live first, then freshest, so the
+    // first N IS the right N — starting the day shouldn't need a decision
+    const n = core.targetFor('outreach', state.targets || {}, 1) || 20;
+    state.sel = new Set(queue().slice(0, n).map((l) => l.id));
+    saveSel(); render();
+    toast({ type: 'ok', ttl: 6000, html: '<b>' + state.sel.size + '</b> picked — story-live first.' });
+    return;
   }
   const cb = e.target.closest('input.dm-tick[data-id]');
   if (cb) {
@@ -1082,15 +1094,47 @@ async function pollJobs() {
   }));
   // keep the user's typed fixes and removals: only grow the list
   const existing = new Set(review.items.map((it) => itemH(it) || core.normName(it.name || '')));
+  const fresh = [];
   items.forEach((it) => {
     const k = itemH(it) || core.normName(it.name || '');
-    if (!existing.has(k)) review.items.push(it);
+    if (!existing.has(k)) { review.items.push(it); fresh.push(it); }
   });
+  // A row with a full handle the model read confidently needs no decision from
+  // anyone — adding it by hand is typing, not judgement. Those go straight to
+  // the queue (undoable); the review card is left holding only what genuinely
+  // needs a human: missing handles and low-confidence reads.
+  autoAdd(fresh);
   renderReview();
   if (js.pending > 0 && !pollTimer) {
     pollTimer = core.pageInterval(() => pollJobs(), 4000);
   }
   if (js.errors) $('dropHint').innerHTML = '<b>' + js.errors + ' screenshot' + (js.errors === 1 ? '' : 's') + ' couldn’t be read.</b><br>They were skipped — re-upload them if they mattered.';
+}
+
+async function autoAdd(fresh) {
+  const clean = fresh.filter((it) => itemH(it) && it.confidence !== 'low');
+  if (!clean.length) return;
+  const seen = new Set(); const batch = [];
+  clean.forEach((it) => {
+    const h = itemH(it); if (!h || seen.has(h)) return; seen.add(h);
+    batch.push({ handle: h, stage: it.stage || '', notes: (it.notes || '').trim(),
+      qual: (it.qual || '').trim(), pains: (it.pains || '').trim(),
+      story: it.story || '', priv: it.priv || '' });
+  });
+  try {
+    const res = await core.addProspects(batch);
+    // drop exactly what we added, so the card shows only the leftovers
+    const added = new Set(batch.map((b2) => b2.handle));
+    review.items = review.items.filter((it) => !added.has(itemH(it)));
+    await load();
+    if (res.added || res.revived) {
+      toast({ type: 'ok', ttl: 10000,
+        html: '<b>' + res.added + '</b> added automatically' +
+          (res.revived ? ' · <b>' + res.revived + '</b> back from archive' : '') +
+          (res.skipped ? ' · ' + res.skipped + ' already in the book' : '') + '.',
+        action: res.undo && res.added ? { label: 'Undo', fn: async () => { await core.undoProspects(res.undo); load(); } } : null });
+    }
+  } catch (e) { /* leave them in the review card; the manual Add still works */ }
 }
 
 async function doUpload(files) {

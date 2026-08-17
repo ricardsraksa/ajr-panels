@@ -225,7 +225,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260817b';
+const BUILD = '20260817c';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -2457,7 +2457,6 @@ export async function navigate(href) {
 }
 
 async function swapTo(href) {
-  const t0 = performance.now();
   const res = await fetch(href, { credentials: 'same-origin' });
   if (!res.ok) throw new Error('fetch ' + res.status);
   const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
@@ -2510,16 +2509,6 @@ async function swapTo(href) {
     const burl = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
     try { await import(burl); } finally { URL.revokeObjectURL(burl); }
   }
-  try { // one row per swap so the field data shows what SPA navs actually cost
-    if (!DEMO) _spaLog({ page: href.split('/').pop().split('?')[0], ts: new Date().toISOString().slice(0, 19),
-      spa: true, ms: Math.round(performance.now() - t0) });
-  } catch (e) { /* diagnostics */ }
-}
-async function _spaLog(entry) {
-  const { data } = await supa.from('settings').select('value').eq('key', 'perf_log').maybeSingle();
-  let log = []; try { log = JSON.parse((data && data.value) || '[]'); } catch (e) { /* reset */ }
-  log.push(entry);
-  await supa.from('settings').upsert({ key: 'perf_log', value: JSON.stringify(log.slice(-30)), updated_at: new Date().toISOString() });
 }
 
 /* ---------- shared chrome (v2 "paper" design) ----------
@@ -2742,9 +2731,7 @@ const NAV_ITEMS = [
   { grp: 'CLOSING', gap: true },
   { id: 'deals', label: 'Deals', href: 'deals.html' },
   { grp: 'LEAD BOOK', gap: true },
-  { id: 'log-lead', label: 'Log a lead', href: 'log-lead.html' },
   { id: 'leads', label: 'All leads', href: 'leads.html' },
-  { id: 'leadpools', label: 'Leadpools', href: 'leadpools.html' },
   { grp: 'REVIEW', gap: true },
   { id: 'report', label: 'Dashboard', href: 'report.html' },
   { id: 'briefing', label: 'Briefing', href: 'briefing.html' },
@@ -2785,130 +2772,9 @@ export function installTheme() {
 }
 
 /** Render the shared sidebar and wrap the page's <main>. Badges fill in async. */
-/* TEMPORARY diagnostic: record where each real page load spent its time, so
-   slowness can be diagnosed from actual field numbers instead of guesses.
-   Kept to the last 30 views in settings.perf_log; remove once solved. */
-function perfBeacon() {
-  if (DEMO) return;
-  if (window.__beaconed) return; // SPA swaps re-run installChrome in the same document
-  window.__beaconed = true;
-  if (document.prerendering) { // log it when (if) the user actually arrives
-    document.addEventListener('prerenderingchange', () => perfBeacon(), { once: true });
-    return;
-  }
-  setTimeout(async () => {
-    try {
-      const nav = performance.getEntriesByType('navigation')[0];
-      const rs = performance.getEntriesByType('resource');
-      const pick = (m) => rs.filter((r) => r.name.includes(m));
-      const span = (list) => list.length
-        ? Math.round(Math.max(...list.map((r) => r.startTime + r.duration)) - Math.min(...list.map((r) => r.startTime)))
-        : 0;
-      const entry = {
-        page: location.pathname.split('/').pop(),
-        ts: new Date().toISOString().slice(0, 19),
-        navMs: Math.round(nav ? nav.duration : 0),
-        prerendered: !!(nav && nav.activationStart > 0), // click landed on an already-built page
-        htmlMs: Math.round(nav ? nav.responseEnd : 0),
-        coreFetchMs: Math.round((pick('crm-core.js')[0] || {}).duration || 0),
-        sbFetchMs: Math.round((pick('supabase-js.mjs')[0] || {}).duration || 0),
-        cached: ((pick('supabase-js.mjs')[0] || {}).transferSize === 0),
-        authMs: span(pick('/auth/v1/')),
-        restCount: pick('/rest/v1/').length,
-        restSpanMs: span(pick('/rest/v1/')),
-        restStartMs: Math.round(Math.min(...pick('/rest/v1/').map((r) => r.startTime), 99999)),
-      };
-      const { data } = await supa.from('settings').select('value').eq('key', 'perf_log').maybeSingle();
-      let log = []; try { log = JSON.parse((data && data.value) || '[]'); } catch (e) { /* reset */ }
-      log.push(entry);
-      await supa.from('settings').upsert({ key: 'perf_log', value: JSON.stringify(log.slice(-30)), updated_at: new Date().toISOString() });
-    } catch (e) { /* diagnostics must never hurt the page */ }
-  }, 3000);
-}
-
-/** Replace the OS-drawn select popup with one that matches the app.
- *  The native <select> stays in the DOM and keeps its value, so every existing
- *  change handler works untouched; we only intercept the pointer that would
- *  open the OS list. Touch devices keep their native picker — the iOS wheel is
- *  better than anything we'd draw. */
-export function installSelectMenu() {
-  if (document.getElementById('v2-menu')) return;
-  if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
-  const esc = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const TICK = '<svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg>';
-  const menu = document.createElement('div');
-  menu.id = 'v2-menu'; menu.hidden = true; menu.setAttribute('role', 'listbox');
-  document.body.appendChild(menu);
-  let cur = null;
-
-  const close = () => { menu.hidden = true; cur = null; };
-  function open(sel) {
-    cur = sel;
-    menu.innerHTML = [...sel.options].map((o, i) =>
-      `<button type="button" role="option" data-i="${i}" class="${o.value === sel.value ? 'on' : ''}">` +
-      TICK + esc(o.textContent) + '</button>').join('');
-    menu.style.top = '-9999px'; menu.hidden = false;      // measure before placing
-    const r = sel.getBoundingClientRect();
-    menu.style.minWidth = Math.max(r.width, 150) + 'px';
-    const mh = menu.offsetHeight, mw = menu.offsetWidth;
-    // some embedded/preview contexts report innerHeight 0 — fall back rather
-    // than clamp the menu to the top-left corner
-    const vh = window.innerHeight || document.documentElement.clientHeight || 800;
-    const vw = window.innerWidth || document.documentElement.clientWidth || 1200;
-    // below unless it would run off the bottom and there's more room above
-    const below = vh - r.bottom;
-    const top = (below >= mh + 8 || r.top < mh + 8) ? r.bottom + 4 : r.top - mh - 4;
-    menu.style.top = Math.max(8, Math.min(top, Math.max(8, vh - mh - 8))) + 'px';
-    menu.style.left = Math.max(8, Math.min(r.left, Math.max(8, vw - mw - 8))) + 'px';
-    const on = menu.querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest' });
-    try { sel.focus({ preventScroll: true }); } catch (e) { sel.focus(); } // keep arrow keys working
-  }
-  function pick(i) {
-    if (!cur) return;
-    if (cur.selectedIndex !== i) {
-      cur.selectedIndex = i;
-      cur.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-    close();
-  }
-
-  document.addEventListener('mousedown', (e) => {
-    const sel = e.target.closest('select');
-    if (sel && !sel.disabled && !sel.multiple) {
-      e.preventDefault();               // stops the OS popup
-      if (cur === sel) close(); else open(sel);
-      return;
-    }
-    if (!e.target.closest('#v2-menu')) close();
-  }, true);
-  menu.addEventListener('click', (e) => {
-    const b = e.target.closest('button[data-i]');
-    if (b) pick(+b.getAttribute('data-i'));
-  });
-  // scrolling or resizing would leave the menu stranded next to nothing
-  window.addEventListener('scroll', () => { if (cur) close(); }, true);
-  window.addEventListener('resize', () => { if (cur) close(); });
-  document.addEventListener('v2-menu-close', close);   // SPA navigation
-  document.addEventListener('keydown', (e) => {
-    if (!cur) return;
-    if (e.key === 'Escape') { e.preventDefault(); close(); return; }
-    const btns = [...menu.querySelectorAll('button[data-i]')];
-    let i = btns.findIndex((b) => b.classList.contains('cur'));
-    if (i < 0) i = btns.findIndex((b) => b.classList.contains('on'));
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      i = Math.max(0, Math.min(btns.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)));
-      btns.forEach((b) => b.classList.remove('cur'));
-      btns[i].classList.add('cur'); btns[i].scrollIntoView({ block: 'nearest' });
-    } else if (e.key === 'Enter' && i >= 0) { e.preventDefault(); pick(i); }
-  });
-}
-
 export async function installChrome(opts = {}) {
   installTheme();
   installSelectMenu();
-  perfBeacon();
   initRouter();
   try { navigator.serviceWorker && navigator.serviceWorker.register('./sw.js'); } catch (e) { /* optional */ }
   const active = opts.active || '';
