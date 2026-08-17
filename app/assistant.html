@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260811a">
+<link rel="modulepreload" href="./crm-core.js?v=20260817a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f0f0f3}</style>
 <script type="module" blocking="render">
@@ -327,7 +327,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260811a';
+import * as core from './crm-core.js?v=20260817a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'assistant' });
@@ -354,6 +354,7 @@ const QUAL_OPTS = ['', 'Qualified 1', 'Qualified 2', 'Qualified 3', 'Unqualified
 const STATUS_OPTS = [''].concat(core.STATUSES);
 const optHtml = (list, sel, blank) => list.map((o) =>
   `<option value="${esc(o)}"${o === sel ? ' selected' : ''}>${esc(o || blank)}</option>`).join('');
+const DEAL_OPTS = ['', 'Discovery Call', 'Closing call', 'Followup', 'Closed', 'No Close'];
 const FIELD_DEFS = [
   ['level', 'Stage', 'select', STAGE_OPTS],
   ['qual', 'Qual', 'select', QUAL_OPTS],
@@ -361,6 +362,10 @@ const FIELD_DEFS = [
   ['pains', 'Pains', 'text'],
   ['angle', 'Angle', 'text'],
   ['note', 'Note', 'text'],
+  // the closer's side: a post-call convo updates the DEAL, not just the lead
+  ['deal_status', 'Deal status', 'select', DEAL_OPTS],
+  ['deal_followup', 'Deal follow-up', 'text'],
+  ['deal_note', 'Deal note', 'text'],
 ];
 
 function propHtml(t, i) {
@@ -517,6 +522,15 @@ function saysNothingNew(proposed, existing) {
   return e.includes(p) || overlap(p, e) >= 0.8;
 }
 function dropKnown(u, l) {
+  // deal proposals only exist for leads that HAVE an open deal
+  const deal = l ? core.dealForLead(book.deals, l) : null;
+  if (!deal || ['Closed', 'No Close'].includes(deal.status)) {
+    u.deal_status = ''; u.deal_followup = ''; u.deal_note = '';
+  } else {
+    if (u.deal_status && u.deal_status === (deal.status || '')) u.deal_status = '';
+    if (u.deal_followup && core.dmyToIso(deal.followup) === u.deal_followup) u.deal_followup = '';
+    if (u.deal_note && saysNothingNew(u.deal_note, deal.notes)) u.deal_note = '';
+  }
   if (!l) return;
   if (u.level && u.level === (l.level || '')) u.level = '';
   if (u.qual && u.qual === (l.qual || '')) u.qual = '';
@@ -663,6 +677,20 @@ $('thread').addEventListener('click', async (e) => {
       if (noteBits.length) fields.notes = (hit.notes ? hit.notes + '\n' : '') + '[' + day + '] ' + noteBits.join(' · ');
       const res = await core.setLead(hit.id, fields, { touch: true });
       Object.entries(fields).forEach(([k, v]) => { hit[k] = v; });
+      // deal-side fields land on the closer's row — same confirm, second write
+      const deal = (final.deal_status || final.deal_followup || final.deal_note)
+        ? core.dealForLead(book.deals, hit) : null;
+      if (deal) {
+        const df = {};
+        if (final.deal_status) df.status = final.deal_status;
+        if (final.deal_followup && /^\d{4}-\d{2}-\d{2}$/.test(final.deal_followup)) df.followup = final.deal_followup;
+        if (final.deal_note) df.notes = (deal.notes ? deal.notes + '\n' : '') + '[' + day + '] ' + final.deal_note;
+        if (Object.keys(df).length) {
+          await core.setDeal(deal.row, df);
+          Object.assign(deal, { status: df.status || deal.status, notes: df.notes || deal.notes });
+          toast({ type: 'ok', ttl: 7000, html: 'Deal <span class="mono">' + esc(deal.name || t.handle) + '</span> updated too.' });
+        }
+      }
       toast({ type: 'ok', ttl: 9000, html: '<span class="mono">@' + esc(t.handle) + '</span> updated.',
         action: res.undo ? { label: 'Undo', fn: async () => { await core.undoWrite(res.undo); core.bootstrap().then((b) => { book = b; }); } } : null });
     } else {
