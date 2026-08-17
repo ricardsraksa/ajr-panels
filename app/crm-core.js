@@ -225,7 +225,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260817a';
+const BUILD = '20260817b';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -329,6 +329,23 @@ export async function loadBriefing() {
   const b = JSON.parse(data.value);
   b.updated_at = data.updated_at;
   return b;
+}
+
+/* The archive behind the Briefing page's date switcher. Every publish also
+   lands in briefing_archive keyed by the briefing's own iso day. */
+export async function briefingDays() {
+  if (DEMO) return ['2026-08-17', '2026-08-10'];
+  const { data, error } = await supa.from('briefing_archive')
+    .select('day').order('day', { ascending: false }).limit(90);
+  if (error) throw error;
+  return (data || []).map((r) => r.day);
+}
+export async function loadBriefingDay(day) {
+  if (DEMO) { const b = _clone(_demo.briefing); b.iso = day; b.date = day; return b; }
+  const { data, error } = await supa.from('briefing_archive')
+    .select('value').eq('day', day).maybeSingle();
+  if (error) throw error;
+  return data ? data.value : null;
 }
 
 export async function loadDeals() {

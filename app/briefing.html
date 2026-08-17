@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260817a">
+<link rel="modulepreload" href="./crm-core.js?v=20260817b">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f0f0f3}</style>
 <script type="module" blocking="render">
@@ -240,6 +240,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
       <span class="sub" id="bDate">—</span>
       <span class="counts" id="bCounts" hidden></span>
       <span class="sp"></span>
+      <select class="v2-in" id="daySel" hidden style="width:auto;min-height:30px;font-size:12.5px"></select>
       <a class="kd" id="kdLink" href="#" target="_blank" rel="noopener" hidden>📌 Key Developments →</a>
     </div>
     <div class="stale" id="staleNote" hidden></div>
@@ -247,7 +248,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
   </div>
 </main>
 <script type="module">
-import * as core from './crm-core.js?v=20260817a';
+import * as core from './crm-core.js?v=20260817b';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'briefing' });
@@ -260,24 +261,52 @@ const item = (it) => `<div class="it"><b>${esc(it.t)}</b>${it.d ? ' — ' + esc(
          : `<span class="nolink">${esc(it.src)}</span>`}</div>`;
 const group = (g) => `<section class="grp"><div class="grp-h">${esc(g.tag)}</div>${(g.items || []).map(item).join('')}</section>`;
 
+function show(b, isToday) {
+  $('bDate').textContent = b.date || '';
+  $('bCounts').hidden = !b.counts;
+  if (b.counts) $('bCounts').textContent = b.counts;
+  $('kdLink').hidden = !(b.keydev_url && b.keydev_url !== '#');
+  if (b.keydev_url && b.keydev_url !== '#') $('kdLink').href = b.keydev_url;
+  // the stale warning is about TODAY's automation, not about browsing history
+  $('staleNote').hidden = true;
+  if (isToday && b.iso) {
+    const age = (Date.now() - new Date(b.iso + 'T07:00:00')) / 36e5;
+    if (age > 48) { $('staleNote').textContent = 'This briefing is from ' + b.date + ' — the daily automation may not have run since.'; $('staleNote').hidden = false; }
+  }
+  const groups = b.groups || [];
+  $('content').innerHTML = groups.length
+    ? `<div class="sheet">${groups.map(group).join('')}</div>`
+    : '<div class="empty">Nothing published for this day.</div>';
+}
 try {
   const b = await core.loadBriefing();
   if (!b) {
     $('content').innerHTML = '<div class="empty">No briefing published yet — the daily automation writes one here every morning at 7.</div>';
   } else {
-    $('bDate').textContent = b.date || '';
-    if (b.counts) { $('bCounts').textContent = b.counts; $('bCounts').hidden = false; }
-    if (b.keydev_url && b.keydev_url !== '#') { $('kdLink').href = b.keydev_url; $('kdLink').hidden = false; }
-    if (b.iso) {
-      const age = (Date.now() - new Date(b.iso + 'T07:00:00')) / 36e5;
-      if (age > 48) { $('staleNote').textContent = 'This briefing is from ' + b.date + ' — the daily automation may not have run since.'; $('staleNote').hidden = false; }
-    }
+    show(b, true);
     core.markBriefingSeen(b.updated_at || b.iso || '');
-    const groups = b.groups || [];
-    $('content').innerHTML = groups.length
-      ? `<div class="sheet">${groups.map(group).join('')}</div>`
-      : '<div class="empty">Nothing published for this day.</div>';
   }
+  // previous days, loaded after the current one so history never delays today
+  try {
+    const days = await core.briefingDays();
+    if (days.length > 1 || (days.length === 1 && b && days[0] !== b.iso)) {
+      const sel = $('daySel');
+      const cur = b && b.iso;
+      sel.innerHTML = days.map((d) => '<option value="' + esc(d) + '"' + (d === cur ? ' selected' : '') + '>' +
+        esc(d.slice(8, 10) + '/' + d.slice(5, 7)) + '</option>').join('');
+      if (cur && !days.includes(cur)) sel.insertAdjacentHTML('afterbegin', '<option value="' + esc(cur) + '" selected>' + esc(cur.slice(8, 10) + '/' + cur.slice(5, 7)) + '</option>');
+      sel.hidden = false;
+      sel.onchange = async () => {
+        if (b && sel.value === b.iso) { show(b, true); return; }
+        $('content').innerHTML = '<div class="empty">Loading…</div>';
+        try {
+          const old = await core.loadBriefingDay(sel.value);
+          if (old) show(old, false);
+          else $('content').innerHTML = '<div class="empty">Nothing archived for that day.</div>';
+        } catch (e2) { $('content').innerHTML = '<div class="empty">' + esc(e2.message) + '</div>'; }
+      };
+    }
+  } catch (e) { /* history is optional; today already rendered */ }
 } catch (e) {
   $('content').innerHTML = '<div class="empty">Could not load the briefing: ' + esc(e.message) + '</div>';
 }
