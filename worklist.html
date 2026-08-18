@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260817g">
+<link rel="modulepreload" href="./crm-core.js?v=20260818a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -362,7 +362,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260817g';
+import * as core from './crm-core.js?v=20260818a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'worklist' });
@@ -1007,25 +1007,38 @@ function renderReview() {
   const el = $('review');
   const pend = review.pending || 0;
   if (!pend && !review.items.length) { el.hidden = true; el.innerHTML = ''; return; }
+  // three buckets: brand-new leads get ADDED, matched leads where the scan
+  // read a conversation state get a proposed status UPDATE (inbox sweeps),
+  // and anything unresolvable waits for a typed handle
   const needy = review.items.filter((it) => !itemH(it));
-  const ready = review.items.filter((it) => itemH(it));
+  const updates = review.items.filter((it) => isUpdate(it));
+  const adds = review.items.filter((it) => itemH(it) && !isUpdate(it));
   const badge = (it) =>
     (it.story === 'yes' ? '<span class="dm-story">◉ story</span>' : '') +
     (it.priv === 'yes' ? '<span title="Private — DM lands in requests">🔒</span>' : '');
-  const inBook = (h) => state.leads.some((l) => l.h === h);
+  const btnLabel = [adds.length ? 'Add ' + adds.length : '', updates.length ? 'Update ' + updates.length : '']
+    .filter(Boolean).join(' · ') || 'Nothing ready';
   el.innerHTML =
     '<div class="dm-bar"><b>' + review.items.length + '</b><span>scanned' +
       (needy.length ? ' · ' + needy.length + ' need a handle' : '') + '</span>' +
       (pend ? '<span style="color:var(--amber);font-size:12.5px">⏳ ' + pend + ' still processing…</span>' : '') +
       '<span class="sp"></span>' +
-      '<button class="v2-btn go sm" id="rvAdd"' + (ready.length ? '' : ' disabled') + '>Add ' + ready.length + ' to uncontacted</button>' +
+      '<button class="v2-btn go sm" id="rvAdd"' + (adds.length || updates.length ? '' : ' disabled') + '>' + esc(btnLabel) + '</button>' +
     '</div>' +
     review.items.map((it, i) => {
       const h = itemH(it);
+      // a row that resolved through the display name shows the match, so a
+      // wrong guess is visible and killable with ✕ before anything applies
+      const viaName = h && !cleanH(it.handle) && (it.name || '').trim();
+      const label = viaName
+        ? '<span class="dm-meta">' + esc((it.name || '').trim()) + ' →</span> <span class="dm-h">@' + esc(h) + '</span>'
+        : '<span class="dm-h">@' + esc(h) + '</span>';
       return '<div class="dm-row" data-i="' + i + '">' +
         (h
-          ? '<span class="dm-h">@' + esc(h) + '</span>' + badge(it) +
-            (inBook(h) ? '<span class="dm-meta">in book — skipped</span>' : '')
+          ? label + badge(it) +
+            (isUpdate(it)
+              ? '<span class="dm-meta">→ ' + esc(core.shortStatus(it.status) || core.shortStage(it.stage)) + '</span>'
+              : inBook(h) ? '<span class="dm-meta">in book — skipped</span>' : '')
           : '<input class="v2-in" data-hfix value="" placeholder="' + esc((it.name || 'unknown') + ' — @handle or IG link') + '" style="flex:1;min-height:34px;max-width:240px">' + badge(it)) +
         '<span class="sp" style="flex:1"></span>' +
         '<button class="dm-x" data-rvx title="Skip this one">✕</button>' +
@@ -1040,17 +1053,33 @@ function renderReview() {
     });
     const seen = new Set();
     const batch = [];
+    const toUpdate = [];
     review.items.forEach((it) => {
       const h = itemH(it);
       if (!h || seen.has(h)) return;
       seen.add(h);
+      if (isUpdate(it)) { toUpdate.push({ it, h }); return; }
       batch.push({ handle: h, stage: it.stage || '', notes: (it.notes || '').trim(),
         qual: (it.qual || '').trim(), pains: (it.pains || '').trim(),
-        story: it.story || '', priv: it.priv || '' });
+        name: (it.name || '').trim(), story: it.story || '', priv: it.priv || '' });
     });
     $('rvAdd').disabled = true;
     try {
-      const res = await core.addProspects(batch);
+      const res = batch.length ? await core.addProspects(batch) : { added: 0, skipped: 0, revived: 0 };
+      let updated = 0;
+      for (const u of toUpdate) {
+        // stage passes only when the scan produced one — no Engaged 1 default
+        // here, an inbox row must never downgrade an E3 lead
+        try {
+          await core.setterUpdate({ handle: u.h, stage: (u.it.stage || '').trim(), status: (u.it.status || '').trim(),
+            note: (u.it.notes || '').trim(), qual: (u.it.qual || '').trim(), pains: (u.it.pains || '').trim(),
+            name: (u.it.name || '').trim(), fromScan: true });
+          if (u.it._suggested) core.logAiFeedback('vision', u.h, u.it._suggested,
+            { handle: u.h, stage: u.it.stage || '', status: u.it.status || '',
+              notes: u.it.notes || '', qual: u.it.qual || '', pains: u.it.pains || '' });
+          updated++;
+        } catch (e) { /* count only successes; the toast reports the shortfall */ }
+      }
       // Anything still missing a handle STAYS. Clearing the whole review (and
       // its scan_jobs) used to delete those rows and the only record of the
       // screenshot they came from — silent data loss on the import path.
@@ -1063,9 +1092,11 @@ function renderReview() {
       }
       toast({ type: 'ok', ttl: 10000,
         html: 'Added <b>' + res.added + '</b>' + (res.revived ? ' · <b>' + res.revived + '</b> back from archive' : '') +
+          (updated ? ' · <b>' + updated + '</b> updated' : '') +
+          (toUpdate.length > updated ? ' · ' + (toUpdate.length - updated) + ' update' + (toUpdate.length - updated === 1 ? '' : 's') + ' failed' : '') +
           (res.skipped ? ' · ' + res.skipped + ' already in the book' : '') +
           (kept.length ? ' · <b>' + kept.length + '</b> still need a handle' : '') + '.',
-        action: res.undo && res.added ? { label: 'Undo', fn: async () => { await core.undoProspects(res.undo); load(); } } : null });
+        action: res.undo && res.added ? { label: 'Undo adds', fn: async () => { await core.undoProspects(res.undo); load(); } } : null });
       load(); pollJobs();
     } catch (err) { toast({ type: 'err', html: esc(err.message), sticky: true }); renderReview(); }
   };
@@ -1111,15 +1142,20 @@ async function pollJobs() {
   if (js.errors) $('dropHint').innerHTML = '<b>' + js.errors + ' screenshot' + (js.errors === 1 ? '' : 's') + ' couldn’t be read.</b><br>They were skipped — re-upload them if they mattered.';
 }
 
+const inBook = (h) => state.leads.some((l) => l.h === h && l.level !== 'Archive');
+// A matched row where the scan read a conversation state is a proposed status
+// update — only Richard marks leads, so it must reach the review card, never
+// be auto-consumed.
+const isUpdate = (it) => { const h = itemH(it); return !!h && inBook(h) && !!((it.status || '').trim() || (it.stage || '').trim()); };
 async function autoAdd(fresh) {
-  const clean = fresh.filter((it) => itemH(it) && it.confidence !== 'low');
+  const clean = fresh.filter((it) => itemH(it) && it.confidence !== 'low' && !isUpdate(it));
   if (!clean.length) return;
   const seen = new Set(); const batch = [];
   clean.forEach((it) => {
     const h = itemH(it); if (!h || seen.has(h)) return; seen.add(h);
     batch.push({ handle: h, stage: it.stage || '', notes: (it.notes || '').trim(),
       qual: (it.qual || '').trim(), pains: (it.pains || '').trim(),
-      story: it.story || '', priv: it.priv || '' });
+      name: (it.name || '').trim(), story: it.story || '', priv: it.priv || '' });
   });
   try {
     const res = await core.addProspects(batch);

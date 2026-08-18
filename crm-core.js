@@ -74,8 +74,8 @@ const _demo = {
     { id: 2, h: 'charlay', url: 'https://instagram.com/charlay', level: 'Engaged 3', status: 'Follow up Sent', qual: 'Qualified 3', notes: 'audit accepted, need to book meeting', lastContact: _ago(63), followed: _ago(1400), lp: true, lpQuality: 'good', lpUsed: true },
     { id: 3, h: 'akram_meza', url: 'https://instagram.com/akram_meza', level: 'Engaged 3', status: 'Follow up Sent', qual: 'Qualified 1', notes: 'showed interest from story', lastContact: _ago(63) },
     { id: 4, h: 'oscarwxng', url: 'https://instagram.com/oscarwxng', level: 'Booked', status: 'Call Pitched', qual: 'Qualified 2', notes: 'runs everything off one weekly campaign', pains: 'Sending one campaign a week, no flows at all. Says email is under 10% of revenue and he knows it should be triple that.', lastContact: _ago(1), followed: _ago(200) },
-    { id: 5, h: 'kayla.growth', url: 'https://instagram.com/kayla.growth', level: 'Engaged 2', status: 'Meme sent', qual: '', notes: '', lastContact: _ago(6) },
-    { id: 6, h: 'sofia_scales', url: 'https://instagram.com/sofia_scales', level: 'Engaged 1', status: "Haven't read", qual: '', notes: '', lastContact: _ago(10) },
+    { id: 5, h: 'kayla.growth', url: 'https://instagram.com/kayla.growth', level: 'Engaged 2', status: 'Meme sent', qual: '', notes: '', igName: 'Kayla Nguyen', lastContact: _ago(6) },
+    { id: 6, h: 'sofia_scales', url: 'https://instagram.com/sofia_scales', level: 'Engaged 1', status: "Haven't read", qual: '', notes: '', igName: 'Luka Vukoslavovic', lastContact: _ago(10) },
     { id: 7, h: 'nina.creates', url: 'https://instagram.com/nina.creates', level: 'Engaged 1', status: 'Lifestyle sent', qual: '', notes: '', lastContact: _ago(8) },
     { id: 8, h: 'mariusvmil', url: 'https://instagram.com/mariusvmil', level: 'Engaged 1', status: 'Left on read', qual: '', notes: '', lastContact: _ago(120) },
     { id: 9, h: 'therealashwinn', url: 'https://instagram.com/therealashwinn', level: 'Engaged 1', status: 'End of convo', qual: '', notes: '', lastContact: _ago(140) },
@@ -225,7 +225,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260817g';
+const BUILD = '20260818a';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -400,6 +400,9 @@ export async function setterUpdate(args) {
   // AI-sourced notes obey the stage gate; a note the setter typed himself
   // is his call and passes through untouched
   if (args.note && args.fromScan) args.note = noteAllowed(args.stage) ? cleanNote(args.note) : '';
+  // display name seen in the screenshot — backfill only, never overwrite:
+  // OCR names get truncated and a wrong overwrite breaks future inbox matching
+  const seenName = String(args.name || '').trim();
   if (DEMO) {
     const hit = _demo.leads.find((l) => l.h === handle);
     if (hit) {
@@ -409,6 +412,7 @@ export async function setterUpdate(args) {
       if (args.note) hit.notes = hit.notes ? hit.notes + '\n' + args.note : args.note;
       if (args.qual) hit.qual = args.qual;
       if (args.pains && !hit.pains) hit.pains = args.pains;
+      if (seenName && !hit.igName) hit.igName = seenName;
       hit.lastContact = todayDmy();
       let deal = null;
       if (args.stage === 'Booked') deal = await ensureDealForLead(hit, { meeting: args.meeting, time: args.meetingTime });
@@ -434,6 +438,7 @@ export async function setterUpdate(args) {
     // scanner extras — a blank from the AI never wipes what a human wrote
     if (args.qual) { prev.qualification = hit.qualification; patch.qualification = args.qual; }
     if (args.pains && !hit.pain_points) { prev.pain_points = hit.pain_points; patch.pain_points = args.pains; }
+    if (seenName && !hit.ig_name) { prev.ig_name = hit.ig_name; patch.ig_name = seenName; }
     const { error } = await supa.from('leads').update(patch).eq('id', hit.id);
     if (error) throw new Error(error.message);
     const actId = await logActivity('leads', hit.id, 'update', prev, patch);
@@ -451,6 +456,7 @@ export async function setterUpdate(args) {
     level: args.stage, last_status: args.status || null,
     notes: args.note || null, last_contact: todayIso, date_added: todayIso,
     qualification: args.qual || null, pain_points: args.pains || null,
+    ig_name: seenName || null,
   };
   const { data: created, error: cErr } = await supa.from('leads')
     .insert(rowNew).select('id').single();
@@ -1453,7 +1459,8 @@ export async function undoOutreachSent(undo) {
 export async function setLead(id, fields, opts) {
   const MAP = { level: 'level', status: 'last_status', qual: 'qualification',
     notes: 'notes', pains: 'pain_points', email: 'email', phone: 'phone', linkedin: 'linkedin',
-    lp: 'lp', lpQuality: 'lp_quality', lpUsed: 'lp_used', snoozedUntil: 'snoozed_until' };
+    lp: 'lp', lpQuality: 'lp_quality', lpUsed: 'lp_used', snoozedUntil: 'snoozed_until',
+    igName: 'ig_name' };
   const touch = !!(opts && opts.touch) && ('level' in fields || 'status' in fields);
   if (DEMO) {
     const l = _demo.leads.find((x) => x.id === id);
@@ -2230,6 +2237,7 @@ export async function addProspects(cards) {
     // scanner inventing notes for leads that haven't talked business yet.
     notes: cleanNote(c.notes),
     qual: String(c.qual || '').trim(), pains: String(c.pains || '').trim(),
+    name: String(c.name || '').trim(),
     story: c.story === 'yes', priv: c.priv === 'yes',
   })).filter((c) => c.h);
   if (!list.length) return { added: 0, skipped: 0, ids: [] };
@@ -2249,7 +2257,7 @@ export async function addProspects(cards) {
       const id = Date.now() + Math.floor(Math.random() * 1e6);
       _demo.leads.push({ id, h: c.h, url: 'https://instagram.com/' + c.h, level: c.stage || '',
         status: '', qual: '', notes: c.notes, lastContact: '', dateAdded: todayDmy(),
-        prospected: new Date().toISOString(),
+        igName: c.name || '', prospected: new Date().toISOString(),
         storySeenAt: c.story ? new Date().toISOString() : '', igStatus: c.priv ? 'private' : '' });
       ids.push(id);
     }
@@ -2288,6 +2296,7 @@ export async function addProspects(cards) {
       level: c.stage || null, last_contact: null, prospected_at: new Date().toISOString(),
       date_added: dmyToIso(todayDmy()), notes: c.notes || null,
       qualification: c.qual || null, pain_points: c.pains || null,
+      ig_name: c.name || null,
       story_seen_at: c.story ? new Date().toISOString() : null,
       ig_status: c.priv ? 'private' : null,
     }).select('id').single();
@@ -3547,7 +3556,7 @@ export function installScanner(opts = {}) {
         // a collapsed item still carries the AI's guess, which prospects drop
         batch.push({ handle, stage: it._open ? (it.stage || '') : '',
           notes: (it.notes || '').trim(), qual: (it.qual || '').trim(), pains: (it.pains || '').trim(),
-          story: it.story || '', priv: it.priv || '' });
+          name: (it.name || '').trim(), story: it.story || '', priv: it.priv || '' });
       });
       let res = { added: 0, skipped: 0 };
       try { res = await addProspects(batch); } catch (e) { /* surfaced via onDone(0) */ }
@@ -3563,7 +3572,7 @@ export function installScanner(opts = {}) {
       seen.add(handle);
       const fields = { handle, stage: it.stage || 'Engaged 1', status: it.status || '',
         note: (it.notes || '').trim(), qual: (it.qual || '').trim(), pains: (it.pains || '').trim(),
-        fromScan: true };
+        name: (it.name || '').trim(), fromScan: true };
       try {
         await setterUpdate(fields);
         if (it._suggested) logAiFeedback('vision', handle, it._suggested,

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260817g">
+<link rel="modulepreload" href="./crm-core.js?v=20260818a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -393,7 +393,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260817g';
+import * as core from './crm-core.js?v=20260818a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'log-lead' });
@@ -1163,9 +1163,10 @@ async function addScanned() {
     var handle = CRMParse.normalizeHandle(g('handle'));
     if (!handle) { failed++; continue; }
     try {
-      var res = await api('setterUpdate', { handle: handle, stage: g('stage'), status: g('status'), note: g('notes') });
-      if (res.mode === 'created') added++; else updated++;
       var orig = scanLeads[+card.getAttribute('data-i')];
+      var res = await api('setterUpdate', { handle: handle, stage: g('stage'), status: g('status'), note: g('notes'),
+        name: (orig && orig.name || '').trim() });
+      if (res.mode === 'created') added++; else updated++;
       if (orig && orig._suggested) {
         core.logAiFeedback('vision', handle, orig._suggested,
           { handle: handle, stage: g('stage'), status: g('status'), notes: g('notes') });
