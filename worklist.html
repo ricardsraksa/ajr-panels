@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260818a">
+<link rel="modulepreload" href="./crm-core.js?v=20260818b">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -362,7 +362,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260818a';
+import * as core from './crm-core.js?v=20260818b';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'worklist' });
@@ -990,6 +990,7 @@ $('queue').addEventListener('click', async (e) => {
    the page only has to survive the upload itself. Results queue in the
    review card until Add — reload, phone-lock, whatever, they wait. */
 let review = { items: [], jobIds: [] };
+const handled = new Set();   // keys consumed this session — never re-added by a poll tick
 const cleanH = (v) => {
   v = String(v || '').trim();
   const m = v.match(/instagram\.com\/(?:_u\/)?(?:stories\/)?([a-z0-9._]{2,30})/i);
@@ -1058,7 +1059,7 @@ function renderReview() {
       const h = itemH(it);
       if (!h || seen.has(h)) return;
       seen.add(h);
-      if (isUpdate(it)) { toUpdate.push({ it, h }); return; }
+      if (isUpdate(it)) { toUpdate.push({ it, h, nameKey: core.normName(it.name || '') }); return; }
       batch.push({ handle: h, stage: it.stage || '', notes: (it.notes || '').trim(),
         qual: (it.qual || '').trim(), pains: (it.pains || '').trim(),
         name: (it.name || '').trim(), story: it.story || '', priv: it.priv || '' });
@@ -1066,6 +1067,7 @@ function renderReview() {
     $('rvAdd').disabled = true;
     try {
       const res = batch.length ? await core.addProspects(batch) : { added: 0, skipped: 0, revived: 0 };
+      batch.forEach((b2) => { handled.add(b2.handle); const nk = core.normName(b2.name || ''); if (nk) handled.add(nk); });
       let updated = 0;
       for (const u of toUpdate) {
         // stage passes only when the scan produced one — no Engaged 1 default
@@ -1078,6 +1080,7 @@ function renderReview() {
             { handle: u.h, stage: u.it.stage || '', status: u.it.status || '',
               notes: u.it.notes || '', qual: u.it.qual || '', pains: u.it.pains || '' });
           updated++;
+          handled.add(u.h); if (u.nameKey) handled.add(u.nameKey);
         } catch (e) { /* count only successes; the toast reports the shortfall */ }
       }
       // Anything still missing a handle STAYS. Clearing the whole review (and
@@ -1128,7 +1131,7 @@ async function pollJobs() {
   const fresh = [];
   items.forEach((it) => {
     const k = itemH(it) || core.normName(it.name || '');
-    if (!existing.has(k)) { review.items.push(it); fresh.push(it); }
+    if (!existing.has(k) && !handled.has(k)) { review.items.push(it); fresh.push(it); }
   });
   // A row with a full handle the model read confidently needs no decision from
   // anyone — adding it by hand is typing, not judgement. Those go straight to
@@ -1161,8 +1164,12 @@ async function autoAdd(fresh) {
     const res = await core.addProspects(batch);
     // drop exactly what we added, so the card shows only the leftovers
     const added = new Set(batch.map((b2) => b2.handle));
+    added.forEach((h) => handled.add(h));
+    batch.forEach((b2) => { const nk = core.normName(b2.name || ''); if (nk) handled.add(nk); });
     review.items = review.items.filter((it) => !added.has(itemH(it)));
+    if (!review.items.length) { try { await core.clearScanJobs(review.jobIds); review.jobIds = []; } catch (e2) { /* next Apply clears */ } }
     await load();
+    renderReview();
     if (res.added || res.revived) {
       toast({ type: 'ok', ttl: 10000,
         html: '<b>' + res.added + '</b> added automatically' +
