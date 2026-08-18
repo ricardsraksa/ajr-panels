@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
+<link rel="modulepreload" href="./crm-core.js?v=20260818b">
+<link rel="modulepreload" href="./supabase-js.mjs?v=1">
+<link rel="preload" as="script" href="./parser.js">
+<style>html{background:#f0f0f3}</style>
+<script type="module" blocking="render">
+/* Chrome holds the OLD page's pixels until this resolves, then cross-fades to
+   the finished new page — the "every click opens a new browser" gap dies here.
+   Capped so a wedged script can only delay paint, never prevent it. */
+await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
+</script>
+<title>All leads · AJR</title>
+<style>
+/* the column set is user-chosen, so the track list is computed per render */
+.l-thead,.l-row{grid-template-columns:var(--l-cols,26px 116px 100px 120px 58px 50px minmax(0,1fr))}
+.l-tick{width:15px;height:15px;flex:none;cursor:pointer;accent-color:var(--go);align-self:center}
+/* sheet-style cells: plain text until hovered/focused, then obviously editable */
+.l-edit{width:100%;min-width:0;border:1px solid transparent;border-radius:6px;background:none;
+  font:inherit;font-size:12.5px;color:var(--ink-2);padding:2px 16px 2px 5px;cursor:pointer;
+  appearance:none;-webkit-appearance:none;text-overflow:ellipsis;
+  background-repeat:no-repeat;background-position:right 3px center;background-size:12px;
+  transition:border-color .16s ease, background-color .16s ease, box-shadow .16s ease}
+/* the chevron only appears on hover/focus, so the table still reads as text —
+   the space for it is always reserved, so nothing shifts */
+.l-edit:hover,.l-edit:focus{border-color:var(--line-2);background-color:#fff;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8375' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")}
+.l-edit:focus{border-color:var(--muted);outline:none;box-shadow:0 0 0 3px rgba(33,31,27,.07)}
+.l-edit.busy{opacity:.5}
+.l-edit.booked{color:var(--go);font-weight:600}
+.l-edit.noclose{color:var(--red)}
+.l-edit.q3{color:var(--go);font-weight:600}
+.l-edit.qun{color:#a29a89}
+/* column picker */
+.colwrap{position:relative;display:inline-flex}
+.colpop{position:absolute;top:calc(100% + 6px);left:0;z-index:40;min-width:186px;padding:6px;
+  background:#fff;border:1px solid var(--line);border-radius:11px;
+  box-shadow:0 12px 30px rgba(33,31,27,.13),0 2px 6px rgba(33,31,27,.06);
+  animation:colpop .13s ease}
+@keyframes colpop{from{opacity:0;transform:translateY(-4px)}}
+.colpop .ttl{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted-2);padding:6px 9px 7px}
+.colpop label{display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:7px;
+  font-size:13px;color:var(--ink);cursor:pointer;user-select:none}
+.colpop label:hover{background:#f4f1ea}
+.colpop label.lock{color:#a29a89;cursor:default}
+.colpop label.lock:hover{background:none}
+.colpop input{width:14px;height:14px;flex:none;accent-color:var(--ink);cursor:pointer}
+.colpop input:disabled{cursor:default}
+.colpop .foot{border-top:1px solid var(--divider);margin-top:5px;padding:7px 9px 3px}
+.colpop .foot button{font:inherit;font-size:12px;color:var(--muted);background:none;border:0;padding:0;cursor:pointer}
+.colpop .foot button:hover{color:var(--ink);text-decoration:underline}
+.l-row{cursor:pointer}
+.lh{font-weight:600;font-size:13.5px;color:var(--ink);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lh:hover{color:var(--ink);text-decoration:underline;text-decoration-color:var(--off)}
+.l-cell{font-size:12.5px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.l-cell.dim{color:var(--muted)}
+.l-mono{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+.l-min{min-width:600px}
+.pager{display:flex;align-items:center;gap:10px;padding:11px 18px;border-top:1px solid var(--divider);color:var(--muted);font-size:12.5px}
+.pager .sp{flex:1}
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(20,20,22,.55);opacity:0;pointer-events:none;transition:opacity .18s;z-index:60}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;height:100vh;width:min(300px,100vw);background:#fff;
+  /* an opaque surface with real elevation: --rowsel is a translucent row
+     tint, so using it here let the scrim show through and the panel read
+     as part of the page it is supposed to sit above */
+  box-shadow:-18px 0 44px -12px rgba(0,0,0,.28), -1px 0 0 rgba(0,0,0,.10);
+  border-left:1px solid rgba(0,0,0,.10);transform:translateX(100%);transition:transform .2s cubic-bezier(.2,.8,.2,1);
+  z-index:70;display:flex;flex-direction:column}
+.drawer.on{transform:none}
+.dhead{padding:18px 20px 12px;border-bottom:1px solid var(--divider);flex:none}
+.dhead .lab{font:600 10px var(--mono);letter-spacing:.08em;color:var(--ink-3);display:block;margin-bottom:6px}
+.dhead h2{font-size:16px;font-weight:700;display:inline-block;margin-right:8px}
+.dbody{flex:1;overflow-y:auto;padding:16px 20px}
+.dbody .meta{color:var(--muted);font-size:12px;font-family:var(--mono);margin-bottom:14px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.fld{margin-bottom:13px}
+.fld label{display:block;font:600 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:5px}
+.hist{margin-top:4px;border-top:1px solid var(--divider);padding-top:13px}
+.hist h3{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);margin-bottom:8px}
+.hist ul{list-style:none}
+.hist li{padding:9px 0;border-top:1px solid var(--divider)}
+.hist li:first-child{border-top:none}
+.hist .hrow{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
+.hist .who{font-weight:600;color:var(--ink-2);font-size:12px}
+.hist .when{margin-left:auto;font:400 11px var(--mono);color:var(--muted-2);cursor:help}
+.hist .ch{font-size:12.5px;color:var(--ink-2);padding:1px 0;overflow-wrap:anywhere}
+.hist .ch.warn{color:var(--red)}
+.hist .chd{color:var(--muted);font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:130px;overflow-y:auto;margin:2px 0 0 0;
+  padding-left:9px;border-left:2px solid var(--line-2)}
+.hist .chw{color:var(--muted-2);font-size:11.5px;margin-top:3px;padding-left:9px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist .who.ai{color:var(--accent)}
+.dfoot{padding:13px 20px;border-top:1px solid var(--divider);flex:none;display:flex;flex-direction:column;gap:8px}
+.dfoot .v2-btn{width:100%}
+/* outreach pool */
+/* floating batch bar: the real one sits at the top of the table and scrolls
+   away, so the count and the Mark button follow you down a 300-row list */
+.fbar{position:fixed;left:50%;transform:translateX(-50%) translateY(8px);
+  bottom:calc(18px + env(safe-area-inset-bottom));z-index:75;
+  display:flex;align-items:center;gap:12px;padding:9px 10px 9px 16px;
+  background:#fff;border:1px solid var(--line);border-radius:999px;
+  box-shadow:0 10px 30px rgba(33,31,27,.16),0 2px 6px rgba(33,31,27,.07);
+  font-size:13px;color:var(--ink-2);max-width:calc(100vw - 24px);
+  opacity:0;pointer-events:none;transition:opacity .16s ease, transform .16s ease}
+.fbar.on{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+.fbar b{font-family:var(--mono);color:var(--ink)}
+.fbar .sent{color:var(--go);font-weight:600;white-space:nowrap}
+.fbar .dot{color:var(--line-2)}
+.fbar .lab{white-space:nowrap}
+.fbar button{white-space:nowrap}
+/* toasts land bottom-centre too — lift them above the bar instead of under it */
+.v2-toasts{bottom:76px}
+@media (max-width:760px){
+  .fbar{left:12px;right:12px;transform:translateY(8px);max-width:none;
+    border-radius:14px;justify-content:space-between;padding:9px 10px 9px 14px}
+  .fbar.on{transform:translateY(0)}
+  .fbar .lab{display:none}
+}
+.poolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--divider);font-size:13px;color:var(--ink-2)}
+.poolbar .sp{flex:1}
+.poolbar b{font-family:var(--mono);color:var(--ink)}
+/* ONE column, like Instagram's list. Three columns filled left-to-right,
+   so reading down a column skipped two accounts per line and the order
+   looked wrong against the phone — density is worthless if the sequence
+   can't be followed. */
+.poolgrid{display:grid;grid-template-columns:1fr}
+.poolcell{display:flex;align-items:center;gap:9px;padding:10px 18px;border-top:1px solid var(--divider);min-width:0;cursor:pointer}
+.poolcell input{width:15px;height:15px;flex:none;cursor:pointer;accent-color:var(--go)}
+.poolcell a{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sentbtn{flex:none;min-height:30px;padding:0 11px;border-radius:8px;border:1px solid var(--go-line);
+  background:#fff;color:var(--go);font:600 12px var(--font);cursor:pointer}
+.sentbtn:hover{background:var(--go-tint)}
+.sentbtn:disabled{opacity:.5}
+.ckspace{width:15px;flex:none}
+.stagetag{flex:none;font:600 9.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-2);background:var(--divider);border-radius:5px;padding:2px 6px}
+.uptobtn{flex:none;min-height:28px;padding:0 9px;border-radius:7px;border:1px solid var(--line);background:#fff;
+  color:var(--muted);font:600 11px var(--font);cursor:pointer}
+.uptobtn:hover{color:var(--ink);border-color:var(--off)}
+.nalbtn{flex:none;width:28px;min-height:28px;border-radius:7px;border:1px solid transparent;background:none;
+  color:var(--off);font-size:13px;cursor:pointer}
+.nalbtn:hover{color:var(--red);border-color:#e6d3ce;background:#fff}
+.senttoday{flex-wrap:wrap;background:var(--done);border-bottom:1px solid var(--line)}
+.st-h{font:500 12.5px var(--mono)}
+@media(max-width:760px){
+  /* three 83px columns on a phone truncated every handle to nothing */
+  .poolgrid{grid-template-columns:1fr}
+  .poolcell{padding:12px 16px;min-height:52px;gap:12px}
+  .poolcell a{font-size:15px}
+  .poolcell input{width:20px;height:20px}
+  .sentbtn{min-height:38px;padding:0 15px;font-size:13px}
+  .nalbtn{width:40px;min-height:38px;font-size:16px}
+  .uptobtn{min-height:38px;padding:0 12px}
+  .poolbar{padding:10px 14px;gap:8px}
+  .poolage{font-size:11.5px}
+}
+.poolage{margin-left:auto;font:400 11px var(--mono);color:var(--muted-2);flex:none}
+.tf{display:inline-flex;background:var(--divider);border:1px solid var(--line);border-radius:9px;padding:2px;gap:2px}
+.tf button{border-radius:7px;padding:5px 12px;min-height:30px;border:none;background:none;cursor:pointer;
+  font:600 11.5px var(--font);color:var(--ink-3)}
+.tf button:hover{color:var(--ink)}
+.tf button[aria-pressed="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(33,31,27,.07)}
+.impbar{display:flex;align-items:center;gap:12px;padding:13px 18px;margin-bottom:14px;border:1px solid var(--go-line);
+  border-radius:12px;background:var(--go-tint);color:var(--ink-2);font-size:13px}
+.impbar b{font-family:var(--mono);color:var(--ink)}
+.impbar .sp{flex:1}
+.pooldash{border:1px dashed var(--line-2);border-radius:12px;padding:34px;text-align:center;color:var(--muted)}
+</style>
+<!--baked:head-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style id="v2-theme">
+@view-transition{navigation:auto}
+:root{
+  --bg:#f0f0f3; --side:rgba(251,251,253,.78); --card:#fbfbfd; --rowsel:rgba(0,0,0,.022);
+  --line:rgba(0,0,0,.07); --line-2:rgba(0,0,0,.12); --divider:rgba(0,0,0,.05);
+  --ink:#1d1d1f; --ink-2:#3a3a3c; --ink-3:#6e6e73; --muted:#6e6e73; --muted-2:#98989d; --off:#b9b9bf;
+  /* accent = the action colour (buttons, active nav, links, cursor row).
+     --go stays green and means money/success/done only. Splitting them is the
+     whole point: a "Log" button and "cash collected" are not the same idea. */
+  --accent:#B0544A; --accent-hi:#8F4238; --accent-tint:rgba(176,84,74,.07); --accent-line:rgba(176,84,74,.35);
+  --go:#1F7A4D; --go-hi:#17603C; --go-tint:rgba(31,122,77,.08); --go-line:rgba(31,122,77,.3); --done:rgba(31,122,77,.04);
+  --red:#C7392E; --amber:#9A6A00; --amber-tint:rgba(154,106,0,.09);
+  --ai:#7c56c9; --ai-line:#e2d9f4; --ai-tint:#f6f2fb;
+  --font:-apple-system,'SF Pro Text','SF Pro Display',system-ui,'Instrument Sans',sans-serif;
+  --mono:ui-monospace,'SF Mono','IBM Plex Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:var(--accent);text-decoration:none}
+a:hover{color:var(--accent-hi)}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+input::placeholder,textarea::placeholder{color:var(--off)}
+
+/* layout */
+.v2-shell{display:flex;min-height:100vh}
+.v2-side{width:228px;flex:none;border-right:1px solid rgba(0,0,0,.06);background:var(--side);padding:22px 12px 16px;
+  backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);
+  display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:100vh;
+  align-self:flex-start} /* flex would stretch it and break position:sticky */
+.v2-side .wm{font-weight:700;font-size:15px;letter-spacing:-.01em;padding:0 10px 18px}
+.v2-side .grp{font:600 10.5px var(--font);letter-spacing:.1em;color:var(--muted-2);padding:4px 10px}
+.v2-side .grp.gap{padding-top:14px}
+.v2-side a.nav{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:var(--ink-2);font-size:13.5px}
+.v2-side a.nav:hover{background:rgba(0,0,0,.045);color:var(--ink)}
+.v2-side a.nav .ic{flex:none;opacity:.62}
+.v2-side a.nav.on .ic{opacity:1}
+.v2-side a.nav.on{background:rgba(176,84,74,.1);color:var(--accent);font-weight:600}
+.v2-side a.nav.on:hover{background:rgba(176,84,74,.14);color:var(--accent)}
+.v2-side .badge-n{margin-left:auto;font:600 11.5px var(--mono);font-variant-numeric:tabular-nums;border-radius:99px;padding:0}
+.v2-side a.nav:not(.on) .badge-n{color:var(--muted-2)}
+.v2-side .badge-red{margin-left:auto;font-size:11px;color:var(--red);font-weight:600}
+.v2-side .badge-dot{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
+.v2-side .sp{flex:1}
+.v2-side .krow{display:flex;align-items:center;gap:8px;padding:8px 10px;color:var(--muted-2);font-size:12px;cursor:pointer}
+.v2-side .krow kbd{margin-left:auto;font:600 11px var(--mono);border:1px solid var(--line-2);border-radius:5px;padding:1px 6px;background:#fff;color:var(--ink-3)}
+.v2-side .me{display:flex;align-items:center;gap:9px;padding:10px 10px 2px;border-top:1px solid var(--line);margin-top:6px}
+.v2-side .me{border-top:1px solid rgba(0,0,0,.06)}
+.v2-side .me .av{width:27px;height:27px;border-radius:50%;background:var(--ink);color:#fbfbfd;display:inline-flex;
+  align-items:center;justify-content:center;font:600 11px var(--font);flex:none}
+.v2-side .me .nm{display:block;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v2-side .me .rl{display:block;font-size:11px;color:var(--muted-2)}
+.v2-side .me .out{margin-left:auto;color:var(--muted-2);font-size:11px}
+/* No global width cap. A reading width suits a chat or a queue and starves a
+   13-column table — pages that want one set .colw themselves. */
+.v2-main{flex:1;min-width:0;padding:30px 36px 80px}
+.colw{width:100%}
+@media(max-width:900px) and (min-width:761px){.v2-side{width:66px;padding:18px 8px}.v2-side .wm,.v2-side .grp,.v2-side .krow,.v2-side .me .nm,.v2-side .me .rl{display:none}}
+/* phone: the sidebar becomes a scrolling top strip. As a 64px rail it ate a
+   third of the screen and wrapped every label onto three lines. */
+@media(max-width:760px){
+  .v2-shell{display:block}
+  .v2-side{flex-direction:row;width:auto;height:auto;align-items:center;gap:6px;padding:8px 10px;
+    border-right:none;border-bottom:1px solid rgba(0,0,0,.06);overflow-x:auto;-webkit-overflow-scrolling:touch;
+    position:sticky;top:0;z-index:20}
+  .v2-side::-webkit-scrollbar{display:none}
+  .v2-side .wm,.v2-side .grp,.v2-side .krow,.v2-side .sp,.v2-side .me .nm,.v2-side .me .rl{display:none}
+  .v2-side a.nav{white-space:nowrap;padding:9px 13px;min-height:40px;font-size:13px}
+  .v2-side .badge-n,.v2-side .badge-red{margin-left:6px}
+  .v2-side .me{border-top:none;margin:0 0 0 auto;padding:0 0 0 6px}
+  .v2-main{padding:18px 14px 70px}
+  .v2-h{flex-wrap:wrap;gap:8px}
+  .v2-h h1{font-size:21px}
+}
+
+/* headers */
+.v2-h{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.v2-h h1{font-size:23px;font-weight:700;letter-spacing:-.02em}
+.v2-h .sub{color:var(--muted);font-size:13px}
+.v2-h .sp{flex:1}
+.v2-lab{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2)}
+
+/* chips */
+.v2-chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.v2-chip{min-height:30px;padding:0 14px;border-radius:99px;border:1px solid var(--line-2);background:var(--card);
+  color:var(--ink-2);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;
+  transition:background-color .15s ease,border-color .15s ease,color .15s ease}
+.v2-chip:hover{border-color:var(--muted-2)}
+.v2-chip.on{background:var(--ink);color:#fbfbfd;border-color:var(--ink)}
+.v2-chip .n{font-family:var(--mono);font-size:11px;opacity:.65}
+.v2-chip.green{background:var(--go-tint);border-color:var(--go-line);color:var(--go)}
+.v2-chip.red{background:#fbf0ed;border-color:#e8cec6;color:var(--red)}
+
+/* buttons */
+.v2-btn{min-height:32px;padding:0 13px;border-radius:8px;border:1px solid var(--line-2);background:#fff;
+  color:var(--ink-2);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  transition:background-color .15s ease,border-color .15s ease,color .15s ease,transform .12s ease}
+.v2-btn:hover:not(:disabled){border-color:var(--muted-2);color:var(--ink)}
+.v2-btn:active:not(:disabled){transform:scale(.97)}
+.v2-btn:disabled{opacity:.45;cursor:not-allowed}
+.v2-btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
+.v2-btn.go:hover:not(:disabled){background:var(--accent-hi);border-color:var(--accent-hi);color:#fff}
+.v2-btn.goline{background:transparent;border-color:var(--accent-line);color:var(--accent)}
+.v2-btn.goline:hover:not(:disabled){background:var(--accent-tint);color:var(--accent);border-color:var(--accent-line)}
+/* completion, not action: "Sent", "Mark as cold", "logged" all read green */
+.v2-btn.doneline{background:#fff;border-color:var(--go-line);color:var(--go)}
+.v2-btn.doneline:hover:not(:disabled){background:var(--go-tint);color:var(--go);border-color:var(--go-line)}
+.v2-btn.dark{background:var(--ink);border-color:var(--ink);color:#fbfbfd}
+.v2-btn.dark:hover:not(:disabled){filter:brightness(1.35)}
+.v2-btn.dash{border-style:dashed;color:var(--muted);font-weight:500;background:transparent}
+.v2-btn.dash:hover{color:var(--ink-2)}
+.v2-btn.sm{min-height:27px;padding:0 11px;font-size:11.5px;border-radius:7px}
+
+/* inputs */
+.v2-in{min-height:34px;padding:7px 12px;background:#fff;border:1px solid var(--line-2);border-radius:8px;
+  color:var(--ink);font-size:13px;width:100%;
+  transition:border-color .16s ease, box-shadow .16s ease, background-color .16s ease}
+.v2-in:hover{border-color:var(--muted-2)}
+.v2-in:focus{border-color:var(--ink-3);box-shadow:0 0 0 3px rgba(33,31,27,.07)}
+/* native selects render differently on every OS — draw our own chevron so the
+   closed state matches the rest of the paper UI */
+select.v2-in{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:30px;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8375' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;background-size:14px}
+select.v2-in:hover{background-color:var(--rowsel)}
+/* the OPEN list of a native select is drawn by the OS (dark grey on macOS) and
+   cannot be styled — so on pointer devices we draw our own and keep the real
+   <select> underneath for state, change events and keyboard control */
+#v2-menu{position:fixed;z-index:200;background:var(--card);border:1px solid var(--line);border-radius:11px;
+  box-shadow:0 14px 38px -10px rgba(33,31,27,.32), 0 2px 6px rgba(33,31,27,.06);
+  padding:5px;max-height:min(58vh,340px);overflow-y:auto;min-width:150px;
+  animation:v2menu .13s ease-out}
+@keyframes v2menu{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+#v2-menu button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  padding:8px 10px 8px 8px;border-radius:8px;font:500 13px var(--font);color:var(--ink-2);
+  white-space:nowrap;cursor:pointer;transition:background-color .12s ease,color .12s ease}
+#v2-menu button:hover,#v2-menu button.cur{background:var(--divider);color:var(--ink)}
+#v2-menu button.on{color:var(--go-hi);font-weight:600}
+#v2-menu button.on:hover{background:var(--go-tint)}
+#v2-menu .tick{width:14px;height:14px;flex:none;opacity:0}
+#v2-menu button.on .tick{opacity:1}
+select.v2-in:disabled{opacity:.55;cursor:not-allowed}
+input[type=date].v2-in{cursor:pointer}
+textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
+
+/* cards + tables */
+.v2-card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  box-shadow:0 1px 2px rgba(0,0,0,.03);overflow:hidden}
+.v2-thead{display:grid;gap:10px;padding:9px 18px;font:600 10.5px var(--font);letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted-2);border-bottom:1px solid rgba(0,0,0,.055)}
+.v2-row{display:grid;gap:10px;padding:10px 18px;align-items:center;border-top:1px solid var(--divider);
+  transition:background-color .15s ease}
+.v2-row:first-of-type{border-top:none}
+.v2-row:hover{background:var(--rowsel)}
+.v2-scroll{overflow-x:auto}
+.v2-empty{padding:30px 18px;text-align:center;color:var(--muted)}
+
+/* semantic bits */
+.v2-age{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:11.5px;font-weight:600;
+  color:var(--ink-3);background:rgba(0,0,0,.05);border-radius:5px;padding:2px 6px}
+.v2-age.warn{color:var(--amber);background:var(--amber-tint)}
+.v2-age.late{color:var(--red);background:rgba(199,57,46,.09)}
+.v2-ai{display:inline-flex;align-items:center;gap:4px;font:600 10.5px var(--mono);color:var(--ai);
+  border:1px solid var(--ai-line);border-radius:99px;padding:1px 7px;white-space:nowrap}
+.v2-money{font-family:var(--mono);font-weight:600;color:var(--go)}
+
+/* toasts */
+.v2-toasts{position:fixed;z-index:80;bottom:26px;left:50%;transform:translateX(-50%);display:flex;
+  flex-direction:column;align-items:center;gap:9px;width:max-content;max-width:calc(100vw - 32px)}
+.v2-toast{display:flex;align-items:center;gap:14px;background:rgba(28,28,30,.88);color:#fbfbfd;
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:none;
+  border-radius:99px;padding:11px 12px 11px 18px;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.25);
+  animation:v2toast .34s cubic-bezier(.24,1.1,.32,1)}
+@keyframes v2toast{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+.v2-toast.err{background:rgba(146,44,35,.92);color:#fbfbfd}
+.v2-toast .sp{flex:1}
+.v2-toast button{background:rgba(255,255,255,.14);color:#F3C9C2;font-weight:600;font-size:12.5px;
+  padding:5px 12px;border-radius:99px}
+.v2-toast button:hover{background:rgba(255,255,255,.22)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<!--/baked:head-->
+</head>
+<body class="v2-shell">
+<!--baked:side--><nav class="v2-side"><div class="grp">TODAY</div><a class="nav" href="worklist.html" data-nav="worklist"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h11M3 12h11M3 18h7"/><path d="m17 15 2 2 4-4"/></svg>Today<span class="slot" data-slot="worklist"></span></a><a class="nav" href="assistant.html" data-nav="assistant"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H5l-2 2V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/></svg>Assistant<span class="slot" data-slot="assistant"></span></a><div class="grp gap">CLOSING</div><a class="nav" href="deals.html" data-nav="deals"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="3"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Deals<span class="slot" data-slot="deals"></span></a><div class="grp gap">LEAD BOOK</div><a class="nav on" href="leads.html" data-nav="leads"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>All leads<span class="slot" data-slot="leads"></span></a><div class="grp gap">REVIEW</div><a class="nav" href="report.html" data-nav="report"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></svg>Dashboard<span class="slot" data-slot="report"></span></a><a class="nav" href="briefing.html" data-nav="briefing"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h13a2 2 0 0 1 2 2v13a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 8h7M8 12h7M8 16h4"/></svg>Briefing<span class="slot" data-slot="briefing"></span></a><div class="sp"></div><a class="nav" href="settings.html"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H7a1.7 1.7 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V7a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
+<main class="v2-main">
+  <header class="v2-h">
+    <h1>All leads</h1>
+    <span class="sub" id="count">—</span>
+    <span class="sp"></span>
+    <button class="v2-btn dash" id="scanBtn" type="button">Paste screenshot ⌘V</button>
+    <button class="v2-btn dash" id="importBtn" type="button">Import IG following…</button>
+    <input id="importFile" type="file" accept=".json,.csv,.txt,.tsv,application/json,text/csv,text/plain" hidden>
+    <button class="v2-btn sm" id="refresh">Refresh</button>
+  </header>
+
+
+  <div class="v2-chips" style="margin-bottom:14px">
+    <select class="v2-in" id="stageSel" style="width:auto;min-width:150px"></select>
+    <input class="v2-in" id="search" type="text" placeholder="Search handle, notes, email…"
+           autocomplete="off" spellcheck="false" style="flex:1;min-width:140px;max-width:260px">
+    <span class="colwrap" id="colWrap">
+      <button class="v2-btn sm" id="colsBtn" type="button" aria-expanded="false" aria-haspopup="true">Columns</button>
+      <div class="colpop" id="colPop" hidden></div>
+    </span>
+  </div>
+
+  <div class="v2-card" id="table"><div class="v2-empty" id="skel">Loading leads…</div></div>
+  <!-- mirrors the batch bar while it's scrolled off; buttons forward to the
+       real ones so the marking logic lives in exactly one place -->
+  <div class="fbar" id="fbar" aria-live="polite">
+    <span class="sent" id="fbSent"></span>
+    <span class="dot" id="fbDot">·</span>
+    <span><b id="fbSel">0</b> <span class="lab">selected</span></span>
+    <span class="sp" style="flex:1"></span>
+    <button class="v2-btn sm" id="fbClear" type="button">Clear</button>
+    <button class="v2-btn go sm" id="fbMark" type="button">Mark sent</button>
+  </div>
+</main>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Lead editor">
+  <div class="dhead">
+    <span class="lab">Selected lead</span>
+    <h2 id="d-name">Lead</h2>
+    <a id="d-ig" target="_blank" rel="noopener" hidden style="font-size:12.5px">open profile ↗</a>
+    <button class="v2-btn sm" id="d-close" style="float:right;min-height:24px;padding:0 8px">×</button>
+  </div>
+  <div class="dbody">
+    <div class="meta" id="d-meta"></div>
+    <button class="v2-btn go" id="q-fu" style="width:100%;margin-bottom:6px">Log follow-up now</button>
+    <a id="q-log" href="#" style="display:block;text-align:center;font-size:12.5px;margin-bottom:12px">Open in Log a lead →</a>
+    <div class="g2">
+      <div class="fld"><label>Stage</label>
+        <select class="v2-in" id="f-level"><option value="">no level</option><option>Engaged 1</option><option>Engaged 2</option><option>Engaged 3</option><option>Booked</option><option>No Close</option><option>Following</option><option>Archive</option><option>No Reply</option><option>Closed</option></select>
+      </div>
+      <div class="fld"><label>Status</label><select class="v2-in" id="f-status"><option value="">—</option></select></div>
+      <div class="fld"><label>Qualification</label>
+        <select class="v2-in" id="f-qual"><option value="">—</option><option>Qualified 1</option><option>Qualified 2</option><option>Qualified 3</option><option>Unqualified</option></select>
+      </div>
+      <div class="fld"><label>Email</label><input class="v2-in" id="f-email" type="email"></div>
+      <div class="fld"><label>Phone</label><input class="v2-in" id="f-phone" type="text"></div>
+    </div>
+    <div class="fld"><label>Pain points</label><textarea class="v2-in" id="f-pains"></textarea></div>
+    <div class="fld"><label>Notes</label><textarea class="v2-in mono" id="f-notes" style="font-size:12px"></textarea></div>
+    <div class="fld"><label>LinkedIn</label><input class="v2-in" id="f-linkedin" type="text"></div>
+    <div class="fld" id="lp-fld">
+      <label style="cursor:pointer"><input type="checkbox" id="f-lp" style="width:13px;height:13px;accent-color:var(--go);cursor:pointer;margin-right:2px">Leadpool — their audience is a lead source</label>
+      <div id="lp-marks" style="display:flex;gap:8px;margin-top:7px" hidden>
+        <div class="tf" id="f-lpq" role="group" aria-label="Pool quality">
+          <button type="button" data-q="good">Good</button>
+          <button type="button" data-q="bad">Bad</button>
+        </div>
+        <div class="tf" id="f-lpu" role="group" aria-label="Pool used">
+          <button type="button" data-u="0">Unused</button>
+          <button type="button" data-u="1">Used</button>
+        </div>
+      </div>
+    </div>
+    <div class="hist" id="d-calls-wrap" hidden><h3>Calls</h3><div id="d-calls" style="display:flex;flex-direction:column;gap:4px;font-size:12.5px"></div></div>
+    <div class="hist" id="hist" hidden><h3>History</h3><ul id="hist-list"></ul></div>
+  </div>
+  <div class="dfoot">
+    <button class="v2-btn dark" id="d-save">Save</button>
+    <button class="v2-btn" id="d-cancel">Close</button>
+    <span class="sp" style="flex:1"></span>
+    <button class="v2-btn" id="d-nocontact" title="Friend, family, anyone who should never be contacted">Not a lead</button>
+  </div>
+</aside>
+
+
+<script src="./parser.js"></script>
+<script type="module">
+import * as core from './crm-core.js?v=20260818b';
+const session = await core.requireAuth();
+if (session) {
+await core.installChrome({ active: 'leads' });
+const RULES = await core.worklistRules();
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+const STAGE_OPTS = ['', 'Engaged 1', 'Engaged 2', 'Engaged 3', 'Booked', 'No Close', 'Following', 'Archive', 'No Reply', 'Closed'];
+const STATUS_OPTS = [''].concat(core.STATUSES);
+// values stay full (they're what gets written); only the labels shorten, so
+// a 13-column table on a phone stops spending its width on "Follow up Sent"
+const optHtml = (list, sel, blank, short) => list.map((o) =>
+  `<option value="${esc(o)}"${o === sel ? ' selected' : ''}>${esc(o ? (short ? short(o) : o) : blank)}</option>`).join('');
+const STAGE_ORDER = ['Engaged 3', 'Engaged 2', 'Engaged 1', 'Booked', 'No Close', 'No Reply', '', 'Archive', 'Closed', 'Following'];
+const LEVEL_COLORS = {
+  'Engaged 1': '#a9a9b1', 'Engaged 2': '#c9c9cf', 'Engaged 3': '#e9e9ec',
+  'Booked': '#8ee59a', 'No Close': '#d99a9a', 'Archive': '#6e6e78', 'No Reply': '#8a8a92', 'Closed': '#c9c9cf', 'Following': '#7f8fa6', '': '#6e6e78'
+};
+const _ss = (k, d) => { try { return sessionStorage.getItem(k) || d; } catch (e) { return d; } };
+const state = { leads: [], sel: new Set(), src: 'due',
+  kind: _ss('ajr_kind', 'followup'), poolSort: _ss('ajr_poolsort', 'new'), stale: null, filter: 'ALL', q: '', sort: { key: 'lastContact', dir: -1 }, shown: 100, editing: null, busy: false, cols: [] }; // cols filled in below, once COLS exists
+
+const toast = core.toast;
+
+function daysSince(dmy) {
+  const d = CRMParse.parseDMY(dmy);
+  if (!d) return null;
+  return Math.round((new Date() - d) / 864e5);
+}
+
+/* ---------- summary bar ---------- */
+function renderSumbar() {
+  // one compact dropdown instead of a chip per stage — ten chips ate a full
+  // row of the screen; the counts live on inside the options
+  const counts = {};
+  state.leads.forEach((l) => { const k = l.level || ''; counts[k] = (counts[k] || 0) + 1; });
+  const poolCount = state.leads.filter((l) => core.isPool(l.level)).length;
+  const realCount = state.leads.length - poolCount - (counts['Archive'] || 0);
+  const lpCount = state.leads.filter((l) => l.lp).length;
+  const opts = [['ALL', 'All', realCount]]
+    .concat(lpCount ? [['LP', 'Leadpools', lpCount]] : [])
+    .concat(STAGE_ORDER.filter((st) => (st === 'Following' ? poolCount : counts[st]))
+      .map((st) => [st, st || 'No level', st === 'Following' ? poolCount : counts[st]]));
+  const sel = $('stageSel');
+  sel.innerHTML = opts.map(([key, label, n]) =>
+    `<option value="${esc(key)}">${esc(label)} (${n})</option>`).join('');
+  sel.value = state.filter;
+  sel.onchange = () => {
+    state.filter = sel.value; state.shown = 100;
+    state.sel = new Set(); state.prevSel = null; // selections don't cross filters
+    // picking Following IS the pool — land on its tab, not the follow-up queue
+    if (state.filter === 'Following') { state.src = 'pool'; state.kind = 'followup'; state.sel = new Set(); }
+    renderSumbar(); renderTable();
+  };
+}
+
+/* ---------- table ---------- */
+/* Every column the table can show. `lock` can't be turned off (it's the row's
+   identity), `off` starts hidden, `grow` takes the leftover width. */
+const COLS = [
+  { k: 'h', lab: 'Handle', w: '116px', lock: true },
+  { k: 'level', lab: 'Stage', w: '100px' },
+  { k: 'status', lab: 'Last status', w: '120px' },
+  { k: 'qual', lab: 'Qual', pick: 'Qualification', w: '104px' },
+  { k: 'lastContact', lab: 'Since', w: '58px' },
+  { k: 'dateAdded', lab: 'Added', w: '50px' },
+  { k: 'notes', lab: 'Notes', w: 'minmax(0,1fr)', grow: true },
+  { k: 'igName', lab: 'Name', pick: 'IG name', w: '120px', off: true },
+  { k: 'pains', lab: 'Pain points', w: 'minmax(0,1fr)', grow: true, off: true },
+  { k: 'email', lab: 'Email', w: '164px', off: true },
+  { k: 'phone', lab: 'Phone', w: '108px', off: true },
+  { k: 'followed', lab: 'Followed', w: '62px', off: true },
+  { k: 'lpmark', lab: 'Pool', pick: 'Leadpool', w: '96px', off: true },
+];
+const COL_KEY = 'ajr_cols_v1';
+const DEFAULT_COLS = COLS.filter((c) => !c.off).map((c) => c.k);
+function loadCols() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(COL_KEY) || 'null');
+    // drop keys from an older column set rather than rendering blank tracks
+    if (Array.isArray(raw)) {
+      const keep = raw.filter((k) => COLS.some((c) => c.k === k));
+      if (keep.length) return keep;
+    }
+  } catch (e) { /* unreadable pref: fall back to the default set */ }
+  return DEFAULT_COLS.slice();
+}
+function saveCols() { try { localStorage.setItem(COL_KEY, JSON.stringify(state.cols)); } catch (e) {} }
+// keeps the table's left-to-right order fixed no matter what order they were ticked
+function shownCols() { return COLS.filter((c) => c.lock || state.cols.includes(c.k)); }
+state.cols = loadCols();
+
+const QUAL_OPTS = ['', 'Qualified 1', 'Qualified 2', 'Qualified 3', 'Unqualified'];
+const QUAL_RANK = { 'Qualified 3': 4, 'Qualified 2': 3, 'Qualified 1': 2, 'Unqualified': 1 };
+const DATE_COLS = ['lastContact', 'dateAdded', 'followed'];
+function cmp(a, b, key) {
+  if (DATE_COLS.includes(key)) {
+    const da = CRMParse.parseDMY(a[key]), db = CRMParse.parseDMY(b[key]);
+    return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
+  }
+  // alphabetical would read Qualified 1 as the best one — rank it properly
+  if (key === 'qual') return (QUAL_RANK[a.qual] || 0) - (QUAL_RANK[b.qual] || 0);
+  // pools first, good before bad, unused before used (the workable ones)
+  if (key === 'lpmark') {
+    const r = (l) => !l.lp ? 0 : (l.lpQuality === 'good' ? 30 : l.lpQuality === 'bad' ? 10 : 20) + (l.lpUsed ? 0 : 5);
+    return r(a) - r(b);
+  }
+  return String(a[key] || '').localeCompare(String(b[key] || ''));
+}
+function visible() {
+  const q = state.q.toLowerCase().trim();
+  let list = state.leads.filter((l) => {
+    // Following and Archive are buckets, not the working book — each is only
+    // visible under its own option. 'All' means the leads actually in play.
+    if (state.filter === 'ALL' && (core.isPool(l.level) || l.level === 'Archive')) return false;
+    if (state.filter === 'LP') { if (!l.lp) return false; }
+    else if (state.filter === 'Following') { if (!core.isPool(l.level)) return false; }
+    else if (state.filter !== 'ALL' && state.filter !== 'LP' && (l.level || '') !== state.filter) return false;
+    if (q && !((l.h + ' ' + l.notes + ' ' + l.email + ' ' + l.status + ' ' + l.qual + ' ' + l.igName + ' ' + l.pains).toLowerCase().includes(q))) return false;
+    return true;
+  });
+  list.sort((a, b) => cmp(a, b, state.sort.key) * state.sort.dir);
+  return list;
+}
+/* ---------- batch DMs: work a queue, copy handles, mark them sent ----------
+   Two queues share one tool. 'due' is leads that have gone quiet past the
+   overdue window — real leads with history, so a re-touch. 'pool' is the
+   imported IG following, nobody's ever messaged them. */
+// Instagram's own universal link: on a phone this hands off to the app (the
+// same /_u/ form their data export uses); on desktop it just redirects.
+const onPhone = matchMedia('(max-width: 760px)').matches || /iPhone|Android/i.test(navigator.userAgent);
+function profileHref(l) {
+  return onPhone ? 'https://www.instagram.com/_u/' + encodeURIComponent(l.h) + '/'
+                 : (l.url || 'https://instagram.com/' + l.h);
+}
+
+function batchList() {
+  if (state.src === 'due') return state.stale || [];
+  // Instagram's following list in follow-date order — every account still
+  // followed on IG, whatever its CRM stage, because his phone shows them all.
+  // Only rows HE removed with ✕ (or dead accounts) drop out: archiving a lead
+  // in the CRM doesn't unfollow them, so it must not hide them here.
+  // only accounts NOT yet messaged: marking one Follow-up Sent promotes it to
+  // a CRM lead (Engaged 1) and it leaves this list; ✕ deletes it. So the
+  // Following tab is purely the queue of people still to DM, shrinking as worked.
+  const pool = state.leads.filter((l) => l.followed && !l.hidden && !l.lastContact);
+  // Sort by the EXACT follow instant, not the day: 2,673 of these accounts
+  // share a date with another, so day precision reorders whole follow
+  // sessions relative to what Instagram shows. Fall back to the day when a
+  // row has no timestamp (a CSV import carries neither).
+  const key = (l) => l.followedTs || (l.followed ? core.dmyToIso(l.followed) : '');
+  return pool.sort((a, b) => {
+    const ka = key(a), kb = key(b);
+    if (!ka && !kb) return 0;
+    if (!ka) return 1;
+    if (!kb) return -1;
+    return state.poolSort === 'new' ? kb.localeCompare(ka) : ka.localeCompare(kb);
+  });
+}
+function renderPool() {
+  $('colWrap').hidden = true;   // the queue views draw their own single-column layout
+  openColPop(false);
+  const due = (state.stale || []).length;
+  const todo = batchList(); // pool: still-to-DM follows; due: the stale queue
+  const fresh = todo; // pool rows are all unmessaged now
+  const sentToday = state.src === 'pool'
+    ? state.leads.filter((l) => l.followed && l.lastContact === core.todayDmy()) : [];
+  const sel = state.sel;
+  const t = $('table');
+
+  const tabs = '<div class="poolbar">' +
+    '<div class="tf" id="srcTabs" role="group" aria-label="Batch source">' +
+      '<button data-src="due" aria-pressed="' + (state.src === 'due') + '">Due a follow-up ' + due.toLocaleString() + '</button>' +
+      '<button data-src="pool" aria-pressed="' + (state.src === 'pool') + '">IG following ' + (state.src === 'pool' ? todo.length : state.leads.filter((l) => l.followed && !l.hidden).length).toLocaleString() + '</button>' +
+    '</div>' +
+    '<span class="sp"></span>' +
+    (state.src === 'pool' ? '<button class="v2-btn sm" id="poolImport">Import IG following…</button>' : '') +
+    '</div>';
+
+  if (!todo.length) {
+    t.innerHTML = tabs + '<div class="pooldash" style="margin:18px">' +
+      (state.src === 'pool'
+        ? '<div style="font-weight:600;color:var(--ink);margin-bottom:6px">Nothing imported yet</div>' +
+          '<div style="margin-bottom:14px">Takes <b>following.json</b> from your Instagram data export, or a CSV with a column of handles or profile links. ' +
+          'Pool entries stay out of the lead book and the Worklist.</div>' +
+          '<button class="v2-btn dark" id="poolImport2">Import IG following…</button>'
+        : '<div style="font-weight:600;color:var(--ink);margin-bottom:6px">Nobody is overdue</div>' +
+          '<div>Every live lead has been touched inside the overdue window. Nothing to batch.</div>') +
+      '</div>';
+    $('count').textContent = state.src === 'pool' ? '0 followed' : '0 due';
+    return;
+  }
+
+  t.innerHTML = tabs +
+    '<div class="poolbar">' +
+      (state.src === 'pool'
+        ? '<b>' + fresh.length.toLocaleString() + '</b><span>still to DM</span>'
+        : '<b>' + todo.length.toLocaleString() + '</b><span>waiting on a follow-up</span>') +
+      '<span class="sp"></span>' +
+      (state.src === 'pool'
+        ? '<span style="color:var(--muted)">followed</span>' +
+          '<div class="tf" id="poolSort" role="group" aria-label="Sort by follow date">' +
+            '<button data-sort="new" aria-pressed="' + (state.poolSort === 'new') + '">Newest</button>' +
+            '<button data-sort="old" aria-pressed="' + (state.poolSort === 'old') + '">Oldest</button>' +
+          '</div>'
+        : '') +
+      '<button class="v2-btn sm' + (sel.size ? '' : ' dark') + '" data-take="25">Next 25</button>' +
+      '<button class="v2-btn sm" data-take="50">50</button>' +
+      '<button class="v2-btn sm" data-take="100">100</button>' +
+    '</div>' +
+    '<div class="poolbar">' +
+      '<b>' + (sel.size || 0) + '</b><span>selected</span>' +
+      (state.prevSel ? '<button class="v2-btn sm" id="selRestore">Restore selection (' + state.prevSel.size + ')</button>' : '') +
+      '<button class="v2-btn sm" id="poolCopy">Copy handles</button>' +
+      '<span class="sp"></span>' +
+      '<span style="color:var(--muted)">counts as</span>' +
+      '<div class="tf" id="kindTabs" role="group" aria-label="Counts as">' +
+        '<button data-kind="followup" aria-pressed="' + (state.kind === 'followup') + '">Follow-up</button>' +
+        '<button data-kind="cold" aria-pressed="' + (state.kind === 'cold') + '">Cold DM</button>' +
+      '</div>' +
+      '<button class="v2-btn sm" id="poolSkip"' + (sel.size ? '' : ' disabled') + ' title="Friends, family, anyone who should never be contacted">Not a lead</button>' +
+      '<input class="v2-in" type="date" id="sentDate" value="' + esc(state.sentDate) + '" max="' + esc(core.dmyToIso(core.todayDmy())) + '" title="The day these DMs went out" style="width:auto;min-height:32px;padding:0 8px">' +
+      '<button class="v2-btn go sm" id="poolMark"' + (sel.size ? '' : ' disabled') + '>' +
+        esc(markLabel()) + '</button>' +
+      (state.lastBatchUndo
+        ? '<button class="v2-btn sm" id="poolUndo">Undo last batch (' + state.lastBatchUndo.count + ')</button>'
+        : '') + switchKindBtn() +
+    '</div>' +
+    (sentToday.length
+      ? '<div class="poolbar senttoday"><span class="v2-lab" style="margin:0">Sent today ' + sentToday.length + '</span>' +
+        sentToday.slice(0, 40).map((l) =>
+          '<a class="st-h" href="log-lead.html?lead=' + encodeURIComponent(l.h) + '" title="Open in Log a lead">@' + esc(l.h) + '</a>').join('') +
+        '</div>'
+      : '') +
+    '<div class="poolgrid">' + (state.src === 'pool' ? todo : todo.slice(0, 300)).map((l, i) => {
+      if (state.src === 'due') {
+        return '<div class="poolcell">' +
+          '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>' +
+          '<a href="' + esc(profileHref(l)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
+          '<span class="poolage">' + esc(l.last || 'never') + '</span>' +
+          '<button type="button" class="sentbtn" data-sent="' + l.id + '" title="Mark just this one sent">Sent</button>' +
+        '</div>';
+      }
+      // pool rows are all still-to-DM; marking Sent moves them to the CRM
+      return '<div class="poolcell">' +
+        '<input type="checkbox" data-id="' + l.id + '"' + (sel.has(l.id) ? ' checked' : '') + '>' +
+        '<a href="' + esc(profileHref(l)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
+        '<button type="button" class="uptobtn" data-upto="' + i + '" title="Select everyone above through this row">↑ here</button>' +
+        '<button type="button" class="nalbtn" data-nal="' + l.id + '" title="Not a lead — friend, dead account, irrelevant. Deletes it.">✕</button>' +
+      '</div>';
+    }).join('') + '</div>' +
+    (state.src === 'due' && todo.length > 300 ? '<div class="v2-empty">+ ' + (todo.length - 300).toLocaleString() + ' more…</div>' : '');
+  $('count').textContent = state.src === 'pool'
+    ? todo.length.toLocaleString() + ' still to DM'
+    : due.toLocaleString() + ' due a follow-up';
+  renderFloat();
+}
+
+// the batch controls are shared by the pool view and the lead table, so the
+// handlers redraw through here instead of assuming one of them
+function rerender() { if (state.filter === 'Following') renderPool(); else renderTable(); }
+// every path that redraws a list also refreshes the floating mirror
+
+/* The 'counts as' toggle is sticky across page loads, so the button has to say
+   which bucket it is about to write into — a silent one is how a whole day of
+   follow-ups ends up filed as cold DMs. */
+function markLabel() {
+  const bucket = state.kind === 'followup' ? 'follow-ups' : 'cold DMs';
+  const when = state.sentDate === core.dmyToIso(core.todayDmy())
+    ? 'today' : core.isoToDmy(state.sentDate).slice(0, 5);
+  return 'Mark ' + (state.sel.size || 'batch') + ' sent ' + when + ' as ' + bucket;
+}
+// offered while the batch is still the current one, same lifetime as its Undo
+function switchKindBtn() {
+  const u = state.lastBatchUndo;
+  if (!u || !u.actId) return '';
+  const to = u.kind === 'followup' ? 'cold' : 'followup';
+  return '<button class="v2-btn sm" id="poolKind" data-to="' + to + '">Counted as ' +
+    (u.kind === 'followup' ? 'follow-ups' : 'cold DMs') + ' — switch to ' +
+    (to === 'followup' ? 'follow-ups' : 'cold DMs') + '</button>';
+}
+
+/* ---------- floating batch bar ----------
+   The real bar is the first thing in the table card, so on a 300-row list it
+   scrolls away exactly when the selecting starts. This mirrors it: today's
+   sent count, the running selection, and a Mark button that forwards to the
+   real one — no second copy of the marking logic to drift out of sync. */
+function sentTodayCount() {
+  const today = core.todayDmy();
+  return state.leads.filter((l) => l.lastContact === today).length;
+}
+function renderFloat() {
+  const fb = $('fbar'); if (!fb) return;
+  const real = $('poolMark');
+  const n = state.sel.size;
+  const sent = sentTodayCount();
+  $('fbSent').textContent = sent ? sent + ' sent today' : '';
+  $('fbDot').hidden = !sent || !n;
+  $('fbSel').parentElement.hidden = !n;
+  $('fbClear').hidden = !n;
+  $('fbMark').hidden = !n;
+  $('fbSel').textContent = n;
+  // the real button owns the wording (kind + date) and the disabled state
+  if (real) { $('fbMark').textContent = real.textContent; $('fbMark').disabled = real.disabled; }
+  // nothing to say — no selection and nothing sent yet today
+  if (!n && !sent) { fb.classList.remove('on'); return; }
+  // only once the real bar has scrolled out of reach; a visible bar makes this
+  // one redundant clutter
+  const r = real ? real.getBoundingClientRect() : null;
+  fb.classList.toggle('on', !r || r.bottom < 8);
+}
+core.pageListen(window, 'scroll', renderFloat, { passive: true });
+core.pageListen(window, 'resize', renderFloat);
+$('fbMark').onclick = () => { const b = $('poolMark'); if (b && !b.disabled) b.click(); };
+$('fbClear').onclick = () => {
+  const b = $('tableClear') || $('poolClear');
+  if (b) { b.click(); return; }
+  state.sel = new Set(); state.prevSel = null; rerender();   // pool view has no Clear
+};
+
+function renderTable() {
+  if (state.filter === 'Following') { renderPool(); return; }
+  $('colWrap').hidden = false;
+  const rows = visible();
+  const realTotal = state.leads.filter((l) => !core.isPool(l.level) && l.level !== 'Archive').length;
+  $('count').textContent = rows.length === realTotal
+    ? realTotal + ' leads' : rows.length + ' of ' + realTotal;
+  const allShown = rows.slice(0, state.shown);
+  const allTicked = allShown.length > 0 && allShown.every((l) => state.sel.has(l.id));
+  const cols = shownCols();
+  // when nothing flexible is on, a trailing filler keeps the columns at their
+  // own widths instead of stretching whichever one happens to be last
+  const filler = !cols.some((c) => c.grow);
+  const head = '<div class="v2-thead l-thead l-min">' +
+    '<input type="checkbox" class="l-tick" id="tickAll"' + (allTicked ? ' checked' : '') + ' title="Select everything shown">' +
+    cols.map((c) =>
+    `<button data-s="${c.k}" style="text-align:left;font:inherit;letter-spacing:inherit;text-transform:uppercase;color:inherit">${esc(c.lab)}${state.sort.key === c.k ? `<span class="arr"> ${state.sort.dir > 0 ? '↑' : '↓'}</span>` : ''}</button>`).join('') +
+    (filler ? '<span></span>' : '') + '</div>';
+  $('table').style.setProperty('--l-cols',
+    '26px ' + cols.map((c) => c.w).join(' ') + (filler ? ' minmax(0,1fr)' : ''));
+  const t = $('table');
+  if (!rows.length) { t.innerHTML = '<div class="v2-scroll">' + head + '</div><div class="v2-empty">No leads match.</div>'; bindHead(); return; }
+  const page = rows.slice(0, state.shown);
+  const bar = '<div class="poolbar">' +
+      '<b>' + (state.sel.size || 0) + '</b><span>selected</span>' +
+      '<button class="v2-btn sm" id="tableSelAll">Select all ' + rows.length.toLocaleString() + '</button>' +
+      (state.sel.size ? '<button class="v2-btn sm" id="tableClear">Clear</button>' : '') +
+      '<span class="sp"></span>' +
+      '<span style="color:var(--muted)">counts as</span>' +
+      '<div class="tf" id="kindTabs" role="group" aria-label="Counts as">' +
+        '<button type="button" data-kind="followup" aria-pressed="' + (state.kind === 'followup') + '">Follow-up</button>' +
+        '<button type="button" data-kind="cold" aria-pressed="' + (state.kind === 'cold') + '">Cold DM</button>' +
+      '</div>' +
+      '<input class="v2-in" type="date" id="sentDate" value="' + esc(state.sentDate) + '" max="' + esc(core.dmyToIso(core.todayDmy())) + '" title="The day these DMs went out" style="width:auto;min-height:32px;padding:0 8px">' +
+      '<button class="v2-btn go sm" id="poolMark"' + (state.sel.size ? '' : ' disabled') + '>' +
+        esc(markLabel()) + '</button>' +
+      (state.lastBatchUndo ? '<button class="v2-btn sm" id="poolUndo">Undo last batch (' + state.lastBatchUndo.count + ')</button>' : '') +
+      switchKindBtn() +
+      (state.filter === 'Archive'
+        ? '<button class="v2-btn sm" id="purgeBtn"' + (state.sel.size ? '' : ' disabled') +
+          ' style="color:var(--red);border-color:rgba(199,57,46,.3)">Delete ' + (state.sel.size || 0) + ' permanently</button>'
+        : '') +
+    '</div>';
+  t.innerHTML = bar + '<div class="v2-scroll"><div class="l-min">' + head + page.map((l) =>
+    `<div class="v2-row l-row" data-id="${l.id}">` +
+    `<input type="checkbox" class="l-tick" data-id="${l.id}"${state.sel.has(l.id) ? ' checked' : ''}>` +
+    cols.map((c) => cellHtml(l, c.k)).join('') + (filler ? '<span></span>' : '') +
+    '</div>').join('') + '</div></div>' +
+    (rows.length > state.shown
+      ? `<div class="pager"><span>1–${Math.min(state.shown, rows.length)} of ${rows.length.toLocaleString()}</span><span class="sp"></span><button class="v2-btn sm" id="more">Show 100 more</button></div>`
+      : `<div class="pager"><span>${rows.length.toLocaleString()} shown</span></div>`);
+  bindHead();
+  Array.prototype.forEach.call(t.querySelectorAll('.l-row'), (r) => {
+    r.onclick = (e) => { if (e.target.closest('input, select')) return; openDrawer(+r.getAttribute('data-id')); };
+    const a = r.querySelector('.lh'); if (a) a.addEventListener('click', (e) => e.stopPropagation()); // @ opens IG, not the drawer
+  });
+  const more = $('more'); if (more) more.onclick = () => { state.shown += 100; renderTable(); };
+  const selAll = $('tableSelAll');
+  if (selAll) selAll.onclick = () => { rows.forEach((l) => state.sel.add(l.id)); renderTable(); };
+  const clr = $('tableClear');
+  if (clr) clr.onclick = () => { state.sel = new Set(); renderTable(); };
+  const tickAll = $('tickAll');
+  if (tickAll) tickAll.onclick = () => {
+    if (tickAll.checked) allShown.forEach((l) => state.sel.add(l.id));
+    else allShown.forEach((l) => state.sel.delete(l.id));
+    renderTable();
+  };
+  renderFloat();
+}
+/* One cell, by column key. Stage/status/qualification stay inline-editable
+   the way the sheet was; the rest are read-only here and edited in the drawer. */
+function cellHtml(l, k) {
+  if (k === 'h') return `<a class="lh" href="${esc(l.url || 'https://instagram.com/' + l.h)}" target="_blank" rel="noopener">@${esc(l.h)}</a>`;
+  if (k === 'level') {
+    const cls = l.level === 'Booked' ? ' booked' : l.level === 'No Close' ? ' noclose' : '';
+    return `<select class="l-edit${cls}" data-f="level" data-id="${l.id}" title="Change stage">${optHtml(STAGE_OPTS, l.level || '', '—', core.shortStage)}</select>`;
+  }
+  if (k === 'status') return `<select class="l-edit" data-f="status" data-id="${l.id}" title="Change last status">${optHtml(STATUS_OPTS, l.status || '', '—', core.shortStatus)}</select>`;
+  if (k === 'qual') {
+    const cls = l.qual === 'Qualified 3' ? ' q3' : l.qual === 'Unqualified' ? ' qun' : '';
+    return `<select class="l-edit${cls}" data-f="qual" data-id="${l.id}" title="Change qualification">${optHtml(QUAL_OPTS, l.qual || '', '—')}</select>`;
+  }
+  if (k === 'lastContact') {
+    const ds = daysSince(l.lastContact);
+    return `<span class="v2-age ${core.ageClass(ds, RULES)}">${l.lastContact ? (ds <= 0 ? 'today' : ds + 'd') : '—'}</span>`;
+  }
+  if (k === 'dateAdded' || k === 'followed') return `<span class="l-mono">${esc((l[k] || '').slice(0, 5))}</span>`;
+  if (k === 'email' || k === 'phone') return `<span class="l-mono" title="${esc(l[k])}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l[k] || '')}</span>`;
+  if (k === 'lpmark') {
+    if (!l.lp) return '<span class="l-cell dim">—</span>';
+    const q = l.lpQuality === 'good' ? '<span style="color:var(--go);font-weight:600">good</span>'
+      : l.lpQuality === 'bad' ? '<span style="color:var(--red);font-weight:600">bad</span>' : 'pool';
+    return `<span class="l-cell">${q} · ${l.lpUsed ? 'used' : 'unused'}</span>`;
+  }
+  return `<span class="l-cell dim" title="${esc(l[k])}">${esc(l[k] || '')}</span>`;
+}
+
+/* ---------- column picker ---------- */
+function renderColPop() {
+  $('colPop').innerHTML = '<div class="ttl">Show columns</div>' + COLS.map((c) => {
+    const on = c.lock || state.cols.includes(c.k);
+    return `<label class="${c.lock ? 'lock' : ''}"><input type="checkbox" data-col="${c.k}"` +
+      `${on ? ' checked' : ''}${c.lock ? ' disabled' : ''}>${esc(c.pick || c.lab)}</label>`;
+  }).join('') + '<div class="foot"><button type="button" id="colReset">Reset to default</button></div>';
+}
+function openColPop(on) {
+  const pop = $('colPop');
+  if (on) renderColPop();
+  pop.hidden = !on;
+  $('colsBtn').setAttribute('aria-expanded', String(!!on));
+}
+$('colsBtn').onclick = () => openColPop($('colPop').hidden);
+$('colPop').addEventListener('change', (e) => {
+  const cb = e.target.closest('input[data-col]');
+  if (!cb) return;
+  const k = cb.getAttribute('data-col');
+  state.cols = cb.checked ? state.cols.concat([k]) : state.cols.filter((x) => x !== k);
+  // sorting by a column you just hid would leave the arrow nowhere to live
+  if (!shownCols().some((c) => c.k === state.sort.key)) state.sort = { key: shownCols()[0].k, dir: 1 };
+  saveCols(); renderTable();
+});
+$('colPop').addEventListener('click', (e) => {
+  if (!e.target.closest('#colReset')) return;
+  state.cols = DEFAULT_COLS.slice();
+  saveCols(); renderColPop(); renderTable();
+});
+core.pageListen(document, 'mousedown', (e) => {
+  if (!$('colPop').hidden && !e.target.closest('#colWrap')) openColPop(false);
+});
+core.pageListen(document, 'keydown', (e) => {
+  if (e.key === 'Escape' && !$('colPop').hidden) { openColPop(false); $('colsBtn').focus(); }
+});
+
+function bindHead() {
+  Array.prototype.forEach.call($('table').querySelectorAll('.v2-thead button'), (b) => {
+    b.onclick = () => {
+      const k = b.getAttribute('data-s');
+      if (state.sort.key === k) state.sort.dir *= -1;
+      else state.sort = { key: k, dir: DATE_COLS.includes(k) || k === 'qual' ? -1 : 1 };
+      renderTable();
+    };
+  });
+}
+
+/* ---------- drawer ---------- */
+function leadById(id) { return state.leads.find((l) => l.id === id); }
+async function openDrawer(id) {
+  const l = leadById(id); if (!l) return;
+  state.editing = id;
+  $('d-name').textContent = '@' + l.h;
+  const ig = $('d-ig');
+  if (l.url) { ig.hidden = false; ig.href = l.url; } else ig.hidden = true;
+  $('d-meta').textContent = (l.dateAdded ? 'added ' + l.dateAdded + ' · ' : '') + (l.lastContact ? 'last contact ' + l.lastContact : 'never contacted');
+  $('q-log').href = 'log-lead.html?lead=' + encodeURIComponent(l.h);
+  $('f-level').value = l.level || '';
+  $('f-status').value = core.STATUSES.includes(l.status) ? l.status : '';
+  $('f-qual').value = ['Qualified 1','Qualified 2','Qualified 3','Unqualified'].includes(l.qual) ? l.qual : '';
+  $('f-notes').value = l.notes || '';
+  $('f-pains').value = l.pains || '';
+  // the closer's call log, right on the lead — loads async, hidden when none
+  $('d-calls-wrap').hidden = true; $('d-calls').innerHTML = '';
+  (async () => {
+    try {
+      const deal = core.dealForLead(state.deals || [], l);
+      if (!deal) return;
+      const calls = await core.dealCalls(deal.row);
+      const list = calls.length ? calls
+        : (deal.fireflies_link ? [{ id: 'legacy', title: 'Call transcript', url: deal.fireflies_link, at: '' }] : []);
+      if (!list.length || state.editing !== id) return;
+      $('d-calls').innerHTML = list.map((c) => {
+        const day = c.at ? esc(String(c.at).slice(8, 10) + '/' + String(c.at).slice(5, 7)) : '';
+        return '<a href="' + esc(c.url) + '" target="_blank" rel="noopener">' +
+          (day ? '<span class="l-mono" style="font-size:11.5px">' + day + '</span> · ' : '') + esc(c.title) + ' ↗</a>';
+      }).join('');
+      $('d-calls-wrap').hidden = false;
+    } catch (e) { /* the drawer works without the log */ }
+  })();
+  $('f-email').value = l.email || '';
+  $('f-phone').value = l.phone || '';
+  $('f-linkedin').value = l.linkedin || '';
+  $('f-lp').checked = !!l.lp;
+  state.lpQuality = l.lpQuality || ''; state.lpUsed = !!l.lpUsed;
+  renderLpMarks();
+  $('scrim').classList.add('on'); $('drawer').classList.add('on');
+  // history (async fill)
+  $('hist').hidden = true;
+  try {
+    const acts = await core.loadActivity('leads', id, 8);
+    if (acts.length && state.editing === id) {
+      $('hist-list').innerHTML = acts.map((a) => {
+        const who = a.actor === 'ai:fireflies' ? 'AI · call' :
+          String(a.actor || '').startsWith('ai:') ? 'AI · ' + a.actor.slice(3) :
+          (a.actor || '').split('@')[0] || 'someone';
+        const when = new Date(a.created_at);
+        const stamp = when.toLocaleString('en-GB', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const lines = core.describeChange(a).map((c) =>
+          `<div class="ch${c.warn ? ' warn' : ''}">${esc(c.text)}` +
+          (c.detail ? `<div class="chd">${esc(c.detail)}</div>` : '') +
+          (c.was ? `<div class="chw" title="${esc(c.was)}">was: ${esc(c.was)}</div>` : '') + '</div>').join('');
+        return `<li><div class="hrow"><span class="who">${esc(who)}</span>` +
+          `<span class="when" title="${esc(stamp)}">${esc(core.relTime(a.created_at))}</span></div>${lines}</li>`;
+      }).join('');
+      $('hist').hidden = false;
+    }
+  } catch (e) { /* history is best-effort */ }
+}
+function closeDrawer() {
+  state.editing = null;
+  $('scrim').classList.remove('on'); $('drawer').classList.remove('on');
+}
+function renderLpMarks() {
+  $('lp-marks').hidden = !$('f-lp').checked;
+  Array.prototype.forEach.call($('f-lpq').querySelectorAll('button'), (b) =>
+    b.setAttribute('aria-pressed', String(b.getAttribute('data-q') === state.lpQuality)));
+  Array.prototype.forEach.call($('f-lpu').querySelectorAll('button'), (b) =>
+    b.setAttribute('aria-pressed', String((b.getAttribute('data-u') === '1') === state.lpUsed)));
+}
+$('f-lp').addEventListener('change', renderLpMarks);
+$('f-lpq').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-q]'); if (!b) return;
+  const q = b.getAttribute('data-q');
+  state.lpQuality = state.lpQuality === q ? '' : q;   // tap again to clear
+  renderLpMarks();
+});
+$('f-lpu').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-u]'); if (!b) return;
+  state.lpUsed = b.getAttribute('data-u') === '1';
+  renderLpMarks();
+});
+async function saveDrawer() {
+  const l = leadById(state.editing); if (!l || state.busy) return;
+  const fields = {
+    level: $('f-level').value,
+    status: $('f-status').value || l.status, qual: $('f-qual').value,
+    notes: $('f-notes').value, pains: $('f-pains').value,
+    email: $('f-email').value.trim(), phone: $('f-phone').value.trim(), linkedin: $('f-linkedin').value.trim(),
+    lp: $('f-lp').checked, lpQuality: $('f-lp').checked ? state.lpQuality : '',
+    lpUsed: $('f-lp').checked ? state.lpUsed : false,
+  };
+  state.busy = true; $('d-save').disabled = true;
+  try {
+    const res = await core.setLead(l.id, fields, { touch: true });
+    l.level = fields.level; l.status = fields.status; l.qual = fields.qual;
+    l.notes = fields.notes; l.pains = fields.pains; l.email = fields.email; l.phone = fields.phone; l.linkedin = fields.linkedin;
+    l.lp = fields.lp; l.lpQuality = fields.lpQuality; l.lpUsed = fields.lpUsed;
+    renderSumbar(); renderTable(); closeDrawer();
+    if (res.undo) { state.lastUndo = { res, l }; $('d-cancel').textContent = 'Undo last'; }
+    toast({ type: 'ok', html: '<span class="mono">@' + esc(l.h) + '</span> saved.', ttl: 7000,
+      action: res.undo ? { label: 'Undo', fn: () => undo(res, l) } : null });
+  } catch (e) {
+    toast({ type: 'err', html: 'Save failed: ' + esc(e.message), sticky: true });
+  } finally { state.busy = false; $('d-save').disabled = false; }
+}
+async function undo(res, l) {
+  try {
+    await core.undoWrite(res.undo);
+    const p = res.prev, M = { level: 'level', last_status: 'status', qualification: 'qual',
+      notes: 'notes', pain_points: 'pains', email: 'email', phone: 'phone', linkedin: 'linkedin',
+      status: 'status', qual: 'qual', pains: 'pains' };
+    Object.keys(p).forEach((k) => { if (M[k]) l[M[k]] = p[k] || ''; });
+    renderSumbar(); renderTable();
+    toast({ type: 'ok', html: 'Undone — <span class="mono">@' + esc(l.h) + '</span> restored.' });
+  } catch (e) { toast({ type: 'err', html: 'Undo failed: ' + esc(e.message), sticky: true }); }
+}
+async function quickFu() {
+  const l = leadById(state.editing); if (!l || state.busy) return;
+  state.busy = true;
+  try {
+    const res = await core.setterUpdate({ handle: l.h, status: 'Follow up Sent' });
+    l.status = 'Follow up Sent'; l.lastContact = core.todayDmy();
+    renderTable(); closeDrawer();
+    toast({ type: 'ok', html: '<span class="mono">@' + esc(l.h) + '</span> — follow-up logged.', ttl: 6000,
+      action: res.undo ? { label: 'Undo', fn: () => undo(res, l) } : null });
+  } catch (e) { toast({ type: 'err', html: esc(e.message), sticky: true }); }
+  finally { state.busy = false; }
+}
+
+/* ---------- boot ---------- */
+async function load() {
+  if (!state.sentDate) state.sentDate = core.dmyToIso(core.todayDmy());
+  $('refresh').classList.add('spin');
+  try {
+    const [leads, stale] = await Promise.all([core.loadLeads(), core.staleBatch({ limit: 500 })]);
+    // deals ride along for the drawer's call log; never block the list on them
+    core.loadDeals().then((d) => { state.deals = d; }).catch(() => { state.deals = []; });
+    state.leads = leads;
+    state.stale = stale;
+    renderSumbar(); renderTable();
+    // ?lead=<handle> deep link (palette / cross-page)
+    const dl = new URLSearchParams(location.search).get('lead');
+    if (dl) { const hit = leads.find((l) => l.h === dl.toLowerCase()); if (hit) openDrawer(hit.id); }
+  } catch (e) {
+    $('table').innerHTML = '<div class="v2-empty">Couldn’t load: ' + esc(e.message) + '</div>';
+  } finally { $('refresh').classList.remove('spin'); }
+}
+
+// status select options
+core.STATUSES.forEach((st) => { const o = document.createElement('option'); o.textContent = st; $('f-status').appendChild(o); });
+
+$('search').oninput = (e) => { state.q = e.target.value; state.shown = 100; renderTable(); };
+$('refresh').onclick = load;
+$('scrim').onclick = closeDrawer;
+$('d-close').onclick = closeDrawer;
+$('d-cancel').onclick = () => {
+  if (state.lastUndo) {
+    const { res, l } = state.lastUndo;
+    state.lastUndo = null; $('d-cancel').textContent = 'Close';
+    undo(res, l);
+    closeDrawer();
+  } else closeDrawer();
+};
+$('d-save').onclick = saveDrawer;
+$('d-nocontact').onclick = async () => {
+  const l = leadById(state.editing); if (!l) return; // state.editing is the id
+  const btn = $('d-nocontact'); btn.disabled = true;
+  try {
+    const res = await core.noContact(l.id);
+    const kept = res.archived > 0; // had older history -> archived, not deleted
+    if (!kept) state.leads = state.leads.filter((x) => x.id !== l.id);
+    closeDrawer(); renderSumbar(); renderTable();
+    toast({ type: 'ok', ttl: 10000,
+      html: '<span class="mono">@' + esc(l.h) + '</span> — not a lead, ' + (kept ? 'archived (has history).' : 'deleted.'),
+      action: { label: 'Undo', fn: async () => { await core.undoNoContact(res.undo); load(); } } });
+  } catch (err) {
+    toast({ type: 'err', html: 'Failed: ' + esc(err.message), sticky: true });
+  } finally { btn.disabled = false; }
+};
+$('q-fu').onclick = quickFu;
+core.pageListen(document, 'keydown', (e) => { if (e.key === 'Escape' && state.editing) closeDrawer(); });
+
+core.installPalette({ leads: () => state.leads, onLead: (l) => openDrawer(l.id) });
+/* ---------- pool interactions ---------- */
+$('table').addEventListener('change', (e) => {
+  const dt = e.target.closest('#sentDate');
+  if (dt) { // backdating a batch: keep the button label honest about the day
+    state.sentDate = dt.value || core.dmyToIso(core.todayDmy());
+    rerender();
+    return;
+  }
+  const cell = e.target.closest('select.l-edit[data-f][data-id]');
+  if (cell) {
+    const id = +cell.getAttribute('data-id');
+    const field = cell.getAttribute('data-f');
+    const l = state.leads.find((x) => x.id === id);
+    if (!l) return;
+    const before = l[field] || '';
+    const after = cell.value;
+    if (before === after) return;
+    cell.classList.add('busy'); cell.disabled = true;
+    const y = window.scrollY;
+    core.setLead(id, { [field]: after }, { touch: true }).then((res) => {
+      l[field] = after;
+      renderSumbar(); renderTable(); window.scrollTo(0, y);
+      toast({ type: 'ok', ttl: 7000,
+        html: '<span class="mono">@' + esc(l.h) + '</span> → ' + esc(after || '—') + '.',
+        action: res.undo ? { label: 'Undo', fn: async () => {
+          await core.undoWrite(res.undo); l[field] = before;
+          renderSumbar(); renderTable();
+        } } : null });
+    }).catch((err) => {
+      cell.classList.remove('busy'); cell.disabled = false; cell.value = before;
+      toast({ type: 'err', html: 'Save failed: ' + esc(err.message), sticky: true });
+    });
+    return;
+  }
+  const cb = e.target.closest('input[type=checkbox][data-id]');
+  if (!cb) return;
+  const id = +cb.getAttribute('data-id');
+  if (cb.checked) state.sel.add(id); else state.sel.delete(id);
+  rerender();
+});
+$('table').addEventListener('click', async (e) => {
+  const src = e.target.closest('#srcTabs button');
+  if (src) {
+    state.src = src.getAttribute('data-src');
+    // reconnect tabs default to follow-up; the prospect queue is first touch
+    state.kind = 'followup';
+    state.sel = new Set();
+    renderPool();
+    return;
+  }
+  const kind = e.target.closest('#kindTabs button');
+  if (kind) { state.kind = kind.getAttribute('data-kind'); try { sessionStorage.setItem('ajr_kind', state.kind); } catch (x) {} rerender(); return; }
+  const one = e.target.closest('[data-sent]');
+  if (one) {
+    e.preventDefault(); // the row is a <label>; don't toggle its checkbox too
+    const id = Number(one.getAttribute('data-sent'));
+    one.disabled = true;
+    try {
+      const res = await core.markBatchSent([id], { kind: state.kind });
+      const today = core.todayDmy();
+      state.leads.forEach((l) => {
+        if (l.id !== id) return;
+        l.lastContact = today; l.status = 'Follow up Sent';
+        if (core.isPool(l.level)) l.level = 'Engaged 1';
+      });
+      if (state.stale) state.stale = state.stale.filter((l) => l.id !== id);
+      state.sel.delete(id);
+      renderSumbar(); rerender();
+      toast({ type: 'ok', ttl: 8000,
+        html: 'Marked sent — counted as ' + (res.kind === 'followup' ? 'a follow-up' : 'a cold DM') + '.',
+        action: res.undo ? { label: 'Undo', fn: async () => { await core.undoOutreachSent(res.undo); load(); } } : null });
+    } catch (err) {
+      one.disabled = false;
+      toast({ type: 'err', html: 'Failed: ' + esc(err.message), sticky: true });
+    }
+    return;
+  }
+  const ps = e.target.closest('#poolSort button');
+  if (ps) { state.poolSort = ps.getAttribute('data-sort'); try { sessionStorage.setItem('ajr_poolsort', state.poolSort); } catch (x) {} state.sel = new Set(); renderPool(); return; }
+  const nal = e.target.closest('[data-nal]');
+  if (nal) {
+    e.preventDefault();
+    const id = Number(nal.getAttribute('data-nal'));
+    nal.disabled = true;
+    try {
+      const l = state.leads.find((x) => x.id === id);
+      const h = l ? l.h : id;
+      const res = await core.noContact([id]);
+      // deleted or archived, either way it's gone from view — drop it locally
+      state.leads = state.leads.filter((x) => x.id !== id);
+      if (state.stale) state.stale = state.stale.filter((x) => x.id !== id);
+      state.sel.delete(id);
+      renderSumbar(); rerender();
+      toast({ type: 'ok', ttl: 8000,
+        html: 'Deleted <span class="mono">@' + esc(h) + '</span> — not a lead.' +
+          (res.retracted ? ' Today\u2019s sent mark was taken back too.' : ''),
+        action: { label: 'Undo', fn: async () => { await core.undoNoContact(res.undo); load(); } } });
+    } catch (err) {
+      nal.disabled = false;
+      toast({ type: 'err', html: 'Failed: ' + esc(err.message), sticky: true });
+    }
+    return;
+  }
+  const upto = e.target.closest('[data-upto]');
+  if (upto) {
+    e.preventDefault(); // row is a <label>
+    const idx = +upto.getAttribute('data-upto');
+    // his session = the top of this order down to the last handle he DM'd —
+    // EVERY row in that range, messaged before or not: he worked the IG list
+    // top-down and DM'd them all, so all of them get today's stamp.
+    // Stash whatever selection this replaces — a stray click on ↑ here used to
+    // silently destroy hand-picked checkboxes.
+    if (state.sel.size) state.prevSel = state.sel;
+    state.sel = new Set(batchList().slice(0, idx + 1).map((l) => l.id));
+    renderPool();
+    return;
+  }
+  const take = e.target.closest('[data-take]');
+  if (take) {
+    const n = +take.getAttribute('data-take');
+    if (state.sel.size) state.prevSel = state.sel;
+    state.sel = new Set(batchList().slice(0, n).map((l) => l.id));
+    renderPool();
+    return;
+  }
+  if (e.target.closest('#poolCopy')) {
+    const pick = state.sel.size ? batchList().filter((l) => state.sel.has(l.id)) : batchList().slice(0, 100);
+    const txt = pick.map((l) => '@' + l.h).join('\n');
+    try { await navigator.clipboard.writeText(txt); toast({ type: 'ok', html: 'Copied ' + pick.length + ' handles.' }); }
+    catch (err) { toast({ type: 'err', html: 'Copy failed: ' + esc(err.message) }); }
+    return;
+  }
+  const skip = e.target.closest('#poolSkip');
+  if (skip && !skip.disabled) {
+    const ids = Array.from(state.sel);
+    skip.disabled = true;
+    try {
+      const res = await core.noContact(ids);
+      const gone = new Set(state.sel);
+      state.leads = state.leads.filter((l) => !gone.has(l.id));
+      if (state.stale) state.stale = state.stale.filter((l) => !gone.has(l.id));
+      state.sel = new Set();
+      renderSumbar(); rerender();
+      const n = res.deleted + res.archived;
+      toast({ type: 'ok', ttl: 10000,
+        html: 'Removed <b>' + n + '</b> — not leads' +
+          (res.archived ? ' (' + res.archived + ' with history kept in Archive)' : '') + '.',
+        action: { label: 'Undo', fn: async () => { await core.undoNoContact(res.undo); load(); } } });
+    } catch (err) {
+      skip.disabled = false;
+      toast({ type: 'err', html: 'Failed: ' + esc(err.message), sticky: true });
+    }
+    return;
+  }
+  const sr = e.target.closest('#selRestore');
+  if (sr) {
+    const cur = state.sel;
+    state.sel = state.prevSel;
+    state.prevSel = cur.size ? cur : null; // swap, so a second click swaps back
+    rerender();
+    return;
+  }
+  const sd = e.target.closest('#sentDate');
+  if (sd) return; // let the picker take the click without the row label eating it
+  const pu = e.target.closest('#poolUndo');
+  if (pu) {
+    pu.disabled = true;
+    const u = state.lastBatchUndo;
+    state.lastBatchUndo = null;
+    try {
+      await core.undoOutreachSent(u.undo);
+      toast({ type: 'ok', html: 'Batch of ' + u.count + ' un-marked.' });
+      load();
+    } catch (err) {
+      state.lastBatchUndo = u; // keep the chance to retry
+      toast({ type: 'err', html: 'Undo failed: ' + esc(err.message), sticky: true });
+      rerender();
+    }
+    return;
+  }
+  const pk = e.target.closest('#poolKind');
+  if (pk) {
+    pk.disabled = true;
+    const u = state.lastBatchUndo;
+    const to = pk.getAttribute('data-to');
+    try {
+      const res = await core.setBatchKind(u.actId, to);
+      u.kind = to; // the button now offers the way back
+      rerender();
+      toast({ type: 'ok', ttl: 8000,
+        html: '<b>' + res.count + '</b> now counted as ' +
+          (to === 'followup' ? 'follow-ups' : 'cold DMs') + '.' });
+    } catch (err) {
+      pk.disabled = false;
+      toast({ type: 'err', html: 'Couldn’t change it: ' + esc(err.message), sticky: true });
+    }
+    return;
+  }
+  const purge = e.target.closest('#purgeBtn');
+  if (purge && !purge.disabled) {
+    const ids = [...state.sel];
+    // permanent means permanent — one confirm is not clutter here
+    if (!confirm('Delete ' + ids.length + ' archived lead' + (ids.length === 1 ? '' : 's') + ' permanently? All their history stays in the activity log, but the leads are gone.')) return;
+    purge.disabled = true;
+    try {
+      const res = await core.purgeLeads(ids);
+      state.leads = state.leads.filter((l) => !state.sel.has(l.id));
+      state.sel = new Set();
+      renderSumbar(); rerender();
+      toast({ type: 'ok', ttl: 12000, html: 'Deleted <b>' + res.purged + '</b> permanently.',
+        action: res.undo ? { label: 'Undo', fn: async () => { await core.undoPurge(res.undo); load(); } } : null });
+    } catch (err) {
+      purge.disabled = false;
+      toast({ type: 'err', html: 'Delete failed: ' + esc(err.message), sticky: true });
+    }
+    return;
+  }
+  const mark = e.target.closest('#poolMark');
+  if (mark && !mark.disabled) {
+    const ids = Array.from(state.sel);
+    mark.disabled = true;
+    try {
+      const when = core.isoToDmy(state.sentDate);
+      const res = await core.markBatchSent(ids, { kind: state.kind, when });
+      state.leads.forEach((l) => {
+        if (!state.sel.has(l.id)) return;
+        l.lastContact = when; l.status = 'Follow up Sent';
+        if (core.isPool(l.level)) l.level = 'Engaged 1'; // marked = in the book now
+      });
+      if (state.stale) state.stale = state.stale.filter((l) => !state.sel.has(l.id));
+      state.sel = new Set();
+      // the toast's Undo dies in 10 seconds; the bar button stays until the
+      // next batch (or navigation) replaces it
+      if (res.undo) state.lastBatchUndo = { undo: res.undo, count: res.marked, actId: res.actId, kind: res.kind };
+      state.prevSel = null;
+      renderSumbar(); rerender();
+      toast({ type: 'ok', ttl: 10000,
+        html: 'Marked <b>' + res.marked + '</b> as sent ' +
+          (res.when === core.todayDmy() ? 'today' : 'on ' + esc(res.when)) + ' — counted as ' +
+          (res.kind === 'followup' ? 'follow-ups' : 'cold DMs') + '.',
+        action: res.undo ? { label: 'Undo', fn: async () => { await core.undoOutreachSent(res.undo); load(); } } : null });
+    } catch (err) {
+      mark.disabled = false;
+      toast({ type: 'err', html: 'Failed: ' + esc(err.message), sticky: true });
+    }
+  }
+});
+
+/* ---------- import the IG following export ---------- */
+$('importBtn').onclick = () => $('importFile').click();
+$('table').addEventListener('click', (e) => {
+  // rows are plain divs now (not labels) so a tap on ✕/↑here/@handle can never
+  // be swallowed by a label toggling the checkbox. Clicking the row BODY still
+  // selects it, via this explicit handler.
+  const cell = e.target.closest('.poolcell');
+  if (cell && !e.target.closest('a, button, input')) {
+    const cb = cell.querySelector('input[type=checkbox][data-id]');
+    if (cb) {
+      const id = +cb.getAttribute('data-id');
+      if (state.sel.has(id)) state.sel.delete(id); else state.sel.add(id);
+      renderPool();
+    }
+    return;
+  }
+  if (e.target.closest('#poolImport') || e.target.closest('#poolImport2')) $('importFile').click();
+});
+$('importFile').onchange = async () => {
+  const f = $('importFile').files[0];
+  if (!f) return;
+  $('importBtn').disabled = true;
+  try {
+    const text = await f.text();
+    const res = await core.importFollowing(text);
+    if (!res.total) { toast({ type: 'err', html: 'No handles found in that file. Works with following.json from your IG export, or a CSV/text file with a column of handles or profile links.', sticky: true }); return; }
+    await load();
+    state.filter = 'Following'; renderSumbar(); renderTable();
+    const bar = document.createElement('div');
+    bar.className = 'impbar';
+    bar.innerHTML = 'Imported <b>' + res.added.toLocaleString() + '</b> · <b>' + res.skippedExisting.toLocaleString() +
+      '</b> already leads, left untouched<span class="sp"></span>';
+    const ub = document.createElement('button');
+    ub.className = 'v2-btn sm'; ub.textContent = 'Undo import';
+    ub.onclick = async () => {
+      ub.disabled = true;
+      const u = await core.undoImport(res.ids);
+      bar.remove(); load();
+      toast({ type: 'ok', html: 'Import undone — ' + u.deleted + ' removed' + (u.kept ? ', ' + u.kept + ' kept (already worked or promoted)' : '') + '.' });
+    };
+    bar.appendChild(ub);
+    $('table').parentNode.insertBefore(bar, $('table'));
+    toast({ type: 'ok', ttl: 12000,
+      html: 'Imported <b>' + res.added + '</b> into the outreach pool · ' + res.skippedExisting + ' already leads (untouched).',
+      action: res.ids && res.ids.length ? { label: 'Undo import', fn: async () => { await core.undoImport(res.ids); load(); } } : null });
+  } catch (err) {
+    toast({ type: 'err', html: 'Import failed: ' + esc(err.message), sticky: true });
+  } finally { $('importBtn').disabled = false; $('importFile').value = ''; }
+};
+
+const scanner = core.installScanner({
+  resolveName: (n) => core.makeNameResolver(state.leads)(n),
+  statuses: core.STATUSES,
+  exists: (h) => state.leads.find((l) => l.h === h) || null,
+  onDone: (n, info) => {
+    if (info && info.mode === 'prospect') {
+      const r = info.res || {};
+      toast({ type: 'ok', ttl: 10000,
+        html: 'Added <b>' + n + '</b> — they queue on <a href="newleads.html">New leads</a>' + (r.skipped ? ' · ' + r.skipped + ' already in the book' : '') + '.',
+        action: r.undo && n ? { label: 'Undo', fn: async () => { await core.undoProspects(r.undo); load(); } } : null });
+    } else {
+      toast({ type: 'ok', html: 'Screenshot: ' + n + ' lead' + (n === 1 ? '' : 's') + ' written.' });
+    }
+    load();
+  },
+});
+// 'Paste ⌘V' means nothing on a phone; the same button opens the camera roll
+if (matchMedia('(max-width: 760px)').matches) $('scanBtn').textContent = 'Add screenshot';
+$('scanBtn').onclick = () => scanner.openFile();
+// the retired Leadpools page redirects here with its filter preselected
+try {
+  if (new URLSearchParams(location.search).get('filter') === 'LP') state.filter = 'LP';
+} catch (e) { /* ignore */ }
+load();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
+<link rel="modulepreload" href="./crm-core.js?v=20260818b">
+<link rel="modulepreload" href="./supabase-js.mjs?v=1">
+<style>html{background:#f0f0f3}</style>
+<script type="module" blocking="render">
+await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
+</script>
+<title>Assistant · AJR</title>
+<style>
+.colw{max-width:780px;display:flex;flex-direction:column;min-height:calc(100vh - 96px)}
+/* thread */
+.thread{flex:1;display:flex;flex-direction:column;gap:13px;padding:6px 2px 18px}
+.msg{max-width:86%;border-radius:16px;padding:10px 15px;font-size:13.5px;line-height:1.55;
+  white-space:pre-wrap;word-break:break-word;animation:msgIn .3s cubic-bezier(.24,1.1,.32,1)}
+@keyframes msgIn{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+.msg.me{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:5px}
+.msg.ai{align-self:flex-start;background:#e9e9eb;color:var(--ink);border:none;border-bottom-left-radius:5px}
+.msg.ai.think{color:var(--muted-2)}
+.msg img{max-width:190px;max-height:250px;border-radius:10px;display:block;margin:4px 0;border:1px solid rgba(255,255,255,.2)}
+.msg .imgs{display:flex;gap:6px;flex-wrap:wrap}
+.msg .imtag{font-size:11px;opacity:.7}
+.daysep{align-self:center;font:600 10px var(--mono);letter-spacing:.1em;color:var(--muted-2);padding:4px 0}
+/* proposal card — neutral card with an accent dot, not a warning */
+.prop{align-self:flex-start;max-width:86%;min-width:min(340px,100%);background:var(--card);
+  border:1px solid rgba(0,0,0,.08);border-radius:14px;overflow:hidden;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);animation:msgIn .3s cubic-bezier(.24,1.1,.32,1)}
+.prop .ttl{display:flex;align-items:center;gap:8px;padding:11px 15px;border-bottom:1px solid rgba(0,0,0,.055);
+  font-size:12px;font-weight:600;color:var(--muted);letter-spacing:0;text-transform:none;margin:0}
+.prop .ttl::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
+.prop .ttl b{color:var(--ink);font-family:var(--font);font-size:12.5px}
+.prop .grid{display:grid;grid-template-columns:auto 1fr;gap:0;align-items:center;margin:0}
+.prop .k{display:flex;align-items:center;gap:10px;padding:9px 0 9px 15px;
+  font-size:10.5px;font-weight:600;letter-spacing:.06em;color:var(--muted-2)}
+.prop .k input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer}
+.prop select,.prop input[type=text]{width:calc(100% - 15px);min-height:30px;padding:3px 9px;
+  border:1px solid var(--line-2);border-radius:8px;background:#fff;font-size:12.5px;color:var(--ink)}
+.prop select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:26px;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2398989d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 22px center;background-size:12px}
+.prop .row{display:flex;gap:8px;padding:12px 15px}
+.prop .row button{min-height:32px;padding:0 16px;border-radius:8px;font-weight:600;font-size:12.5px;cursor:pointer;
+  transition:background-color .15s ease,transform .12s ease}
+.prop .apply{background:var(--accent);border:none;color:#fff}
+.prop .apply:hover:not(:disabled){background:var(--accent-hi)}
+.prop .apply:active{transform:scale(.96)}
+.prop .apply:disabled{opacity:.5}
+.prop .deny{background:#fff;border:1px solid var(--line-2);color:var(--muted)}
+.prop.done{opacity:.72}
+.prop .verdict{font-size:12.5px;color:var(--go);font-weight:600;padding:12px 15px}
+/* composer */
+.composer{position:sticky;bottom:0;padding:10px 0 18px;border-top:none;
+  background:linear-gradient(to top,var(--bg) 70%,rgba(240,240,243,0))}
+.crow{display:flex;gap:8px;align-items:flex-end}
+.cbox{flex:1;background:rgba(251,251,253,.9);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border:1px solid var(--line-2);border-radius:14px;padding:9px 14px;display:flex;flex-direction:column;gap:7px;
+  transition:border-color .16s ease, box-shadow .16s ease}
+.cbox:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(176,84,74,.1)}
+.cbox textarea{border:none;background:none;resize:none;font:inherit;font-size:13.5px;min-height:22px;max-height:140px;outline:none}
+.pend{display:flex;gap:6px;flex-wrap:wrap}
+.pend .p{position:relative}
+.pend img{width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.pend .rm{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--ink);color:#fff;
+  font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;padding:0}
+.cbtn{width:40px;height:40px;flex:none;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.cbtn.attach{background:var(--card);border:1px solid var(--line-2);color:var(--muted)}
+.cbtn.attach:hover{border-color:var(--muted-2);color:var(--ink)}
+.cbtn.send{background:var(--accent);border:1px solid var(--accent);color:#fff}
+.cbtn.send:hover:not(:disabled){background:var(--accent-hi);border-color:var(--accent-hi)}
+.cbtn.send:disabled{opacity:.4;cursor:default}
+.cbtn svg{width:17px;height:17px}
+/* header popovers (chats + training) */
+.twrap{position:relative;display:inline-flex}
+.tpop{position:absolute;top:calc(100% + 6px);right:0;z-index:50;min-width:250px;max-width:330px;padding:6px;
+  background:rgba(251,251,253,.92);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);
+  border:1px solid rgba(0,0,0,.08);border-radius:13px;
+  box-shadow:0 16px 40px rgba(0,0,0,.16),0 2px 8px rgba(0,0,0,.06);animation:msgIn .28s cubic-bezier(.24,1.1,.32,1)}
+.tpop .ttl{font-size:10.5px;font-weight:600;letter-spacing:.07em;color:var(--muted-2);padding:7px 10px}
+.tpop label{display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:8px;font-size:12.5px;color:var(--ink);cursor:pointer}
+.tpop label:hover{background:rgba(0,0,0,.045)}
+.tpop input[type=checkbox]{width:13px;height:13px;flex:none;accent-color:var(--accent);cursor:pointer}
+.tpop .sz{margin-left:auto;font:400 10.5px var(--mono);color:var(--muted-2)}
+.tpop .foot{border-top:1px solid var(--divider);margin-top:5px;padding:7px 9px 3px;font-size:12px}
+.cpop{left:0;right:auto;min-width:280px}
+.cpop .crow2{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border-radius:8px;cursor:pointer;border:none;background:none;text-align:left;font-size:12.5px}
+.cpop .crow2:hover{background:rgba(0,0,0,.045)}
+.cpop .crow2 b{color:var(--ink);font-size:13px}
+.cpop .crow2 .pv{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted-2);font-size:11.5px}
+.cpop .crow2.on{background:rgba(176,84,74,.09)}
+.cpop input[type=text]{width:calc(100% - 12px);margin:2px 6px 6px;min-height:32px;padding:4px 10px;border:1px solid var(--line-2);border-radius:8px;font-size:12.5px}
+.empty-hint{align-self:center;text-align:center;color:var(--muted);font-size:13px;max-width:440px;margin:auto 0;line-height:1.7}
+.empty-hint b{color:var(--ink-2)}
+@media (max-width:760px){ .msg{max-width:94%} .prop{max-width:94%;min-width:0} .cpop{left:auto;right:0} }
+</style>
+<!--baked:head-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style id="v2-theme">
+@view-transition{navigation:auto}
+:root{
+  --bg:#f0f0f3; --side:rgba(251,251,253,.78); --card:#fbfbfd; --rowsel:rgba(0,0,0,.022);
+  --line:rgba(0,0,0,.07); --line-2:rgba(0,0,0,.12); --divider:rgba(0,0,0,.05);
+  --ink:#1d1d1f; --ink-2:#3a3a3c; --ink-3:#6e6e73; --muted:#6e6e73; --muted-2:#98989d; --off:#b9b9bf;
+  /* accent = the action colour (buttons, active nav, links, cursor row).
+     --go stays green and means money/success/done only. Splitting them is the
+     whole point: a "Log" button and "cash collected" are not the same idea. */
+  --accent:#B0544A; --accent-hi:#8F4238; --accent-tint:rgba(176,84,74,.07); --accent-line:rgba(176,84,74,.35);
+  --go:#1F7A4D; --go-hi:#17603C; --go-tint:rgba(31,122,77,.08); --go-line:rgba(31,122,77,.3); --done:rgba(31,122,77,.04);
+  --red:#C7392E; --amber:#9A6A00; --amber-tint:rgba(154,106,0,.09);
+  --ai:#7c56c9; --ai-line:#e2d9f4; --ai-tint:#f6f2fb;
+  --font:-apple-system,'SF Pro Text','SF Pro Display',system-ui,'Instrument Sans',sans-serif;
+  --mono:ui-monospace,'SF Mono','IBM Plex Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:var(--accent);text-decoration:none}
+a:hover{color:var(--accent-hi)}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+input::placeholder,textarea::placeholder{color:var(--off)}
+
+/* layout */
+.v2-shell{display:flex;min-height:100vh}
+.v2-side{width:228px;flex:none;border-right:1px solid rgba(0,0,0,.06);background:var(--side);padding:22px 12px 16px;
+  backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);
+  display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:100vh;
+  align-self:flex-start} /* flex would stretch it and break position:sticky */
+.v2-side .wm{font-weight:700;font-size:15px;letter-spacing:-.01em;padding:0 10px 18px}
+.v2-side .grp{font:600 10.5px var(--font);letter-spacing:.1em;color:var(--muted-2);padding:4px 10px}
+.v2-side .grp.gap{padding-top:14px}
+.v2-side a.nav{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:var(--ink-2);font-size:13.5px}
+.v2-side a.nav:hover{background:rgba(0,0,0,.045);color:var(--ink)}
+.v2-side a.nav .ic{flex:none;opacity:.62}
+.v2-side a.nav.on .ic{opacity:1}
+.v2-side a.nav.on{background:rgba(176,84,74,.1);color:var(--accent);font-weight:600}
+.v2-side a.nav.on:hover{background:rgba(176,84,74,.14);color:var(--accent)}
+.v2-side .badge-n{margin-left:auto;font:600 11.5px var(--mono);font-variant-numeric:tabular-nums;border-radius:99px;padding:0}
+.v2-side a.nav:not(.on) .badge-n{color:var(--muted-2)}
+.v2-side .badge-red{margin-left:auto;font-size:11px;color:var(--red);font-weight:600}
+.v2-side .badge-dot{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
+.v2-side .sp{flex:1}
+.v2-side .krow{display:flex;align-items:center;gap:8px;padding:8px 10px;color:var(--muted-2);font-size:12px;cursor:pointer}
+.v2-side .krow kbd{margin-left:auto;font:600 11px var(--mono);border:1px solid var(--line-2);border-radius:5px;padding:1px 6px;background:#fff;color:var(--ink-3)}
+.v2-side .me{display:flex;align-items:center;gap:9px;padding:10px 10px 2px;border-top:1px solid var(--line);margin-top:6px}
+.v2-side .me{border-top:1px solid rgba(0,0,0,.06)}
+.v2-side .me .av{width:27px;height:27px;border-radius:50%;background:var(--ink);color:#fbfbfd;display:inline-flex;
+  align-items:center;justify-content:center;font:600 11px var(--font);flex:none}
+.v2-side .me .nm{display:block;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v2-side .me .rl{display:block;font-size:11px;color:var(--muted-2)}
+.v2-side .me .out{margin-left:auto;color:var(--muted-2);font-size:11px}
+/* No global width cap. A reading width suits a chat or a queue and starves a
+   13-column table — pages that want one set .colw themselves. */
+.v2-main{flex:1;min-width:0;padding:30px 36px 80px}
+.colw{width:100%}
+@media(max-width:900px) and (min-width:761px){.v2-side{width:66px;padding:18px 8px}.v2-side .wm,.v2-side .grp,.v2-side .krow,.v2-side .me .nm,.v2-side .me .rl{display:none}}
+/* phone: the sidebar becomes a scrolling top strip. As a 64px rail it ate a
+   third of the screen and wrapped every label onto three lines. */
+@media(max-width:760px){
+  .v2-shell{display:block}
+  .v2-side{flex-direction:row;width:auto;height:auto;align-items:center;gap:6px;padding:8px 10px;
+    border-right:none;border-bottom:1px solid rgba(0,0,0,.06);overflow-x:auto;-webkit-overflow-scrolling:touch;
+    position:sticky;top:0;z-index:20}
+  .v2-side::-webkit-scrollbar{display:none}
+  .v2-side .wm,.v2-side .grp,.v2-side .krow,.v2-side .sp,.v2-side .me .nm,.v2-side .me .rl{display:none}
+  .v2-side a.nav{white-space:nowrap;padding:9px 13px;min-height:40px;font-size:13px}
+  .v2-side .badge-n,.v2-side .badge-red{margin-left:6px}
+  .v2-side .me{border-top:none;margin:0 0 0 auto;padding:0 0 0 6px}
+  .v2-main{padding:18px 14px 70px}
+  .v2-h{flex-wrap:wrap;gap:8px}
+  .v2-h h1{font-size:21px}
+}
+
+/* headers */
+.v2-h{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.v2-h h1{font-size:23px;font-weight:700;letter-spacing:-.02em}
+.v2-h .sub{color:var(--muted);font-size:13px}
+.v2-h .sp{flex:1}
+.v2-lab{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2)}
+
+/* chips */
+.v2-chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.v2-chip{min-height:30px;padding:0 14px;border-radius:99px;border:1px solid var(--line-2);background:var(--card);
+  color:var(--ink-2);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;
+  transition:background-color .15s ease,border-color .15s ease,color .15s ease}
+.v2-chip:hover{border-color:var(--muted-2)}
+.v2-chip.on{background:var(--ink);color:#fbfbfd;border-color:var(--ink)}
+.v2-chip .n{font-family:var(--mono);font-size:11px;opacity:.65}
+.v2-chip.green{background:var(--go-tint);border-color:var(--go-line);color:var(--go)}
+.v2-chip.red{background:#fbf0ed;border-color:#e8cec6;color:var(--red)}
+
+/* buttons */
+.v2-btn{min-height:32px;padding:0 13px;border-radius:8px;border:1px solid var(--line-2);background:#fff;
+  color:var(--ink-2);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  transition:background-color .15s ease,border-color .15s ease,color .15s ease,transform .12s ease}
+.v2-btn:hover:not(:disabled){border-color:var(--muted-2);color:var(--ink)}
+.v2-btn:active:not(:disabled){transform:scale(.97)}
+.v2-btn:disabled{opacity:.45;cursor:not-allowed}
+.v2-btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
+.v2-btn.go:hover:not(:disabled){background:var(--accent-hi);border-color:var(--accent-hi);color:#fff}
+.v2-btn.goline{background:transparent;border-color:var(--accent-line);color:var(--accent)}
+.v2-btn.goline:hover:not(:disabled){background:var(--accent-tint);color:var(--accent);border-color:var(--accent-line)}
+/* completion, not action: "Sent", "Mark as cold", "logged" all read green */
+.v2-btn.doneline{background:#fff;border-color:var(--go-line);color:var(--go)}
+.v2-btn.doneline:hover:not(:disabled){background:var(--go-tint);color:var(--go);border-color:var(--go-line)}
+.v2-btn.dark{background:var(--ink);border-color:var(--ink);color:#fbfbfd}
+.v2-btn.dark:hover:not(:disabled){filter:brightness(1.35)}
+.v2-btn.dash{border-style:dashed;color:var(--muted);font-weight:500;background:transparent}
+.v2-btn.dash:hover{color:var(--ink-2)}
+.v2-btn.sm{min-height:27px;padding:0 11px;font-size:11.5px;border-radius:7px}
+
+/* inputs */
+.v2-in{min-height:34px;padding:7px 12px;background:#fff;border:1px solid var(--line-2);border-radius:8px;
+  color:var(--ink);font-size:13px;width:100%;
+  transition:border-color .16s ease, box-shadow .16s ease, background-color .16s ease}
+.v2-in:hover{border-color:var(--muted-2)}
+.v2-in:focus{border-color:var(--ink-3);box-shadow:0 0 0 3px rgba(33,31,27,.07)}
+/* native selects render differently on every OS — draw our own chevron so the
+   closed state matches the rest of the paper UI */
+select.v2-in{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:30px;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8375' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;background-size:14px}
+select.v2-in:hover{background-color:var(--rowsel)}
+/* the OPEN list of a native select is drawn by the OS (dark grey on macOS) and
+   cannot be styled — so on pointer devices we draw our own and keep the real
+   <select> underneath for state, change events and keyboard control */
+#v2-menu{position:fixed;z-index:200;background:var(--card);border:1px solid var(--line);border-radius:11px;
+  box-shadow:0 14px 38px -10px rgba(33,31,27,.32), 0 2px 6px rgba(33,31,27,.06);
+  padding:5px;max-height:min(58vh,340px);overflow-y:auto;min-width:150px;
+  animation:v2menu .13s ease-out}
+@keyframes v2menu{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+#v2-menu button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  padding:8px 10px 8px 8px;border-radius:8px;font:500 13px var(--font);color:var(--ink-2);
+  white-space:nowrap;cursor:pointer;transition:background-color .12s ease,color .12s ease}
+#v2-menu button:hover,#v2-menu button.cur{background:var(--divider);color:var(--ink)}
+#v2-menu button.on{color:var(--go-hi);font-weight:600}
+#v2-menu button.on:hover{background:var(--go-tint)}
+#v2-menu .tick{width:14px;height:14px;flex:none;opacity:0}
+#v2-menu button.on .tick{opacity:1}
+select.v2-in:disabled{opacity:.55;cursor:not-allowed}
+input[type=date].v2-in{cursor:pointer}
+textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
+
+/* cards + tables */
+.v2-card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  box-shadow:0 1px 2px rgba(0,0,0,.03);overflow:hidden}
+.v2-thead{display:grid;gap:10px;padding:9px 18px;font:600 10.5px var(--font);letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted-2);border-bottom:1px solid rgba(0,0,0,.055)}
+.v2-row{display:grid;gap:10px;padding:10px 18px;align-items:center;border-top:1px solid var(--divider);
+  transition:background-color .15s ease}
+.v2-row:first-of-type{border-top:none}
+.v2-row:hover{background:var(--rowsel)}
+.v2-scroll{overflow-x:auto}
+.v2-empty{padding:30px 18px;text-align:center;color:var(--muted)}
+
+/* semantic bits */
+.v2-age{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:11.5px;font-weight:600;
+  color:var(--ink-3);background:rgba(0,0,0,.05);border-radius:5px;padding:2px 6px}
+.v2-age.warn{color:var(--amber);background:var(--amber-tint)}
+.v2-age.late{color:var(--red);background:rgba(199,57,46,.09)}
+.v2-ai{display:inline-flex;align-items:center;gap:4px;font:600 10.5px var(--mono);color:var(--ai);
+  border:1px solid var(--ai-line);border-radius:99px;padding:1px 7px;white-space:nowrap}
+.v2-money{font-family:var(--mono);font-weight:600;color:var(--go)}
+
+/* toasts */
+.v2-toasts{position:fixed;z-index:80;bottom:26px;left:50%;transform:translateX(-50%);display:flex;
+  flex-direction:column;align-items:center;gap:9px;width:max-content;max-width:calc(100vw - 32px)}
+.v2-toast{display:flex;align-items:center;gap:14px;background:rgba(28,28,30,.88);color:#fbfbfd;
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:none;
+  border-radius:99px;padding:11px 12px 11px 18px;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.25);
+  animation:v2toast .34s cubic-bezier(.24,1.1,.32,1)}
+@keyframes v2toast{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+.v2-toast.err{background:rgba(146,44,35,.92);color:#fbfbfd}
+.v2-toast .sp{flex:1}
+.v2-toast button{background:rgba(255,255,255,.14);color:#F3C9C2;font-weight:600;font-size:12.5px;
+  padding:5px 12px;border-radius:99px}
+.v2-toast button:hover{background:rgba(255,255,255,.22)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<!--/baked:head-->
+</head>
+<body class="v2-shell">
+<!--baked:side--><nav class="v2-side"><div class="grp">TODAY</div><a class="nav" href="worklist.html" data-nav="worklist"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h11M3 12h11M3 18h7"/><path d="m17 15 2 2 4-4"/></svg>Today<span class="slot" data-slot="worklist"></span></a><a class="nav on" href="assistant.html" data-nav="assistant"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H5l-2 2V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/></svg>Assistant<span class="slot" data-slot="assistant"></span></a><div class="grp gap">CLOSING</div><a class="nav" href="deals.html" data-nav="deals"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="3"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Deals<span class="slot" data-slot="deals"></span></a><div class="grp gap">LEAD BOOK</div><a class="nav" href="leads.html" data-nav="leads"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>All leads<span class="slot" data-slot="leads"></span></a><div class="grp gap">REVIEW</div><a class="nav" href="report.html" data-nav="report"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></svg>Dashboard<span class="slot" data-slot="report"></span></a><a class="nav" href="briefing.html" data-nav="briefing"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h13a2 2 0 0 1 2 2v13a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 8h7M8 12h7M8 16h4"/></svg>Briefing<span class="slot" data-slot="briefing"></span></a><div class="sp"></div><a class="nav" href="settings.html"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H7a1.7 1.7 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V7a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
+<main class="v2-main">
+  <div class="colw">
+    <header class="v2-h">
+      <h1>Assistant</h1>
+      <span class="twrap" id="cwrap">
+        <button class="v2-btn sm" id="chatBtn" type="button" aria-haspopup="true" aria-expanded="false">General chat ▾</button>
+        <div class="tpop cpop" id="cpop" hidden></div>
+      </span>
+      <span class="sp"></span>
+      <span class="twrap" id="twrap">
+        <button class="v2-btn sm" id="trainBtn" type="button" aria-haspopup="true" aria-expanded="false">Training</button>
+        <div class="tpop" id="tpop" hidden></div>
+      </span>
+      <button class="v2-btn sm" id="clearBtn" type="button" title="Delete this thread's history">Clear thread</button>
+    </header>
+
+    <div class="thread" id="thread">
+      <div class="empty-hint" id="hint">
+        <b>Every lead gets their own thread, and it remembers.</b><br>
+        Pick a chat above or just send — screenshots of a convo route themselves
+        to that lead's thread, with the CRM's notes and history riding along.
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="crow">
+        <button class="cbtn attach" id="attachBtn" type="button" title="Add screenshots">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        </button>
+        <div class="cbox">
+          <div class="pend" id="pend" hidden></div>
+          <textarea id="input" rows="1" placeholder="Ask anything, or just drop the convo screenshots…"></textarea>
+        </div>
+        <button class="cbtn send" id="sendBtn" type="button" title="Send" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 14 0M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+import * as core from './crm-core.js?v=20260818b';
+const session = await core.requireAuth();
+if (session) {
+await core.installChrome({ active: 'assistant' });
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const toast = core.toast;
+
+/* ---------- state ----------
+   chat = the lead handle this thread belongs to ('' = general). Threads live
+   in the DB (assist_chats), so history survives sessions and follows the
+   account across phone and laptop. Pending images stay in memory only. */
+let chat = '';
+let turns = [];           // [{role, text, imgs:[dataUrl], b64s:[], dbId?, updates?, handle?, fb?, at?}]
+let pending = [];         // [{dataUrl, b64, mediaType}]
+let book = { leads: [], deals: [] };
+let chats = [];           // threads overview
+let busy = false;
+
+core.bootstrap().then((b) => { book = b; }).catch(() => {});
+
+/* ---------- thread rendering ---------- */
+const STAGE_OPTS = ['', 'Engaged 1', 'Engaged 2', 'Engaged 3', 'Booked'];
+const QUAL_OPTS = ['', 'Qualified 1', 'Qualified 2', 'Qualified 3', 'Unqualified'];
+const STATUS_OPTS = [''].concat(core.STATUSES);
+const optHtml = (list, sel, blank) => list.map((o) =>
+  `<option value="${esc(o)}"${o === sel ? ' selected' : ''}>${esc(o || blank)}</option>`).join('');
+const DEAL_OPTS = ['', 'Discovery Call', 'Closing call', 'Followup', 'Closed', 'No Close'];
+const FIELD_DEFS = [
+  ['level', 'Stage', 'select', STAGE_OPTS],
+  ['qual', 'Qual', 'select', QUAL_OPTS],
+  ['status', 'Status', 'select', STATUS_OPTS],
+  ['pains', 'Pains', 'text'],
+  ['angle', 'Angle', 'text'],
+  ['note', 'Note', 'text'],
+  // the closer's side: a post-call convo updates the DEAL, not just the lead
+  ['deal_status', 'Deal status', 'select', DEAL_OPTS],
+  ['deal_followup', 'Deal follow-up', 'text'],
+  ['deal_note', 'Deal note', 'text'],
+];
+
+function propHtml(t, i) {
+  const u = t.updates || {};
+  const rows = FIELD_DEFS.filter(([k]) => u[k]).map(([k, lab, kind, opts2]) =>
+    `<span class="k"><input type="checkbox" data-on="${k}" checked>${lab}</span>` +
+    (kind === 'select'
+      ? `<select data-f="${k}">${optHtml(opts2, u[k], '—')}</select>`
+      : `<input type="text" data-f="${k}" value="${esc(u[k])}">`)).join('');
+  if (!rows) return '';
+  if (t.fb) {
+    return `<div class="prop done" data-i="${i}"><div class="ttl">CRM update — <b>@${esc(t.handle)}</b></div>` +
+      `<span class="verdict">${t.fb === 'applied' ? '✓ Applied' : 'Dismissed'}</span></div>`;
+  }
+  return `<div class="prop" data-i="${i}">` +
+    `<div class="ttl">Proposed CRM update — <b>@${esc(t.handle)}</b></div>` +
+    `<div class="grid">${rows}</div>` +
+    `<div class="row"><button class="apply" data-apply>Apply</button><button class="deny" data-deny>Dismiss</button></div></div>`;
+}
+
+function render() {
+  $('chatBtn').textContent = (chat ? '@' + chat : 'General chat') + ' ▾';
+  const th = $('thread');
+  $('hint').hidden = turns.length > 0;
+  th.querySelectorAll('.msg,.prop,.daysep').forEach((e) => e.remove());
+  let lastDay = '';
+  turns.forEach((t, i) => {
+    const day = String(t.at || '').slice(0, 10);
+    if (day && day !== lastDay) {
+      lastDay = day;
+      const sep = document.createElement('div');
+      sep.className = 'daysep';
+      sep.textContent = day.split('-').reverse().join('/');
+      th.appendChild(sep);
+    }
+    const div = document.createElement('div');
+    div.className = 'msg ' + (t.role === 'user' ? 'me' : 'ai') + (t.think ? ' think' : '');
+    let html = '';
+    if (t.imgs && t.imgs.length) html += '<div class="imgs">' + t.imgs.map((u) => `<img src="${u}" alt="screenshot">`).join('') + '</div>';
+    else if (t.nimgs) html += '<div class="imtag">📷 ' + t.nimgs + ' screenshot' + (t.nimgs === 1 ? '' : 's') + '</div>';
+    if (t.text) html += esc(t.text);
+    div.innerHTML = html || '&nbsp;';
+    if (t.failed) {
+      const rb = document.createElement('button');
+      rb.textContent = 'Retry';
+      rb.style.cssText = 'margin-left:10px;border:1px solid var(--line-2);background:#fff;color:var(--ink);border-radius:8px;padding:3px 11px;font-weight:600;font-size:12px;cursor:pointer';
+      rb.onclick = () => retryTurn(i);
+      div.appendChild(rb);
+    }
+    th.appendChild(div);
+    if (t.role === 'assistant' && t.handle && t.updates) {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = propHtml(t, i);
+      if (wrap.firstChild) th.appendChild(wrap.firstChild);
+    }
+  });
+  th.lastElementChild && th.lastElementChild.scrollIntoView({ block: 'end' });
+  $('sendBtn').disabled = busy || (!$('input').value.trim() && !pending.length);
+}
+
+/* ---------- chats: load, switch, picker ---------- */
+async function openChat(h, fresh) {
+  chat = (h || '').toLowerCase().replace(/^@/, '');
+  turns = [];
+  render();
+  // opening the page starts a clean canvas: the day's first screenshot
+  // shouldn't land under yesterday's unrelated general chatter. Nothing is
+  // lost — every thread stays in the picker, this one just isn't preloaded.
+  if (fresh) return;
+  try {
+    const rows = await core.chatLoad(chat);
+    turns = rows.map((r) => ({
+      role: r.role, text: r.content, at: r.created_at, dbId: r.id,
+      nimgs: (r.meta && r.meta.imgs) || 0,
+      updates: (r.meta && r.meta.updates) || null,
+      handle: (r.meta && r.meta.handle) || chat,
+      fb: (r.meta && r.meta.fb) || null,
+    }));
+  } catch (e) { /* fresh thread */ }
+  render();
+}
+
+async function renderCpop() {
+  try { chats = await core.chatList(); } catch (e) { chats = []; }
+  const known = new Set(chats.map((c) => c.handle));
+  $('cpop').innerHTML =
+    '<div class="ttl">Chats</div>' +
+    '<button type="button" class="crow2' + (chat === '' ? ' on' : '') + '" data-open=""><b>General</b><span class="pv">' +
+      esc((chats.find((c) => c.handle === '') || {}).preview || 'anything, unrouted') + '</span></button>' +
+    chats.filter((c) => c.handle).map((c) =>
+      '<button type="button" class="crow2' + (chat === c.handle ? ' on' : '') + '" data-open="' + esc(c.handle) + '">' +
+      '<b>@' + esc(c.handle) + '</b><span class="pv">' + esc(c.preview) + '</span></button>').join('') +
+    '<div class="ttl" style="padding-top:10px">Start a thread</div>' +
+    '<input type="text" id="cfind" placeholder="type a handle…" autocomplete="off" spellcheck="false">' +
+    '<div id="cfound"></div>';
+  const find = $('cfind');
+  find.oninput = () => {
+    const q = find.value.trim().toLowerCase().replace(/^@/, '');
+    const hits = q ? book.leads.filter((l) => l.h.includes(q) && !known.has(l.h)).slice(0, 6) : [];
+    $('cfound').innerHTML = hits.map((l) =>
+      '<button type="button" class="crow2" data-open="' + esc(l.h) + '"><b>@' + esc(l.h) + '</b>' +
+      '<span class="pv">' + esc(l.level || 'no stage') + '</span></button>').join('') +
+      (q && !hits.length ? '<button type="button" class="crow2" data-open="' + esc(q) + '"><b>@' + esc(q) + '</b><span class="pv">new thread</span></button>' : '');
+  };
+}
+$('chatBtn').onclick = async () => {
+  const pop = $('cpop');
+  if (pop.hidden) { await renderCpop(); pop.hidden = false; const f = $('cfind'); if (f) f.focus(); }
+  else pop.hidden = true;
+};
+$('cpop').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-open]'); if (!b) return;
+  $('cpop').hidden = true;
+  openChat(b.getAttribute('data-open'));
+});
+core.pageListen(document, 'mousedown', (e) => {
+  if (!$('cpop').hidden && !e.target.closest('#cwrap')) $('cpop').hidden = true;
+  if (!$('tpop').hidden && !e.target.closest('#twrap')) $('tpop').hidden = true;
+});
+$('clearBtn').onclick = async () => {
+  if (!turns.length) return;
+  if (!confirm('Delete this thread’s history? The CRM keeps its own notes — this only clears the chat.')) return;
+  try { await core.chatClear(chat); turns = []; render(); }
+  catch (e) { toast({ type: 'err', html: esc(e.message) }); }
+};
+
+/* ---------- sending ---------- */
+function leadFor(h) { return book.leads.find((l) => l.h === h) || null; }
+
+/* Strip proposal fields that would not change the CRM. Selects drop on exact
+   match; prose drops when it says what the CRM already says — contained in it,
+   or nearly the same words. norm() folds case and punctuation so 'No flows,
+   sends weekly!' equals 'no flows sends weekly'; overlap() catches the light
+   rephrase ('one campaign a week' vs 'sends one campaign per week'). */
+function norm(v) { return String(v || '').toLowerCase().replace(/[^a-z0-9$%\s]/g, ' ').replace(/\s+/g, ' ').trim(); }
+// grammar words carry no meaning here, and 'sends'/'sending' are one word —
+// without this, every natural rephrase scores as new information
+const STOP = new Set(['a','an','the','per','at','all','to','of','for','is','are','was','be','and','or','with','on','in','it','they','he','she','has','have','their','his','her']);
+function stem(w) { return w.replace(/(ing|ed|es|s)$/, ''); }
+function sig(v) { return new Set(norm(v).split(' ').filter((w) => w && !STOP.has(w)).map(stem).filter(Boolean)); }
+function overlap(a, b) {
+  // share of the PROPOSAL already present in the existing text. The proposal's
+  // size is the denominator on purpose: 'no flows' known + a new $2k/mo fact
+  // must read as mostly-new, not as fully-covered because the short side matched
+  const A = sig(a), B = sig(b);
+  if (!A.size || !B.size) return 0;
+  let hit = 0; A.forEach((w) => { if (B.has(w)) hit++; });
+  return hit / A.size;
+}
+function saysNothingNew(proposed, existing) {
+  const p = norm(proposed), e = norm(existing);
+  if (!p) return true;
+  if (!e) return false;
+  return e.includes(p) || overlap(p, e) >= 0.8;
+}
+function dropKnown(u, l) {
+  // deal proposals only exist for leads that HAVE an open deal
+  const deal = l ? core.dealForLead(book.deals, l) : null;
+  if (!deal || ['Closed', 'No Close'].includes(deal.status)) {
+    u.deal_status = ''; u.deal_followup = ''; u.deal_note = '';
+  } else {
+    if (u.deal_status && u.deal_status === (deal.status || '')) u.deal_status = '';
+    if (u.deal_followup && core.dmyToIso(deal.followup) === u.deal_followup) u.deal_followup = '';
+    if (u.deal_note && saysNothingNew(u.deal_note, deal.notes)) u.deal_note = '';
+  }
+  if (!l) return;
+  if (u.level && u.level === (l.level || '')) u.level = '';
+  if (u.qual && u.qual === (l.qual || '')) u.qual = '';
+  if (u.status && u.status === (l.status || '')) u.status = '';
+  if (u.pains && saysNothingNew(u.pains, l.pains)) u.pains = '';
+  // notes append, so "new" means: not already somewhere in the notes — and the
+  // angle usually restates the pains, which is the same information twice
+  if (u.note && (saysNothingNew(u.note, l.notes) || saysNothingNew(u.note, l.pains))) u.note = '';
+  if (u.angle && (saysNothingNew(u.angle, l.notes) || saysNothingNew(u.angle, l.pains))) u.angle = '';
+}
+async function contextBlock() {
+  const l = leadFor(chat);
+  if (!l) return '';
+  try { return await core.leadContextBlock(l, book.deals); } catch (e) { return ''; }
+}
+function apiMessages() {
+  // the model sees the last stretch of the thread; images ride only on
+  // this session's turns (history keeps a count, not the pixels)
+  return turns.filter((t) => !t.think).slice(-14).map((t) => ({
+    role: t.role,
+    content: (t.b64s || []).map((im) => ({ type: 'image', source: { type: 'base64', media_type: im.mediaType, data: im.b64 } }))
+      .concat(t.text ? [{ type: 'text', text: t.text }] : []),
+  })).filter((m) => m.content.length);
+}
+
+async function send() {
+  const text = $('input').value.trim();
+  if (busy || (!text && !pending.length)) return;
+  const m = text.match(/@([a-z0-9._]{2,})/i);
+  if (m && !chat) await openChat(m[1]);   // an @handle in general = that lead's thread
+  const userTurn = { role: 'user', text, at: new Date().toISOString(),
+    imgs: pending.map((p) => p.dataUrl), nimgs: pending.length,
+    b64s: pending.map((p) => ({ b64: p.b64, mediaType: p.mediaType })) };
+  turns.push(userTurn);
+  $('input').value = ''; pending = []; renderPending();
+  busy = true;
+  turns.push({ role: 'assistant', text: 'Thinking…', think: true });
+  render();
+  try {
+    const res = await core.assistChat(apiMessages(), await contextBlock());
+    turns.pop();
+    // the model occasionally returns junk here (a bare comma has shipped a
+    // proposal card titled '@,'), so only an IG-shaped handle is trusted
+    const raw = (res.lead_handle || '').toLowerCase().replace(/^@/, '').trim();
+    const detected = /^[a-z0-9._]{2,30}$/.test(raw) ? raw : '';
+    // A screenshot names its own lead, so it always lands in that lead's
+    // thread — including from inside a different lead's thread, which is the
+    // normal case when working down a list of conversations. Plain text only
+    // routes out of the unrouted chat, so follow-up questions stay put.
+    const sentImgs = (userTurn.b64s || []).length > 0;
+    if (detected && detected !== chat && (sentImgs || !chat)) {
+      chat = detected;
+      const prior = await core.chatLoad(chat).catch(() => []);
+      turns = prior.map((r) => ({ role: r.role, text: r.content, at: r.created_at, dbId: r.id,
+        nimgs: (r.meta && r.meta.imgs) || 0, updates: (r.meta && r.meta.updates) || null,
+        handle: (r.meta && r.meta.handle) || chat, fb: (r.meta && r.meta.fb) || null })).concat([userTurn]);
+      toast({ type: 'ok', ttl: 6000, html: 'Moved to <b>@' + esc(chat) + '</b>’s thread.' });
+    }
+    const reply = String(res.reply || '').trim();
+    const t = reply
+      ? { role: 'assistant', text: reply, at: new Date().toISOString() }
+      : { role: 'assistant', at: new Date().toISOString(), think: true, failed: true,
+          text: 'Came back empty — tap retry.',
+          retry: { text, imgs: userTurn.imgs, b64s: userTurn.b64s } };
+    const u = res.updates || {};
+    // same bar as the scanner: a note must be sellable fact, not coaching recap,
+    // and only from Engaged 2 up — E1 chatter has nothing sellable yet
+    if (u.note) {
+      const lvl = u.level || (leadFor(detected || chat) || {}).level || '';
+      u.note = core.noteAllowed(lvl) ? core.cleanNote(u.note) : '';
+    }
+    // A proposal earns its card by CHANGING something. The model restates the
+    // CRM constantly — same qual it was told in the context, pains reworded —
+    // and every restatement costs a human decision that changes nothing.
+    dropKnown(u, leadFor(detected || chat));
+    const hasU = Object.values(u).some((v) => String(v || '').trim());
+    if (hasU && reply) { t.handle = detected || chat; t.updates = u; }
+    if (!t.handle) delete t.updates;
+    // the model re-proposes the same change when a thread keeps discussing one
+    // lead; if it's already applied, showing it again is noise
+    if (t.updates) {
+      const key = (x) => JSON.stringify([x.handle, x.updates]);
+      if (turns.some((p) => p.updates && p.fb === 'applied' && key(p) === key(t))) delete t.updates;
+    }
+    turns.push(t);
+    // a proposal whose every field has earned it applies itself, with Undo
+    if (t.updates) { maybeAutoApply(t, turns.length - 1).catch(() => {}); }
+    // persist both sides now that we know which thread they belong to
+    try {
+      const su = await core.chatSave(chat, 'user', text || '(screenshots)', userTurn.nimgs ? { imgs: userTurn.nimgs } : null);
+      userTurn.dbId = su.id;
+      const sa = await core.chatSave(chat, 'assistant', t.text,
+        t.updates ? { updates: t.updates, handle: t.handle } : null);
+      t.dbId = sa.id;
+    } catch (e) { /* the chat still works unsaved */ }
+  } catch (e) {
+    turns.pop();
+    // keep the question — a failed send must not cost the setter their turn
+    turns.push({ role: 'assistant', text: e.message, think: true, failed: true,
+      retry: { text, imgs: userTurn.imgs, b64s: userTurn.b64s } });
+  }
+  busy = false;
+  render();
+}
+
+// re-send the message a failed turn was carrying
+async function retryTurn(i) {
+  const t = turns[i]; if (!t || !t.retry || busy) return;
+  const prev = turns[i - 1];
+  turns.splice(prev && prev.role === 'user' ? i - 1 : i, prev && prev.role === 'user' ? 2 : 1);
+  $('input').value = t.retry.text || '';
+  pending = (t.retry.b64s || []).map((b, k) => ({ dataUrl: (t.retry.imgs || [])[k] || '', b64: b.b64, mediaType: b.mediaType }));
+  renderPending();
+  render();
+  await send();
+}
+
+/* Fields that have earned auto-apply, loaded once per page. Empty until a
+   field kind has a long unbroken run of accepted-unedited proposals. */
+let autoFields = [];
+core.autoApplyFields().then((f) => { autoFields = f; }).catch(() => {});
+
+/* Apply whatever the earned fields cover, the moment a proposal arrives.
+   Everything else still waits for a human. */
+async function maybeAutoApply(t, idx) {
+  if (!t.updates || t.fb || !autoFields.length) return false;
+  const final = {};
+  autoFields.forEach((k) => { if (t.updates[k]) final[k] = t.updates[k]; });
+  if (!Object.keys(final).length) return false;
+  // if the proposal ALSO carries fields that haven't earned it, leave the whole
+  // card alone — splitting one proposal into half-applied is worse than asking
+  const proposed = Object.keys(t.updates).filter((k) => t.updates[k]);
+  if (proposed.some((k) => !autoFields.includes(k))) return false;
+  try {
+    await applyProposal(t, final);
+    t.fb = 'auto';
+    core.logAiFeedback('assist-auto', t.handle, { ...t.updates, handle: t.handle }, final);
+    if (t.dbId) core.chatSetMeta(t.dbId, { fb: 'auto' });
+    toast({ type: 'ok', ttl: 8000,
+      html: 'Applied automatically — <span class="mono">@' + esc(t.handle) + '</span>.',
+      action: { label: 'Undo', fn: async () => {
+        t.fb = null; render();
+        toast({ type: 'ok', html: 'Left for you to confirm. That field goes back to asking.' });
+        autoFields = [];   // one undo pulls the whole thing back to confirm-first
+      } } });
+    render();
+    return true;
+  } catch (e) { return false; }
+}
+
+/* ---------- proposal apply / dismiss ---------- */
+$('thread').addEventListener('click', async (e) => {
+  const box = e.target.closest('.prop'); if (!box) return;
+  const t = turns[+box.getAttribute('data-i')]; if (!t || t.fb) return;
+  const suggested = { ...t.updates, handle: t.handle };
+  const remember = (fb, final) => {
+    t.fb = fb;
+    core.logAiFeedback('assist', t.handle, suggested, final);
+    if (t.dbId) core.chatSetMeta(t.dbId, { fb });
+  };
+  if (e.target.closest('[data-deny]')) { remember('dismissed', null); render(); return; }
+  if (!e.target.closest('[data-apply]')) return;
+  const g = (k) => { const el = box.querySelector(`[data-f="${k}"]`); return el ? el.value.trim() : ''; };
+  const on = (k) => { const el = box.querySelector(`[data-on="${k}"]`); return !el || el.checked; };
+  const final = {};
+  FIELD_DEFS.forEach(([k]) => { if ((t.updates || {})[k] && on(k) && g(k)) final[k] = g(k); });
+  if (!Object.keys(final).length) { remember('dismissed', null); render(); return; }
+  const btn = box.querySelector('[data-apply]'); btn.disabled = true;
+  try {
+    await applyProposal(t, final);
+    remember('applied', final);
+    render();
+  } catch (err) {
+    btn.disabled = false;
+    toast({ type: 'err', html: 'Couldn’t apply: ' + esc(err.message), sticky: true });
+  }
+});
+
+/* The write itself — shared by the confirm path and by earned auto-apply. */
+async function applyProposal(t, final) {
+    const hit = leadFor(t.handle);
+    const day = core.todayDmy().slice(0, 5);
+    const noteBits = [final.note, final.angle ? '[angle] ' + final.angle : ''].filter(Boolean);
+    if (hit) {
+      const fields = {};
+      if (final.level) fields.level = final.level;
+      if (final.status) fields.status = final.status;
+      if (final.qual) fields.qual = final.qual;
+      if (final.pains) fields.pains = final.pains;
+      if (noteBits.length) fields.notes = (hit.notes ? hit.notes + '\n' : '') + '[' + day + '] ' + noteBits.join(' · ');
+      const res = await core.setLead(hit.id, fields, { touch: true });
+      Object.entries(fields).forEach(([k, v]) => { hit[k] = v; });
+      // deal-side fields land on the closer's row — same confirm, second write
+      const deal = (final.deal_status || final.deal_followup || final.deal_note)
+        ? core.dealForLead(book.deals, hit) : null;
+      if (deal) {
+        const df = {};
+        if (final.deal_status) df.status = final.deal_status;
+        if (final.deal_followup && /^\d{4}-\d{2}-\d{2}$/.test(final.deal_followup)) df.followup = final.deal_followup;
+        if (final.deal_note) df.notes = (deal.notes ? deal.notes + '\n' : '') + '[' + day + '] ' + final.deal_note;
+        if (Object.keys(df).length) {
+          await core.setDeal(deal.row, df);
+          Object.assign(deal, { status: df.status || deal.status, notes: df.notes || deal.notes });
+          toast({ type: 'ok', ttl: 7000, html: 'Deal <span class="mono">' + esc(deal.name || t.handle) + '</span> updated too.' });
+        }
+      }
+      toast({ type: 'ok', ttl: 9000, html: '<span class="mono">@' + esc(t.handle) + '</span> updated.',
+        action: res.undo ? { label: 'Undo', fn: async () => { await core.undoWrite(res.undo); core.bootstrap().then((b) => { book = b; }); } } : null });
+    } else {
+      await core.setterUpdate({ handle: t.handle, stage: final.level || 'Engaged 1',
+        status: final.status || '', note: noteBits.map((x) => '[' + day + '] ' + x).join(' · '),
+        qual: final.qual || '', pains: final.pains || '' });
+      toast({ type: 'ok', html: '<span class="mono">@' + esc(t.handle) + '</span> added to the CRM.' });
+      core.bootstrap().then((b) => { book = b; });
+    }
+}
+
+/* ---------- images in ---------- */
+const toB64 = (file) => new Promise((res, rej) => {
+  const r = new FileReader();
+  r.onload = () => { const v = String(r.result); res({ dataUrl: v, b64: v.slice(v.indexOf(',') + 1), mediaType: file.type || 'image/jpeg' }); };
+  r.onerror = rej; r.readAsDataURL(file);
+});
+function renderPending() {
+  const el = $('pend');
+  el.hidden = !pending.length;
+  el.innerHTML = pending.map((p, i) =>
+    `<span class="p"><img src="${p.dataUrl}" alt=""><button class="rm" data-rm="${i}" type="button">×</button></span>`).join('');
+}
+async function addFiles(list) {
+  const imgs = [].slice.call(list || []).filter((f) => f && (f.type || '').indexOf('image/') === 0);
+  for (const f of imgs) pending.push(await toB64(f));
+  renderPending(); render();
+}
+$('attachBtn').onclick = () => {
+  const inp2 = document.createElement('input');
+  inp2.type = 'file'; inp2.accept = 'image/*'; inp2.multiple = true;
+  inp2.onchange = () => addFiles(inp2.files);
+  inp2.click();
+};
+$('pend').addEventListener('click', (e) => {
+  const rm = e.target.closest('[data-rm]'); if (!rm) return;
+  pending.splice(+rm.getAttribute('data-rm'), 1); renderPending(); render();
+});
+core.pageListen(window, 'paste', (e) => {
+  const its = (e.clipboardData && e.clipboardData.items) || [];
+  const files = [];
+  for (const it of its) if (it.type && it.type.indexOf('image/') === 0) { const f = it.getAsFile(); if (f) files.push(f); }
+  if (files.length) { e.preventDefault(); addFiles(files); }
+});
+core.pageListen(window, 'dragover', (e) => e.preventDefault());
+core.pageListen(window, 'drop', (e) => { e.preventDefault(); if (e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
+
+/* ---------- composer ---------- */
+const inp = $('input');
+inp.addEventListener('input', () => {
+  inp.style.height = 'auto'; inp.style.height = Math.min(inp.scrollHeight, 140) + 'px';
+  $('sendBtn').disabled = busy || (!inp.value.trim() && !pending.length);
+});
+inp.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+});
+$('sendBtn').onclick = send;
+
+/* ---------- training dropdown ---------- */
+async function renderTpop() {
+  let docs = [];
+  try { docs = await core.knowledgeList(); } catch (e) { docs = []; }
+  $('tpop').innerHTML = '<div class="ttl">The assistant knows</div>' +
+    (docs.length ? docs.map((d) =>
+      `<label><input type="checkbox" data-k="${d.id}"${d.enabled ? ' checked' : ''}>${esc(d.title)}<span class="sz">${Math.round(d.size / 1000)}k</span></label>`).join('')
+      : '<div style="padding:6px 9px;color:var(--muted);font-size:12.5px">No training docs yet.</div>') +
+    '<div class="foot"><a href="settings.html#training">Manage in Settings →</a></div>';
+}
+$('trainBtn').onclick = async () => {
+  const pop = $('tpop');
+  if (pop.hidden) { await renderTpop(); pop.hidden = false; }
+  else pop.hidden = true;
+};
+$('tpop').addEventListener('change', async (e) => {
+  const cb = e.target.closest('input[data-k]'); if (!cb) return;
+  try { await core.knowledgeToggle(+cb.getAttribute('data-k'), cb.checked); }
+  catch (err) { cb.checked = !cb.checked; toast({ type: 'err', html: esc(err.message) }); }
+});
+
+core.installPalette({});
+// A fresh canvas is right when you just open the app, but a ?lead= link is a
+// deliberate "show me this person" — arriving there blank threw away the
+// history the link was for.
+const _wantLead = (new URLSearchParams(location.search).get('lead') || '').toLowerCase().replace(/^@/, '');
+if (_wantLead) openChat(_wantLead); else openChat('', true);
+}
+</script>
+</body>
+</html>

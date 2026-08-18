@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
+<link rel="modulepreload" href="./crm-core.js?v=20260818b">
+<link rel="modulepreload" href="./supabase-js.mjs?v=1">
+<link rel="preload" as="script" href="./parser.js">
+<style>html{background:#f0f0f3}</style>
+<script type="module" blocking="render">
+/* Chrome holds the OLD page's pixels until this resolves, then cross-fades to
+   the finished new page — the "every click opens a new browser" gap dies here.
+   Capped so a wedged script can only delay paint, never prevent it. */
+await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
+</script>
+<title>Worklist · AJR</title>
+<style>
+/* page-specific only — tokens, sidebar and shared components come from crm-core */
+.q-thead,.q-row{grid-template-columns:148px 84px 46px minmax(0,1fr) 158px}
+.q-row{cursor:default}
+.q-row:hover{background:transparent}
+.q-row.cursor{background:rgba(176,84,74,.055);box-shadow:inset 3px 0 0 var(--accent)}
+.q-row.done{background:var(--done);opacity:.72}
+.q-row.done .q-handle{text-decoration:line-through;color:var(--muted-2)}
+.q-handle{font-weight:600;font-size:13.5px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.q-handle:hover{color:var(--ink);text-decoration:underline;text-decoration-color:var(--off)}
+.q-stage{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.q-note{color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:7px;min-width:0}
+.q-note .dot{color:var(--off)}
+.q-qual{flex:none;font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--muted);
+  border:1px solid var(--line-2);border-radius:5px;padding:1px 5px}
+.q-acts{display:flex;gap:7px;justify-content:flex-end;align-items:center}
+.q-done-at{color:var(--go);font-size:12px;font-weight:600;white-space:nowrap}
+.nudge{display:flex;align-items:center;gap:12px;margin-top:16px;padding:13px 18px;border:1px solid rgba(0,0,0,.06);
+  border-radius:12px;background:rgba(251,251,253,.7);color:var(--muted);font-size:13px}
+.nudge b{font-family:var(--mono);font-weight:600;color:var(--ink)}
+.nudge .sp{flex:1}
+.sweep-list{margin-top:10px}
+.skel{padding:40px;text-align:center;color:var(--muted-2)}
+/* two sections, one page — the day's whole loop */
+/* Desktop shows the whole day at once: follow-ups and the DM queue side by
+   side. Below the breakpoint they stack, which is the phone layout and the
+   right one there. Follow-ups get more room — five columns against two. */
+/* ---- cold-DM queue (moved from New leads) ----
+   Namespaced dm-*: the follow-up table above owns .q-row as a grid, and
+   sharing the name silently forced these flex rows into its columns. */
+.dm-row{display:flex;align-items:center;gap:11px;padding:10px 18px;border-top:1px solid var(--divider);font-size:13px}
+.dm-row:first-child{border-top:none}
+.dm-tick{width:15px;height:15px;flex:none;cursor:pointer;accent-color:var(--accent)}
+.dm-h{font-weight:600;color:var(--ink);text-decoration:none;flex:none;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dm-h:hover{color:var(--ink);text-decoration:underline;text-decoration-color:var(--off)}
+.dm-meta{color:var(--muted-2);font-size:11.5px;font-family:var(--mono);font-variant-numeric:tabular-nums;flex:none}
+.dm-note{color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:60px}
+/* "Sent" is a completion, so it reads green — the accent is for what to do next */
+.dm-sent{min-height:29px;padding:0 13px;border-radius:8px;border:1px solid var(--go-line);background:#fff;
+  color:var(--go);font-weight:600;font-size:12px;cursor:pointer;flex:none;transition:background-color .15s ease,transform .12s ease}
+.dm-sent:hover{background:var(--go-tint)}
+.dm-sent:active{transform:scale(.95)}
+.dm-x{width:28px;height:28px;border-radius:8px;color:var(--muted-2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none;background:none;border:none}
+.dm-x:hover{color:var(--red);background:rgba(199,57,46,.08)}
+.dm-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid rgba(0,0,0,.055);font-size:13px;color:var(--muted)}
+.dm-bar b{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink)}
+.dm-bar .sp{flex:1}
+/* story is an Instagram signal, so it keeps Instagram's own pink */
+.dm-story{color:#C13584;font-size:11px;font-weight:700;flex:none}
+.dm-priv{color:var(--muted-2);font-size:11px;flex:none}
+.drop-hint{border:1.5px dashed rgba(0,0,0,.16);border-radius:14px;padding:24px 20px;text-align:center;
+  color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:16px;background:rgba(251,251,253,.6);
+  transition:border-color .15s ease,background-color .15s ease}
+.drop-hint:hover{border-color:var(--accent);background:var(--accent-tint)}
+.drop-hint b{color:var(--ink)}
+.dm-empty{padding:40px 20px;text-align:center;color:var(--muted-2);font-size:13px}
+#rvAdd{min-height:30px;padding:0 14px;border-radius:8px;border:none;background:var(--accent);color:#fff;
+  font-size:12.5px;font-weight:600;cursor:pointer}
+#rvAdd:hover{background:var(--accent-hi)}
+[data-hfix]{flex:none;width:250px;min-height:32px;padding:0 11px;border:1px solid rgba(0,0,0,.13);
+  border-radius:8px;background:#fff;font:inherit;font-size:12.5px;color:var(--ink);outline:none}
+[data-hfix]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(176,84,74,.1)}
+
+.two{display:grid;gap:24px;align-items:start}
+.two .col{min-width:0}
+.two .col .sec-h:first-child{margin-top:4px}
+@media(min-width:1480px){ .two{grid-template-columns:1.45fr 1fr;gap:34px} }
+.sec-h{display:flex;align-items:baseline;gap:9px;margin:26px 0 11px;
+  font:600 10.5px var(--font);letter-spacing:.07em;text-transform:uppercase;color:var(--muted-2)}
+.sec-h:first-of-type{margin-top:4px}
+.sec-h .n{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink)}
+.sec-h .sp{flex:1}
+.sec-h .kmini{font:600 11px var(--mono);letter-spacing:0;text-transform:none;color:var(--muted)}
+.sec-h .kmini b{color:var(--ink)}
+.sec-h .kmini .hit{color:var(--go)}
+.hints{display:flex;gap:15px;flex-wrap:wrap;color:var(--muted-2);font-size:11.5px;margin:-2px 0 13px}
+.hints kbd{font:600 10.5px var(--mono);background:var(--card);border:1px solid var(--line-2);
+  border-radius:5px;padding:1px 6px;color:var(--ink-3)}
+@media(max-width:760px){
+  /* V2_CSS is baked after page styles, so .v2-thead would win a tie — name both */
+  .v2-thead.q-thead{display:none}
+  .q-row{grid-template-columns:1fr auto;row-gap:7px;padding:12px 14px}
+  .q-row .q-handle{grid-column:1;grid-row:1}
+  .q-row .q-acts{grid-column:2;grid-row:1;justify-self:end}
+  .q-row .q-stage{grid-column:1;grid-row:2;font-size:12px}
+  .q-row .v2-age{grid-column:2;grid-row:2;justify-self:end}
+  .q-row .q-note{grid-column:1/-1;grid-row:3}
+}
+</style>
+<!--baked:head-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style id="v2-theme">
+@view-transition{navigation:auto}
+:root{
+  --bg:#f0f0f3; --side:rgba(251,251,253,.78); --card:#fbfbfd; --rowsel:rgba(0,0,0,.022);
+  --line:rgba(0,0,0,.07); --line-2:rgba(0,0,0,.12); --divider:rgba(0,0,0,.05);
+  --ink:#1d1d1f; --ink-2:#3a3a3c; --ink-3:#6e6e73; --muted:#6e6e73; --muted-2:#98989d; --off:#b9b9bf;
+  /* accent = the action colour (buttons, active nav, links, cursor row).
+     --go stays green and means money/success/done only. Splitting them is the
+     whole point: a "Log" button and "cash collected" are not the same idea. */
+  --accent:#B0544A; --accent-hi:#8F4238; --accent-tint:rgba(176,84,74,.07); --accent-line:rgba(176,84,74,.35);
+  --go:#1F7A4D; --go-hi:#17603C; --go-tint:rgba(31,122,77,.08); --go-line:rgba(31,122,77,.3); --done:rgba(31,122,77,.04);
+  --red:#C7392E; --amber:#9A6A00; --amber-tint:rgba(154,106,0,.09);
+  --ai:#7c56c9; --ai-line:#e2d9f4; --ai-tint:#f6f2fb;
+  --font:-apple-system,'SF Pro Text','SF Pro Display',system-ui,'Instrument Sans',sans-serif;
+  --mono:ui-monospace,'SF Mono','IBM Plex Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:var(--accent);text-decoration:none}
+a:hover{color:var(--accent-hi)}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+input::placeholder,textarea::placeholder{color:var(--off)}
+
+/* layout */
+.v2-shell{display:flex;min-height:100vh}
+.v2-side{width:228px;flex:none;border-right:1px solid rgba(0,0,0,.06);background:var(--side);padding:22px 12px 16px;
+  backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);
+  display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:100vh;
+  align-self:flex-start} /* flex would stretch it and break position:sticky */
+.v2-side .wm{font-weight:700;font-size:15px;letter-spacing:-.01em;padding:0 10px 18px}
+.v2-side .grp{font:600 10.5px var(--font);letter-spacing:.1em;color:var(--muted-2);padding:4px 10px}
+.v2-side .grp.gap{padding-top:14px}
+.v2-side a.nav{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:var(--ink-2);font-size:13.5px}
+.v2-side a.nav:hover{background:rgba(0,0,0,.045);color:var(--ink)}
+.v2-side a.nav .ic{flex:none;opacity:.62}
+.v2-side a.nav.on .ic{opacity:1}
+.v2-side a.nav.on{background:rgba(176,84,74,.1);color:var(--accent);font-weight:600}
+.v2-side a.nav.on:hover{background:rgba(176,84,74,.14);color:var(--accent)}
+.v2-side .badge-n{margin-left:auto;font:600 11.5px var(--mono);font-variant-numeric:tabular-nums;border-radius:99px;padding:0}
+.v2-side a.nav:not(.on) .badge-n{color:var(--muted-2)}
+.v2-side .badge-red{margin-left:auto;font-size:11px;color:var(--red);font-weight:600}
+.v2-side .badge-dot{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
+.v2-side .sp{flex:1}
+.v2-side .krow{display:flex;align-items:center;gap:8px;padding:8px 10px;color:var(--muted-2);font-size:12px;cursor:pointer}
+.v2-side .krow kbd{margin-left:auto;font:600 11px var(--mono);border:1px solid var(--line-2);border-radius:5px;padding:1px 6px;background:#fff;color:var(--ink-3)}
+.v2-side .me{display:flex;align-items:center;gap:9px;padding:10px 10px 2px;border-top:1px solid var(--line);margin-top:6px}
+.v2-side .me{border-top:1px solid rgba(0,0,0,.06)}
+.v2-side .me .av{width:27px;height:27px;border-radius:50%;background:var(--ink);color:#fbfbfd;display:inline-flex;
+  align-items:center;justify-content:center;font:600 11px var(--font);flex:none}
+.v2-side .me .nm{display:block;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v2-side .me .rl{display:block;font-size:11px;color:var(--muted-2)}
+.v2-side .me .out{margin-left:auto;color:var(--muted-2);font-size:11px}
+/* No global width cap. A reading width suits a chat or a queue and starves a
+   13-column table — pages that want one set .colw themselves. */
+.v2-main{flex:1;min-width:0;padding:30px 36px 80px}
+.colw{width:100%}
+@media(max-width:900px) and (min-width:761px){.v2-side{width:66px;padding:18px 8px}.v2-side .wm,.v2-side .grp,.v2-side .krow,.v2-side .me .nm,.v2-side .me .rl{display:none}}
+/* phone: the sidebar becomes a scrolling top strip. As a 64px rail it ate a
+   third of the screen and wrapped every label onto three lines. */
+@media(max-width:760px){
+  .v2-shell{display:block}
+  .v2-side{flex-direction:row;width:auto;height:auto;align-items:center;gap:6px;padding:8px 10px;
+    border-right:none;border-bottom:1px solid rgba(0,0,0,.06);overflow-x:auto;-webkit-overflow-scrolling:touch;
+    position:sticky;top:0;z-index:20}
+  .v2-side::-webkit-scrollbar{display:none}
+  .v2-side .wm,.v2-side .grp,.v2-side .krow,.v2-side .sp,.v2-side .me .nm,.v2-side .me .rl{display:none}
+  .v2-side a.nav{white-space:nowrap;padding:9px 13px;min-height:40px;font-size:13px}
+  .v2-side .badge-n,.v2-side .badge-red{margin-left:6px}
+  .v2-side .me{border-top:none;margin:0 0 0 auto;padding:0 0 0 6px}
+  .v2-main{padding:18px 14px 70px}
+  .v2-h{flex-wrap:wrap;gap:8px}
+  .v2-h h1{font-size:21px}
+}
+
+/* headers */
+.v2-h{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.v2-h h1{font-size:23px;font-weight:700;letter-spacing:-.02em}
+.v2-h .sub{color:var(--muted);font-size:13px}
+.v2-h .sp{flex:1}
+.v2-lab{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2)}
+
+/* chips */
+.v2-chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.v2-chip{min-height:30px;padding:0 14px;border-radius:99px;border:1px solid var(--line-2);background:var(--card);
+  color:var(--ink-2);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;
+  transition:background-color .15s ease,border-color .15s ease,color .15s ease}
+.v2-chip:hover{border-color:var(--muted-2)}
+.v2-chip.on{background:var(--ink);color:#fbfbfd;border-color:var(--ink)}
+.v2-chip .n{font-family:var(--mono);font-size:11px;opacity:.65}
+.v2-chip.green{background:var(--go-tint);border-color:var(--go-line);color:var(--go)}
+.v2-chip.red{background:#fbf0ed;border-color:#e8cec6;color:var(--red)}
+
+/* buttons */
+.v2-btn{min-height:32px;padding:0 13px;border-radius:8px;border:1px solid var(--line-2);background:#fff;
+  color:var(--ink-2);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  transition:background-color .15s ease,border-color .15s ease,color .15s ease,transform .12s ease}
+.v2-btn:hover:not(:disabled){border-color:var(--muted-2);color:var(--ink)}
+.v2-btn:active:not(:disabled){transform:scale(.97)}
+.v2-btn:disabled{opacity:.45;cursor:not-allowed}
+.v2-btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
+.v2-btn.go:hover:not(:disabled){background:var(--accent-hi);border-color:var(--accent-hi);color:#fff}
+.v2-btn.goline{background:transparent;border-color:var(--accent-line);color:var(--accent)}
+.v2-btn.goline:hover:not(:disabled){background:var(--accent-tint);color:var(--accent);border-color:var(--accent-line)}
+/* completion, not action: "Sent", "Mark as cold", "logged" all read green */
+.v2-btn.doneline{background:#fff;border-color:var(--go-line);color:var(--go)}
+.v2-btn.doneline:hover:not(:disabled){background:var(--go-tint);color:var(--go);border-color:var(--go-line)}
+.v2-btn.dark{background:var(--ink);border-color:var(--ink);color:#fbfbfd}
+.v2-btn.dark:hover:not(:disabled){filter:brightness(1.35)}
+.v2-btn.dash{border-style:dashed;color:var(--muted);font-weight:500;background:transparent}
+.v2-btn.dash:hover{color:var(--ink-2)}
+.v2-btn.sm{min-height:27px;padding:0 11px;font-size:11.5px;border-radius:7px}
+
+/* inputs */
+.v2-in{min-height:34px;padding:7px 12px;background:#fff;border:1px solid var(--line-2);border-radius:8px;
+  color:var(--ink);font-size:13px;width:100%;
+  transition:border-color .16s ease, box-shadow .16s ease, background-color .16s ease}
+.v2-in:hover{border-color:var(--muted-2)}
+.v2-in:focus{border-color:var(--ink-3);box-shadow:0 0 0 3px rgba(33,31,27,.07)}
+/* native selects render differently on every OS — draw our own chevron so the
+   closed state matches the rest of the paper UI */
+select.v2-in{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:30px;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8375' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;background-size:14px}
+select.v2-in:hover{background-color:var(--rowsel)}
+/* the OPEN list of a native select is drawn by the OS (dark grey on macOS) and
+   cannot be styled — so on pointer devices we draw our own and keep the real
+   <select> underneath for state, change events and keyboard control */
+#v2-menu{position:fixed;z-index:200;background:var(--card);border:1px solid var(--line);border-radius:11px;
+  box-shadow:0 14px 38px -10px rgba(33,31,27,.32), 0 2px 6px rgba(33,31,27,.06);
+  padding:5px;max-height:min(58vh,340px);overflow-y:auto;min-width:150px;
+  animation:v2menu .13s ease-out}
+@keyframes v2menu{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+#v2-menu button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  padding:8px 10px 8px 8px;border-radius:8px;font:500 13px var(--font);color:var(--ink-2);
+  white-space:nowrap;cursor:pointer;transition:background-color .12s ease,color .12s ease}
+#v2-menu button:hover,#v2-menu button.cur{background:var(--divider);color:var(--ink)}
+#v2-menu button.on{color:var(--go-hi);font-weight:600}
+#v2-menu button.on:hover{background:var(--go-tint)}
+#v2-menu .tick{width:14px;height:14px;flex:none;opacity:0}
+#v2-menu button.on .tick{opacity:1}
+select.v2-in:disabled{opacity:.55;cursor:not-allowed}
+input[type=date].v2-in{cursor:pointer}
+textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
+
+/* cards + tables */
+.v2-card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  box-shadow:0 1px 2px rgba(0,0,0,.03);overflow:hidden}
+.v2-thead{display:grid;gap:10px;padding:9px 18px;font:600 10.5px var(--font);letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted-2);border-bottom:1px solid rgba(0,0,0,.055)}
+.v2-row{display:grid;gap:10px;padding:10px 18px;align-items:center;border-top:1px solid var(--divider);
+  transition:background-color .15s ease}
+.v2-row:first-of-type{border-top:none}
+.v2-row:hover{background:var(--rowsel)}
+.v2-scroll{overflow-x:auto}
+.v2-empty{padding:30px 18px;text-align:center;color:var(--muted)}
+
+/* semantic bits */
+.v2-age{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:11.5px;font-weight:600;
+  color:var(--ink-3);background:rgba(0,0,0,.05);border-radius:5px;padding:2px 6px}
+.v2-age.warn{color:var(--amber);background:var(--amber-tint)}
+.v2-age.late{color:var(--red);background:rgba(199,57,46,.09)}
+.v2-ai{display:inline-flex;align-items:center;gap:4px;font:600 10.5px var(--mono);color:var(--ai);
+  border:1px solid var(--ai-line);border-radius:99px;padding:1px 7px;white-space:nowrap}
+.v2-money{font-family:var(--mono);font-weight:600;color:var(--go)}
+
+/* toasts */
+.v2-toasts{position:fixed;z-index:80;bottom:26px;left:50%;transform:translateX(-50%);display:flex;
+  flex-direction:column;align-items:center;gap:9px;width:max-content;max-width:calc(100vw - 32px)}
+.v2-toast{display:flex;align-items:center;gap:14px;background:rgba(28,28,30,.88);color:#fbfbfd;
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:none;
+  border-radius:99px;padding:11px 12px 11px 18px;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.25);
+  animation:v2toast .34s cubic-bezier(.24,1.1,.32,1)}
+@keyframes v2toast{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+.v2-toast.err{background:rgba(146,44,35,.92);color:#fbfbfd}
+.v2-toast .sp{flex:1}
+.v2-toast button{background:rgba(255,255,255,.14);color:#F3C9C2;font-weight:600;font-size:12.5px;
+  padding:5px 12px;border-radius:99px}
+.v2-toast button:hover{background:rgba(255,255,255,.22)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<!--/baked:head-->
+</head>
+<body class="v2-shell">
+<!--baked:side--><nav class="v2-side"><div class="grp">TODAY</div><a class="nav on" href="worklist.html" data-nav="worklist"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h11M3 12h11M3 18h7"/><path d="m17 15 2 2 4-4"/></svg>Today<span class="slot" data-slot="worklist"></span></a><a class="nav" href="assistant.html" data-nav="assistant"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H5l-2 2V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/></svg>Assistant<span class="slot" data-slot="assistant"></span></a><div class="grp gap">CLOSING</div><a class="nav" href="deals.html" data-nav="deals"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="3"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Deals<span class="slot" data-slot="deals"></span></a><div class="grp gap">LEAD BOOK</div><a class="nav" href="leads.html" data-nav="leads"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>All leads<span class="slot" data-slot="leads"></span></a><div class="grp gap">REVIEW</div><a class="nav" href="report.html" data-nav="report"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></svg>Dashboard<span class="slot" data-slot="report"></span></a><a class="nav" href="briefing.html" data-nav="briefing"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h13a2 2 0 0 1 2 2v13a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 8h7M8 12h7M8 16h4"/></svg>Briefing<span class="slot" data-slot="briefing"></span></a><div class="sp"></div><a class="nav" href="settings.html"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H7a1.7 1.7 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V7a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
+<main class="v2-main">
+
+  <header class="v2-h">
+    <h1>Today</h1>
+    <span class="sub"><span class="mono" id="qTotal">—</span> to follow up<span id="dmSub"></span></span>
+    <span class="sp"></span>
+    <span id="doneChip" hidden style="font-size:12.5px;font-weight:600;color:var(--go)">✓ <span id="doneCount">0</span> logged today</span>
+    <button class="v2-btn go" id="addBtn" type="button">Add screenshots</button>
+    <button class="v2-btn sm" id="refreshBtn" disabled>Refresh</button>
+  </header>
+
+  <section id="skeleton" class="v2-card skel" hidden>Loading leads…</section>
+  <section id="loadError" class="v2-card skel" hidden>
+    <p id="loadErrorMsg" style="margin-bottom:12px">Couldn’t load leads.</p>
+    <button class="v2-btn" id="loadRetry">Retry</button>
+  </section>
+
+  <div id="app" hidden>
+   <div class="two">
+    <section class="col">
+    <div class="sec-h"><span>Follow up</span><span class="n" id="fuN"></span></div>
+    <div class="v2-chips" id="queueFilters"></div>
+    <div class="hints" aria-hidden="true">
+      <span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>L</kbd> log</span>
+      <span><kbd>O</kbd> profile</span><span><kbd>S</kbd> snooze</span><span><kbd>↵</kbd> open</span>
+    </div>
+
+    <section class="v2-card">
+      <div class="v2-thead q-thead"><span>Lead</span><span>Stage</span><span>Since</span><span>Note</span><span></span></div>
+      <div id="queueList"></div>
+    </section>
+
+    <section class="nudge" id="sweepCard" hidden>
+      <b id="sweepCount">0</b><span>leads inactive 60d+</span>
+      <span class="sp"></span>
+      <button class="v2-btn" id="sweepToggle">Review &amp; archive</button>
+    </section>
+    <section class="v2-card sweep-list" id="sweepListCard" hidden><div id="sweepList"></div></section>
+    </section>
+
+    <section class="col">
+    <!-- the other half of the day: first DMs out of the uncontacted queue.
+         Was its own page, which meant the daily loop spanned two screens and
+         the leads you just added were never where you were working. -->
+    <div class="sec-h" id="dmHead"><span>Send cold DMs</span><span class="n" id="count"></span>
+      <span class="sp"></span>
+      <span class="kmini" id="kmini"></span></div>
+
+    <div class="drop-hint" id="dropHint">
+      <b>Drop or paste screenshots — they upload and you can leave.</b><br>
+      Processing runs in the background; results wait here for review, even if
+      you close the page mid-batch.
+    </div>
+
+    <div class="v2-card" id="review" hidden style="margin-bottom:16px"></div>
+    <div class="v2-card" id="queue"><div class="v2-empty" id="skel">Loading…</div></div>
+    </section>
+   </div>
+  </div>
+</main>
+
+
+<script src="./parser.js"></script>
+<script type="module">
+import * as core from './crm-core.js?v=20260818b';
+const session = await core.requireAuth();
+if (session) {
+await core.installChrome({ active: 'worklist' });
+var RULES = await core.worklistRules();
+var $ = function (id) { return document.getElementById(id); };
+var LS_DONE = 'ajr_worklist_done', LS_FILTERS = 'ajr_worklist_filters', LS_SNOOZE = 'ajr_worklist_snooze';
+var LEVEL_COLORS = {
+  'Engaged 1': '#a9a9b1', 'Engaged 2': '#c9c9cf', 'Engaged 3': '#e9e9ec',
+  'Booked': '#8ee59a', 'No Close': '#d99a9a', 'Archive': '#6e6e78', 'No Reply': '#8a8a92', 'Closed': '#c9c9cf', '': '#6e6e78'
+};
+
+var state = {
+  demo: false,
+  leads: [], byHandle: new Map(), unique: [], dupCount: new Map(),
+  serverDate: '', busy: false,
+  rows: [],            // currently rendered queue leads, in order
+  cursor: -1,          // keyboard cursor index into rows
+  done: {},            // handle -> 'HH:MM' logged today
+  sweepOpen: false
+};
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function newReqId() { return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function daysSince(dmy) {
+  var d = CRMParse.parseDMY(dmy);
+  var ref = CRMParse.parseDMY(state.serverDate) || new Date();
+  if (!d) return null;
+  return Math.round((ref - d) / 864e5);
+}
+function daysBadge(dmy) {
+  var n = daysSince(dmy);
+  if (n === null) return '<span class="v2-age late">never</span>';
+  return '<span class="v2-age ' + core.ageClass(n, RULES) + '">' + (n <= 0 ? 'today' : n + 'd') + '</span>';
+}
+
+/* ---------- toasts (shared v2) ---------- */
+var toast = core.toast;
+
+/* ---------- snooze (hide a lead from the queue until a date) ---------- */
+function snoozes() {
+  try { return JSON.parse(localStorage.getItem(LS_SNOOZE) || '{}'); } catch (e) { return {}; }
+}
+function isSnoozed(h) {
+  var until = snoozes()[h];
+  return !!until && new Date(until) > new Date();
+}
+function snoozeLead(h, days) {
+  var m = snoozes();
+  var d = new Date(); d.setDate(d.getDate() + days);
+  m[h] = d.toISOString();
+  localStorage.setItem(LS_SNOOZE, JSON.stringify(m));
+  renderQueue();
+  toast({ html: '<span class="mono">@' + esc(h) + '</span> snoozed ' + days + 'd.', ttl: 5000,
+    action: { label: 'Undo', fn: function () { delete m[h]; localStorage.setItem(LS_SNOOZE, JSON.stringify(m)); renderQueue(); } } });
+}
+
+/* ---------- done-today (survives reloads, resets each sheet day) ---------- */
+function loadDone() {
+  try {
+    var d = JSON.parse(localStorage.getItem(LS_DONE) || '{}');
+    state.done = (d.date === state.serverDate && d.done) ? d.done : {};
+  } catch (e) { state.done = {}; }
+  paintDoneChip();
+}
+function markDone(handle) {
+  state.done[handle] = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  localStorage.setItem(LS_DONE, JSON.stringify({ date: state.serverDate, done: state.done }));
+  paintDoneChip();
+}
+function unmarkDone(handle) {
+  delete state.done[handle];
+  localStorage.setItem(LS_DONE, JSON.stringify({ date: state.serverDate, done: state.done }));
+  paintDoneChip();
+}
+function paintDoneChip() {
+  var n = Object.keys(state.done).length;
+  $('doneChip').hidden = n === 0;
+  $('doneCount').textContent = String(n);
+}
+
+/* ---------- data layer: Supabase via crm-core ---------- */
+function api(action, payload) {
+  if (action === 'bootstrap') {
+    return core.bootstrap().then(function (d) {
+      setDot('ok');
+      return { ok: true, serverDate: d.serverDate, leads: d.leads, statuses: [] };
+    }).catch(function (e) { setDot('err'); throw e; });
+  }
+  if (action === 'setterUpdate') {
+    return core.setterUpdate(payload).then(function (r) { setDot('ok'); return r; })
+      .catch(function (e) { setDot('err'); throw e; });
+  }
+  throw new Error('unknown action ' + action);
+}
+function setDot() { /* v2 chrome has no status dot; errors show in the error card */ }
+
+/* ---------- bootstrap ---------- */
+function runBootstrap(firstLoad) {
+  var btn = $('refreshBtn');
+  btn.disabled = true; btn.classList.add('spinning');
+  if (firstLoad) { $('skeleton').hidden = false; $('loadError').hidden = true; $('app').hidden = true; }
+  api('bootstrap').then(function (data) {
+    state.serverDate = data.serverDate || '';
+    state.leads = data.leads || [];
+    buildIndex();
+    loadDone();
+    $('skeleton').hidden = true; $('loadError').hidden = true; $('app').hidden = false;
+    renderFilters();
+    renderQueue();
+    // start on the first row so the primary actions are one keystroke away
+    if (state.cursor < 0 && state.rows.length) setCursor(0, true);
+    renderSweep();
+  }).catch(function (err) {
+    if (firstLoad || $('app').hidden) {
+      $('skeleton').hidden = true; $('loadError').hidden = false;
+      $('loadErrorMsg').textContent = 'Couldn’t load leads: ' + err.message;
+    } else {
+      toast({ type: 'err', html: 'Refresh failed: ' + esc(err.message), sticky: true,
+        action: { label: 'Retry', fn: function () { runBootstrap(false); } } });
+    }
+  }).finally(function () { btn.disabled = false; btn.classList.remove('spinning'); });
+}
+function buildIndex() {
+  state.byHandle = new Map(); state.dupCount = new Map();
+  state.leads.forEach(function (l) {
+    state.byHandle.set(l.h, l);
+    state.dupCount.set(l.h, (state.dupCount.get(l.h) || 0) + 1);
+  });
+  state.unique = [];
+  var seen = new Set();
+  state.leads.forEach(function (l) {
+    if (!seen.has(l.h)) { seen.add(l.h); state.unique.push(state.byHandle.get(l.h)); }
+  });
+}
+
+/* ---------- the queue: value first, staleness second ---------- */
+// A No-Close lead (deal didn't close) auto-returns to the daily queue once it
+// has cooled this many days — a built-in "circle back later". The No Close
+// filter chip still force-shows all of them regardless of age.
+var NOCLOSE_RESURFACE_DAYS = 30;
+var LVL_W = { 'Engaged 3': 3, 'Engaged 2': 2, 'Engaged 1': 1, 'No Close': 0.5, 'No Reply': 0.5, '': 0.5 };
+function leadScore(l) {
+  var qualW = l.qual && !/^unqual/i.test(l.qual) ? 2 : 0;
+  return (LVL_W[l.level] || 0) * 3 + qualW;
+}
+// dead tail: cold Engaged-1, no qualification, silent 60+ days -> sweep, not queue
+function isSweepable(l) {
+  var d = daysSince(l.lastContact);
+  // never-contacted is a legitimate pre-outreach state now (the prospect
+  // queue), not evidence of death — only real 60-day silence sweeps
+  return l.level === 'Engaged 1' && !l.qual && d !== null && d > 60;
+}
+// Filters are chips now. 'engaged' is one chip covering Engaged 1-3 (that's how
+// the setter thinks about the queue); the rest are opt-in buckets.
+var FILTER_DEFS = [
+  { id: 'engaged', label: 'Engaged 1–3', levels: ['Engaged 1', 'Engaged 2', 'Engaged 3'] },
+  { id: 'No Close', label: 'No Close', levels: ['No Close'] },
+  { id: 'No Reply', label: 'No Reply', levels: ['No Reply'] },
+  { id: '', label: 'No level', levels: [''] }
+];
+var filterOn = new Set(['engaged']);
+
+function activeFilters() {
+  var f = {};
+  FILTER_DEFS.forEach(function (d) {
+    if (filterOn.has(d.id)) d.levels.forEach(function (lv) { f[lv] = true; });
+  });
+  // levels never shown in the queue still need a defined key so the No-Close
+  // resurfacing branch can tell "off" from "unknown"
+  if (!filterOn.has('No Close')) f['No Close'] = false;
+  return f;
+}
+function countFor(d) {
+  return state.unique.filter(function (l) {
+    return d.levels.indexOf(l.level || '') !== -1 && !isSweepable(l) && !isSnoozed(l.h);
+  }).length;
+}
+function renderFilters() {
+  $('queueFilters').innerHTML = FILTER_DEFS.map(function (d) {
+    return '<button class="v2-chip' + (filterOn.has(d.id) ? ' on' : '') + '" data-f="' + esc(d.id) + '">' +
+      esc(d.label) + '<span class="n">' + countFor(d) + '</span></button>';
+  }).join('');
+}
+function saveFilters() { localStorage.setItem(LS_FILTERS, JSON.stringify(Array.from(filterOn))); }
+function restoreFilters() {
+  try {
+    var on = JSON.parse(localStorage.getItem(LS_FILTERS) || 'null');
+    if (on && on.length) filterOn = new Set(on);
+  } catch (e) { /* defaults stand */ }
+}
+
+function queueLeads() {
+  var f = activeFilters();
+  var rows = state.unique.filter(function (l) {
+    // added-but-never-DMd prospects live in the Uncontacted queue, not here —
+    // this list is who to FOLLOW UP, and there's nothing to follow up yet
+    if (l.prospected && !l.lastContact) return false;
+    // No-Close leads: show on demand (filter chip) OR auto-resurface once cooled
+    if (l.level === 'No Close') {
+      if (f['No Close']) return true;
+      var days = daysSince(l.lastContact);
+      return days !== null && days >= NOCLOSE_RESURFACE_DAYS;
+    }
+    return f[l.level] !== undefined ? f[l.level] : false;
+  }).filter(function (l) { return !isSweepable(l) && !isSnoozed(l.h); });
+  rows.sort(function (a, b) {
+    var s = leadScore(b) - leadScore(a);
+    if (s) return s;
+    var da = daysSince(a.lastContact), db = daysSince(b.lastContact);
+    return (db === null ? -1 : db) - (da === null ? -1 : da); // within a tier: oldest first
+  });
+  // done-today rows sink to the bottom, keep their order
+  var open = rows.filter(function (l) { return !state.done[l.h]; });
+  var done = rows.filter(function (l) { return state.done[l.h]; });
+  return open.concat(done);
+}
+
+// the tag column is 148px of a five-column grid — "Qualified 2" eats the note
+function shortQual(q) {
+  var m = /^qualified\s*(\d)/i.exec(String(q || ''));
+  if (m) return 'Q' + m[1];
+  return /^unqual/i.test(q) ? 'UNQ' : q;
+}
+function rowHtml(l, i, sweep) {
+  var done = state.done[l.h];
+  var focused = (i === state.cursor && !sweep);
+  var dups = state.dupCount.get(l.h) || 1;
+  // Every row in this queue is awaiting a follow-up, so "Follow up Sent" as a
+  // note prefix says nothing and costs the width the actual note needs.
+  var st = l.status === 'Follow up Sent' ? '' : core.shortStatus(l.status);
+  var note = [st, l.notes].filter(Boolean).join(' · ');
+  var acts;
+  if (done) {
+    acts = '<span class="q-done-at">✓ ' + esc(done) + '</span>' +
+           '<button class="v2-btn sm" data-undone="' + esc(l.h) + '">Undo</button>';
+  } else if (sweep) {
+    acts = '<button class="v2-btn sm" data-arch="' + esc(l.h) + '">Archive</button>';
+  } else if (focused) {
+    acts = '<button class="v2-btn go" data-log="' + esc(l.h) + '">Log</button>' +
+           '<button class="v2-btn" data-snz="' + esc(l.h) + '">Snooze 7d</button>';
+  } else {
+    acts = '<button class="v2-btn goline sm" data-log="' + esc(l.h) + '">Log</button>';
+  }
+  return '<div class="v2-row q-row' + (done ? ' done' : '') + (focused ? ' cursor' : '') + '" data-h="' + esc(l.h) + '">' +
+    '<a class="q-handle" href="' + esc(l.url || ('https://instagram.com/' + l.h)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
+    '<span class="q-stage">' + esc(core.shortStage(l.level) || '—') + '</span>' +
+    daysBadge(l.lastContact) +
+    '<span class="q-note" title="' + esc(note) + '">' +
+      (l.qual ? '<span class="q-qual" title="' + esc(l.qual) + '">' + esc(shortQual(l.qual)) + '</span>' : '') +
+      '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(note) + '</span>' +
+      (dups > 1 ? '<span class="dot">·</span><span style="color:var(--muted-2);white-space:nowrap">' + dups + ' rows</span>' : '') +
+    '</span>' +
+    '<span class="q-acts">' + acts + '</span>' +
+  '</div>';
+}
+
+function renderQueue() {
+  state.rows = queueLeads();
+  if (state.cursor >= state.rows.length) state.cursor = state.rows.length - 1;
+  var el = $('queueList');
+  var waiting = state.rows.filter(function (l) { return !state.done[l.h]; }).length;
+  $('qTotal').textContent = String(waiting);
+  var fuN = $('fuN'); if (fuN) fuN.textContent = String(waiting);
+  core.setChromeBadge('worklist', waiting); // keep the sidebar honest
+  if (!state.rows.length) { el.innerHTML = '<div class="v2-empty">All caught up.</div>'; return; }
+  el.innerHTML = state.rows.slice(0, 120).map(function (l, i) { return rowHtml(l, i, false); }).join('') +
+    (state.rows.length > 120 ? '<div class="v2-empty">…and ' + (state.rows.length - 120) + ' more</div>' : '');
+}
+
+/* ---------- sweep (dead-lead review) ---------- */
+function sweepLeads() {
+  return state.unique.filter(isSweepable).sort(function (a, b) {
+    return (daysSince(b.lastContact) || 1e6) - (daysSince(a.lastContact) || 1e6);
+  });
+}
+function renderSweep() {
+  var rows = sweepLeads();
+  $('sweepCard').hidden = rows.length === 0;
+  $('sweepCount').textContent = String(rows.length);
+  var list = $('sweepList');
+  $('sweepListCard').hidden = !state.sweepOpen || rows.length === 0;
+  $('sweepToggle').textContent = state.sweepOpen ? 'Hide' : 'Review & archive';
+  if (state.sweepOpen) {
+    list.innerHTML = rows.slice(0, 40).map(function (l) { return rowHtml(l, -1, true); }).join('') +
+      (rows.length > 40 ? '<div class="v2-empty">…and ' + (rows.length - 40) + ' more (archive some to see the rest)</div>' : '');
+  } else {
+    list.innerHTML = '';
+  }
+}
+
+/* ---------- writes ---------- */
+function logFu(handle) {
+  if (state.busy) return;
+  var lead = state.byHandle.get(handle);
+  if (!lead || state.done[handle]) return;
+  state.busy = true;
+  // optimistic: mark done now, roll back on failure
+  markDone(handle);
+  advanceCursor();
+  renderQueue();
+  api('setterUpdate', { handle: handle, status: 'Follow up Sent' }).then(function (res) {
+    lead.lastContact = state.serverDate;
+    lead.status = 'Follow up Sent';
+    toast({ type: 'ok', html: '<span class="mono">@' + esc(handle) + '</span> — follow-up logged.', ttl: 4000,
+      action: res.prev ? { label: 'Undo', fn: function () { undoWrite(res, handle); } } : null });
+  }).catch(function (err) {
+    unmarkDone(handle);
+    renderQueue();
+    toast({ type: 'err', html: 'Write failed for <span class="mono">@' + esc(handle) + '</span>: ' + esc(err.message), sticky: true,
+      action: { label: 'Retry', fn: function () { logFu(handle); } } });
+  }).finally(function () { state.busy = false; });
+}
+function archiveLead(handle) {
+  if (state.busy) return;
+  var lead = state.byHandle.get(handle);
+  if (!lead) return;
+  state.busy = true;
+  api('setterUpdate', { handle: handle, stage: 'Archive' }).then(function (res) {
+    lead.level = 'Archive';
+    lead.lastContact = state.serverDate;
+    renderFilters(); renderQueue(); renderSweep();
+    toast({ type: 'ok', html: '<span class="mono">@' + esc(handle) + '</span> archived.', ttl: 5000,
+      action: res.prev ? { label: 'Undo', fn: function () { undoWrite(res, handle); } } : null });
+  }).catch(function (err) {
+    toast({ type: 'err', html: 'Archive failed: ' + esc(err.message), sticky: true });
+  }).finally(function () { state.busy = false; });
+}
+function undoWrite(res, handle) {
+  core.undoWrite(res.undo).then(function () {
+    var l = state.byHandle.get(handle);
+    if (l) { l.level = res.prev.level; l.status = res.prev.last_status;
+      l.lastContact = core.isoToDmy(res.prev.last_contact); }
+    unmarkDone(handle);
+    renderFilters(); renderQueue(); renderSweep();
+    toast({ type: 'ok', html: 'Undone — <span class="mono">@' + esc(handle) + '</span> restored.' });
+  }).catch(function (err) { toast({ type: 'err', html: 'Undo failed: ' + esc(err.message), sticky: true }); });
+}
+
+/* ---------- keyboard grinding ---------- */
+function setCursor(i, noScroll) {
+  state.cursor = Math.max(0, Math.min(i, Math.min(state.rows.length, 120) - 1));
+  renderQueue();
+  if (noScroll) return;
+  var row = document.querySelector('#queueList .q-row.cursor');
+  if (row) row.scrollIntoView({ block: 'nearest' });
+}
+function advanceCursor() {
+  // next not-done row after the current one
+  for (var i = state.cursor + 1; i < state.rows.length; i++) {
+    if (!state.done[state.rows[i].h]) { state.cursor = i; return; }
+  }
+}
+function cursorLead() {
+  return state.cursor >= 0 && state.cursor < state.rows.length ? state.rows[state.cursor] : null;
+}
+
+/* ---------- events ---------- */
+function bindEvents() {
+  $('queueList').addEventListener('click', function (e) {
+    var t;
+    if ((t = e.target.closest('[data-snz]'))) snoozeLead(t.getAttribute('data-snz'), 7);
+    else if ((t = e.target.closest('[data-log]'))) logFu(t.getAttribute('data-log'));
+    else if ((t = e.target.closest('[data-undone]'))) {
+      // local un-mark only (sheet write already happened; use toast Undo to revert the sheet)
+      unmarkDone(t.getAttribute('data-undone'));
+      renderQueue();
+    }
+    else if ((t = e.target.closest('[data-open]'))) location.href = 'log-lead.html?lead=' + encodeURIComponent(t.getAttribute('data-open'));
+    else if ((t = e.target.closest('.q-row'))) {
+      var h = t.getAttribute('data-h');
+      state.rows.forEach(function (l, i) { if (l.h === h) setCursor(i); });
+    }
+  });
+  $('sweepList').addEventListener('click', function (e) {
+    var t;
+    if ((t = e.target.closest('[data-arch]'))) archiveLead(t.getAttribute('data-arch'));
+    else if ((t = e.target.closest('[data-open]'))) location.href = 'log-lead.html?lead=' + encodeURIComponent(t.getAttribute('data-open'));
+  });
+  $('sweepToggle').addEventListener('click', function () { state.sweepOpen = !state.sweepOpen; renderSweep(); });
+  $('queueFilters').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-f]'); if (!b) return;
+    var id = b.getAttribute('data-f');
+    if (filterOn.has(id)) filterOn.delete(id); else filterOn.add(id);
+    saveFilters(); state.cursor = -1; renderFilters(); renderQueue();
+  });
+  $('refreshBtn').addEventListener('click', function () { runBootstrap(false); });
+  $('loadRetry').addEventListener('click', function () { runBootstrap(true); });
+
+  core.pageListen(document, 'keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+    if ($('app').hidden) return;
+    var k = e.key;
+    if (k === 'ArrowDown' || k === 'j') { e.preventDefault(); setCursor(state.cursor + 1); }
+    else if (k === 'ArrowUp' || k === 'k') { e.preventDefault(); setCursor(state.cursor - 1); }
+    else if (k.toLowerCase() === 'l') {
+      var l = cursorLead();
+      if (l && !state.done[l.h]) { e.preventDefault(); logFu(l.h); }
+    }
+    else if (k.toLowerCase() === 's') {
+      var ls = cursorLead();
+      if (ls && !state.done[ls.h]) { e.preventDefault(); snoozeLead(ls.h, 7); }
+    }
+    else if (k.toLowerCase() === 'o') {
+      var l2 = cursorLead();
+      if (l2 && l2.url) { e.preventDefault(); window.open(l2.url, '_blank', 'noopener'); }
+    }
+    else if (k === 'Enter') {
+      var l3 = cursorLead();
+      if (l3) { e.preventDefault(); location.href = 'log-lead.html?lead=' + encodeURIComponent(l3.h); }
+    }
+  });
+
+  var hiddenAt = null;
+  core.pageListen(document, 'visibilitychange', function () {
+    if (document.hidden) { hiddenAt = Date.now(); return; }
+    if (hiddenAt && Date.now() - hiddenAt > 5 * 60 * 1000 && !$('app').hidden) runBootstrap(false);
+    hiddenAt = null;
+  });
+}
+
+/* ---------- init ---------- */
+function start() { runBootstrap(true); }
+function boot() {
+  if (typeof window.CRMParse === 'undefined') {
+    document.querySelector('.v2-main').insertAdjacentHTML('beforeend',
+      '<section class="v2-card" style="padding:20px;color:var(--red)">parser.js failed to load — keep it next to worklist.html.</section>');
+    return;
+  }
+  restoreFilters();
+  bindEvents();
+  core.installPalette({ leads: function () { return state.unique; } });
+  start();
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+
+/* ---------- cold-DM half ----------
+   Lifted whole from the old New leads page. It keeps its own $, state and
+   render inside this block: both halves want those names, and block scope
+   is cheaper and safer than renaming 300 lines. */
+{
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const toast = core.toast;
+
+/* The selection is a working set, not a UI detail: ticking twenty leads is
+   several minutes of work, and it used to die on a refresh, a nav away, or
+   anything that re-ran load(). Persisted per device and pruned to whatever
+   is still in the queue when it comes back. */
+const LS_SEL = 'ajr_dm_sel';
+const state = { leads: [], sel: new Set(), targets: null, stats: [] };
+function loadSel() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS_SEL) || '[]');
+    return new Set(Array.isArray(raw) ? raw.map(Number).filter(Boolean) : []);
+  } catch (e) { return new Set(); }
+}
+function saveSel() {
+  try { localStorage.setItem(LS_SEL, JSON.stringify([...state.sel])); } catch (e) { /* private mode */ }
+}
+state.sel = loadSel();
+
+const storyLive = (l) => l.storySeenAt && (Date.now() - new Date(l.storySeenAt).getTime()) < 24 * 36e5;
+function queue() {
+  return state.leads
+    .filter((l) => l.prospected && !l.lastContact && l.level !== 'Archive' && !core.isPool(l.level))
+    .sort((a, b) => {
+      // an active story is the warmest opener there is, and it expires —
+      // those leads jump the queue while the story is still live
+      const sa = storyLive(a) ? 1 : 0, sb = storyLive(b) ? 1 : 0;
+      if (sa !== sb) return sb - sa;
+      return String(b.prospected).localeCompare(String(a.prospected));
+    });
+}
+
+function renderKpi() {
+  // one line instead of two cards: this page is the doing surface, the
+  // Dashboard is where targets get studied
+  const t = state.targets || {};
+  const sentT = core.targetFor('outreach', t, 1) || 20;
+  const sent = state.stats.length ? state.stats[state.stats.length - 1].outreach : 0;
+  const week = state.stats.slice(-7).reduce((a, d) => a + d.newLeads, 0);
+  const el = $('kmini');
+  if (el) el.innerHTML =
+    '<b class="' + (sent >= sentT ? 'hit' : '') + '">' + sent + '</b>/' + sentT + ' sent today' +
+    ' · <b>' + week + '</b>/100 added this week';
+}
+
+function render() {
+  const q = queue();
+  $('count').textContent = String(q.length);
+  const el = $('queue');
+  if (!q.length) {
+    el.innerHTML = '<div class="dm-empty">Nothing waiting for a first DM.<br>' +
+      'Add profiles from screenshots and they queue here until you message them.</div>';
+    return;
+  }
+  const allTicked = q.every((l) => state.sel.has(l.id));
+  el.innerHTML = '<div class="dm-bar">' +
+      '<input type="checkbox" class="dm-tick" id="tickAll"' + (allTicked ? ' checked' : '') + '>' +
+      '<b id="selN">' + state.sel.size + '</b><span>selected</span>' +
+      '<button class="v2-btn sm" id="pick20" style="margin-left:8px">Your ' + core.targetFor('outreach', state.targets || {}, 1) + '</button>' +
+      '<span class="sp"></span>' +
+      '<button class="v2-btn doneline sm" id="markSent"' + (state.sel.size ? '' : ' disabled') + '>Mark ' +
+        (state.sel.size || 0) + ' DM’d as cold</button>' +
+    '</div>' +
+    q.map((l) => '<div class="dm-row" data-id="' + l.id + '">' +
+      '<input type="checkbox" class="dm-tick" data-id="' + l.id + '"' + (state.sel.has(l.id) ? ' checked' : '') + '>' +
+      '<a class="dm-h" href="' + esc(l.url || 'https://instagram.com/' + l.h) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
+      (storyLive(l) ? '<span class="dm-story" title="Had an active story when added — story-reply them first">◉ story</span>' : '') +
+      (l.igStatus === 'private' ? '<span class="dm-priv" title="Private account — your DM lands in their requests">🔒</span>' : '') +
+      '<span class="sp" style="flex:1"></span>' +
+      '<span class="dm-meta" title="Added to the CRM">' + esc((l.prospected || '').slice(5, 10).split('-').reverse().join('/')) + '</span>' +
+      '<button class="dm-sent" data-sent="' + l.id + '">Sent</button>' +
+      '<button class="dm-x" data-x="' + l.id + '" title="Not a lead — deletes it">✕</button>' +
+    '</div>').join('');
+}
+
+async function load() {
+  try {
+    const [leads, targets, stats] = await Promise.all([
+      core.loadLeads(), core.setterTargets(), core.setterStats(7),
+    ]);
+    state.leads = leads; state.targets = targets; state.stats = stats;
+    // keep only what is still uncontacted and still exists; a lead marked or
+    // deleted elsewhere should not linger as a phantom tick
+    const live = new Set(queue().map((l) => l.id));
+    state.sel = new Set([...state.sel].filter((id) => live.has(id)));
+    saveSel();
+    renderKpi(); render();
+  } catch (e) {
+    $('queue').innerHTML = '<div class="v2-empty">Couldn’t load: ' + esc(e.message) + '</div>';
+  }
+}
+
+function syncBar() {
+  const n = state.sel.size, q = queue();
+  const selN = document.getElementById('selN'); if (selN) selN.textContent = String(n);
+  const mark = document.getElementById('markSent');
+  if (mark) { mark.disabled = !n; mark.textContent = 'Mark ' + n + ' DM’d as cold'; }
+  const all = document.getElementById('tickAll');
+  if (all) all.checked = q.length > 0 && q.every((l) => state.sel.has(l.id));
+  const p20 = document.getElementById('pick20');
+  if (p20) p20.disabled = q.length === 0;
+}
+
+$('queue').addEventListener('click', async (e) => {
+  const tickAll = e.target.closest('#tickAll');
+  if (tickAll) {
+    const q = queue();
+    if (tickAll.checked) q.forEach((l) => state.sel.add(l.id)); else state.sel = new Set();
+    saveSel();
+    render(); return;
+  }
+  if (e.target.closest('#pick20')) {
+    // the queue is already sorted story-live first, then freshest, so the
+    // first N IS the right N — starting the day shouldn't need a decision
+    const n = core.targetFor('outreach', state.targets || {}, 1) || 20;
+    state.sel = new Set(queue().slice(0, n).map((l) => l.id));
+    saveSel(); render();
+    toast({ type: 'ok', ttl: 6000, html: '<b>' + state.sel.size + '</b> picked — story-live first.' });
+    return;
+  }
+  const cb = e.target.closest('input.dm-tick[data-id]');
+  if (cb) {
+    const id = +cb.getAttribute('data-id');
+    if (cb.checked) state.sel.add(id); else state.sel.delete(id);
+    saveSel();
+    // only the counter changes — re-rendering the whole list per tick drops
+    // clicks when you're going down twenty of them, and stutters on a phone
+    syncBar(); return;
+  }
+  const sent = e.target.closest('[data-sent]');
+  if (sent) {
+    const id = +sent.getAttribute('data-sent');
+    sent.disabled = true;
+    try {
+      const res = await core.markBatchSent([id], { kind: 'cold' });
+      const l = state.leads.find((x) => x.id === id);
+      if (l) l.lastContact = core.todayDmy();
+      state.sel.delete(id); saveSel();
+      render();
+      toast({ type: 'ok', ttl: 8000, html: '<span class="mono">@' + esc(l ? l.h : id) + '</span> marked DM’d.',
+        action: res.undo ? { label: 'Undo', fn: async () => { await core.undoOutreachSent(res.undo); load(); } } : null });
+    } catch (err) { sent.disabled = false; toast({ type: 'err', html: esc(err.message), sticky: true }); }
+    return;
+  }
+  const x = e.target.closest('[data-x]');
+  if (x) {
+    const id = +x.getAttribute('data-x');
+    x.disabled = true;
+    try {
+      const l = state.leads.find((q2) => q2.id === id);
+      const res = await core.noContact([id]);
+      state.leads = state.leads.filter((q2) => q2.id !== id);
+      state.sel.delete(id); saveSel();
+      render();
+      toast({ type: 'ok', ttl: 9000, html: '<span class="mono">@' + esc(l ? l.h : id) + '</span> removed — not a lead.',
+        action: res.undo ? { label: 'Undo', fn: async () => { await core.undoNoContact(res.undo); load(); } } : null });
+    } catch (err) { x.disabled = false; toast({ type: 'err', html: esc(err.message), sticky: true }); }
+    return;
+  }
+  const mark = e.target.closest('#markSent');
+  if (mark && !mark.disabled) {
+    const ids = [...state.sel];
+    mark.disabled = true;
+    try {
+      const res = await core.markBatchSent(ids, { kind: 'cold' });
+      state.leads.forEach((l) => { if (state.sel.has(l.id)) l.lastContact = core.todayDmy(); });
+      state.sel = new Set(); saveSel();
+      render();
+      toast({ type: 'ok', ttl: 10000, html: 'Marked <b>' + res.marked + '</b> DM’d — counted as cold DMs.',
+        action: res.undo ? { label: 'Undo', fn: async () => { await core.undoOutreachSent(res.undo); load(); } } : null });
+    } catch (err) { mark.disabled = false; toast({ type: 'err', html: esc(err.message), sticky: true }); }
+  }
+});
+
+/* ---------- walk-away uploads ----------
+   Screenshots upload to storage and a server-side worker extracts the leads;
+   the page only has to survive the upload itself. Results queue in the
+   review card until Add — reload, phone-lock, whatever, they wait. */
+let review = { items: [], jobIds: [] };
+const handled = new Set();   // keys consumed this session — never re-added by a poll tick
+const cleanH = (v) => {
+  v = String(v || '').trim();
+  const m = v.match(/instagram\.com\/(?:_u\/)?(?:stories\/)?([a-z0-9._]{2,30})/i);
+  if (m && !/^(p|reel|reels|tv|explore|direct|accounts|stories)$/i.test(m[1])) return m[1].toLowerCase();
+  return v.toLowerCase().replace(/^@+/, '');
+};
+const itemH = (it) => {
+  const h = cleanH(it.handle);
+  if (h) return h;
+  const nm = (it.name || '').trim();
+  return nm ? (core.makeNameResolver(state.leads)(nm) || '') : '';
+};
+
+function renderReview() {
+  const el = $('review');
+  const pend = review.pending || 0;
+  if (!pend && !review.items.length) { el.hidden = true; el.innerHTML = ''; return; }
+  // three buckets: brand-new leads get ADDED, matched leads where the scan
+  // read a conversation state get a proposed status UPDATE (inbox sweeps),
+  // and anything unresolvable waits for a typed handle
+  const needy = review.items.filter((it) => !itemH(it));
+  const updates = review.items.filter((it) => isUpdate(it));
+  const adds = review.items.filter((it) => itemH(it) && !isUpdate(it));
+  const badge = (it) =>
+    (it.story === 'yes' ? '<span class="dm-story">◉ story</span>' : '') +
+    (it.priv === 'yes' ? '<span title="Private — DM lands in requests">🔒</span>' : '');
+  const btnLabel = [adds.length ? 'Add ' + adds.length : '', updates.length ? 'Update ' + updates.length : '']
+    .filter(Boolean).join(' · ') || 'Nothing ready';
+  el.innerHTML =
+    '<div class="dm-bar"><b>' + review.items.length + '</b><span>scanned' +
+      (needy.length ? ' · ' + needy.length + ' need a handle' : '') + '</span>' +
+      (pend ? '<span style="color:var(--amber);font-size:12.5px">⏳ ' + pend + ' still processing…</span>' : '') +
+      '<span class="sp"></span>' +
+      '<button class="v2-btn go sm" id="rvAdd"' + (adds.length || updates.length ? '' : ' disabled') + '>' + esc(btnLabel) + '</button>' +
+    '</div>' +
+    review.items.map((it, i) => {
+      const h = itemH(it);
+      // a row that resolved through the display name shows the match, so a
+      // wrong guess is visible and killable with ✕ before anything applies
+      const viaName = h && !cleanH(it.handle) && (it.name || '').trim();
+      const label = viaName
+        ? '<span class="dm-meta">' + esc((it.name || '').trim()) + ' →</span> <span class="dm-h">@' + esc(h) + '</span>'
+        : '<span class="dm-h">@' + esc(h) + '</span>';
+      return '<div class="dm-row" data-i="' + i + '">' +
+        (h
+          ? label + badge(it) +
+            (isUpdate(it)
+              ? '<span class="dm-meta">→ ' + esc(core.shortStatus(it.status) || core.shortStage(it.stage)) + '</span>'
+              : inBook(h) ? '<span class="dm-meta">in book — skipped</span>' : '')
+          : '<input class="v2-in" data-hfix value="" placeholder="' + esc((it.name || 'unknown') + ' — @handle or IG link') + '" style="flex:1;min-height:34px;max-width:240px">' + badge(it)) +
+        '<span class="sp" style="flex:1"></span>' +
+        '<button class="dm-x" data-rvx title="Skip this one">✕</button>' +
+      '</div>';
+    }).join('');
+  el.hidden = false;
+  $('rvAdd').onclick = async () => {
+    // pull typed handle fixes back in first
+    el.querySelectorAll('[data-hfix]').forEach((inp) => {
+      const it = review.items[+inp.closest('.dm-row').getAttribute('data-i')];
+      if (it && inp.value.trim()) it.handle = cleanH(inp.value);
+    });
+    const seen = new Set();
+    const batch = [];
+    const toUpdate = [];
+    review.items.forEach((it) => {
+      const h = itemH(it);
+      if (!h || seen.has(h)) return;
+      seen.add(h);
+      if (isUpdate(it)) { toUpdate.push({ it, h, nameKey: core.normName(it.name || '') }); return; }
+      batch.push({ handle: h, stage: it.stage || '', notes: (it.notes || '').trim(),
+        qual: (it.qual || '').trim(), pains: (it.pains || '').trim(),
+        name: (it.name || '').trim(), story: it.story || '', priv: it.priv || '' });
+    });
+    $('rvAdd').disabled = true;
+    try {
+      const res = batch.length ? await core.addProspects(batch) : { added: 0, skipped: 0, revived: 0 };
+      batch.forEach((b2) => { handled.add(b2.handle); const nk = core.normName(b2.name || ''); if (nk) handled.add(nk); });
+      let updated = 0;
+      for (const u of toUpdate) {
+        // stage passes only when the scan produced one — no Engaged 1 default
+        // here, an inbox row must never downgrade an E3 lead
+        try {
+          await core.setterUpdate({ handle: u.h, stage: (u.it.stage || '').trim(), status: (u.it.status || '').trim(),
+            note: (u.it.notes || '').trim(), qual: (u.it.qual || '').trim(), pains: (u.it.pains || '').trim(),
+            name: (u.it.name || '').trim(), fromScan: true });
+          if (u.it._suggested) core.logAiFeedback('vision', u.h, u.it._suggested,
+            { handle: u.h, stage: u.it.stage || '', status: u.it.status || '',
+              notes: u.it.notes || '', qual: u.it.qual || '', pains: u.it.pains || '' });
+          updated++;
+          handled.add(u.h); if (u.nameKey) handled.add(u.nameKey);
+        } catch (e) { /* count only successes; the toast reports the shortfall */ }
+      }
+      // Anything still missing a handle STAYS. Clearing the whole review (and
+      // its scan_jobs) used to delete those rows and the only record of the
+      // screenshot they came from — silent data loss on the import path.
+      const kept = review.items.filter((it) => !itemH(it));
+      if (kept.length) {
+        review = { items: kept, jobIds: review.jobIds, pending: review.pending };
+      } else {
+        await core.clearScanJobs(review.jobIds);
+        review = { items: [], jobIds: [], pending: review.pending };
+      }
+      toast({ type: 'ok', ttl: 10000,
+        html: 'Added <b>' + res.added + '</b>' + (res.revived ? ' · <b>' + res.revived + '</b> back from archive' : '') +
+          (updated ? ' · <b>' + updated + '</b> updated' : '') +
+          (toUpdate.length > updated ? ' · ' + (toUpdate.length - updated) + ' update' + (toUpdate.length - updated === 1 ? '' : 's') + ' failed' : '') +
+          (res.skipped ? ' · ' + res.skipped + ' already in the book' : '') +
+          (kept.length ? ' · <b>' + kept.length + '</b> still need a handle' : '') + '.',
+        action: res.undo && res.added ? { label: 'Undo adds', fn: async () => { await core.undoProspects(res.undo); load(); } } : null });
+      load(); pollJobs();
+    } catch (err) { toast({ type: 'err', html: esc(err.message), sticky: true }); renderReview(); }
+  };
+  el.querySelectorAll('[data-rvx]').forEach((b) => {
+    b.onclick = () => { review.items.splice(+b.closest('.dm-row').getAttribute('data-i'), 1); renderReview(); };
+  });
+}
+
+let pollTimer = null;
+async function pollJobs() {
+  let js;
+  try { js = await core.scanJobs(); } catch (e) { return; }
+  review.pending = js.pending;
+  review.jobIds = js.done.map((j) => j.id);
+  // flatten + dedup by handle/name across every processed screenshot
+  const have = new Set();
+  const items = [];
+  js.done.forEach((j) => (j.leads || []).forEach((l) => {
+    if (!(l.handle || l.name || '').trim()) return;
+    const keys = [];
+    const h = cleanH(l.handle); if (h) keys.push('h:' + h);
+    const nm = core.normName(l.name || ''); if (nm) keys.push('n:' + nm);
+    if (keys.length && keys.some((k) => have.has(k))) return;
+    keys.forEach((k) => have.add(k));
+    items.push(l);
+  }));
+  // keep the user's typed fixes and removals: only grow the list
+  const existing = new Set(review.items.map((it) => itemH(it) || core.normName(it.name || '')));
+  const fresh = [];
+  items.forEach((it) => {
+    const k = itemH(it) || core.normName(it.name || '');
+    if (!existing.has(k) && !handled.has(k)) { review.items.push(it); fresh.push(it); }
+  });
+  // A row with a full handle the model read confidently needs no decision from
+  // anyone — adding it by hand is typing, not judgement. Those go straight to
+  // the queue (undoable); the review card is left holding only what genuinely
+  // needs a human: missing handles and low-confidence reads.
+  autoAdd(fresh);
+  renderReview();
+  if (js.pending > 0 && !pollTimer) {
+    pollTimer = core.pageInterval(() => pollJobs(), 4000);
+  }
+  if (js.errors) $('dropHint').innerHTML = '<b>' + js.errors + ' screenshot' + (js.errors === 1 ? '' : 's') + ' couldn’t be read.</b><br>They were skipped — re-upload them if they mattered.';
+}
+
+const inBook = (h) => state.leads.some((l) => l.h === h && l.level !== 'Archive');
+// A matched row where the scan read a conversation state is a proposed status
+// update — only Richard marks leads, so it must reach the review card, never
+// be auto-consumed.
+const isUpdate = (it) => { const h = itemH(it); return !!h && inBook(h) && !!((it.status || '').trim() || (it.stage || '').trim()); };
+async function autoAdd(fresh) {
+  const clean = fresh.filter((it) => itemH(it) && it.confidence !== 'low' && !isUpdate(it));
+  if (!clean.length) return;
+  const seen = new Set(); const batch = [];
+  clean.forEach((it) => {
+    const h = itemH(it); if (!h || seen.has(h)) return; seen.add(h);
+    batch.push({ handle: h, stage: it.stage || '', notes: (it.notes || '').trim(),
+      qual: (it.qual || '').trim(), pains: (it.pains || '').trim(),
+      name: (it.name || '').trim(), story: it.story || '', priv: it.priv || '' });
+  });
+  try {
+    const res = await core.addProspects(batch);
+    // drop exactly what we added, so the card shows only the leftovers
+    const added = new Set(batch.map((b2) => b2.handle));
+    added.forEach((h) => handled.add(h));
+    batch.forEach((b2) => { const nk = core.normName(b2.name || ''); if (nk) handled.add(nk); });
+    review.items = review.items.filter((it) => !added.has(itemH(it)));
+    if (!review.items.length) { try { await core.clearScanJobs(review.jobIds); review.jobIds = []; } catch (e2) { /* next Apply clears */ } }
+    await load();
+    renderReview();
+    if (res.added || res.revived) {
+      toast({ type: 'ok', ttl: 10000,
+        html: '<b>' + res.added + '</b> added automatically' +
+          (res.revived ? ' · <b>' + res.revived + '</b> back from archive' : '') +
+          (res.skipped ? ' · ' + res.skipped + ' already in the book' : '') + '.',
+        action: res.undo && res.added ? { label: 'Undo', fn: async () => { await core.undoProspects(res.undo); load(); } } : null });
+    }
+  } catch (e) { /* leave them in the review card; the manual Add still works */ }
+}
+
+async function doUpload(files) {
+  const imgs = [].slice.call(files || []).filter((f) => f && (f.type || '').indexOf('image/') === 0);
+  if (!imgs.length) return;
+  $('addBtn').disabled = true;
+  try {
+    await core.uploadShots(imgs, (d, t) => { $('addBtn').textContent = 'Uploading ' + d + '/' + t + '…'; });
+    toast({ type: 'ok', ttl: 9000, html: '<b>' + imgs.length + '</b> uploaded — processing in the background. You can leave this page.' });
+  } catch (err) { toast({ type: 'err', html: 'Upload failed: ' + esc(err.message), sticky: true }); }
+  $('addBtn').disabled = false; $('addBtn').textContent = 'Add screenshots';
+  pollJobs();
+}
+$('addBtn').onclick = () => {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+  inp.onchange = () => doUpload(inp.files);
+  inp.click();
+};
+core.pageListen(window, 'paste', (e) => {
+  const its = (e.clipboardData && e.clipboardData.items) || [];
+  const files = [];
+  for (const it of its) if (it.type && it.type.indexOf('image/') === 0) { const f = it.getAsFile(); if (f) files.push(f); }
+  if (files.length) { e.preventDefault(); doUpload(files); }
+});
+core.pageListen(window, 'dragover', (e) => e.preventDefault());
+core.pageListen(window, 'drop', (e) => { e.preventDefault(); if (e.dataTransfer && e.dataTransfer.files.length) doUpload(e.dataTransfer.files); });
+if (matchMedia('(max-width: 760px)').matches) $('dropHint').innerHTML =
+  '<b>Tap Add screenshots, then leave.</b> They process in the background and the results wait here.';
+
+core.installPalette({});
+load();
+core.kickScanWorker();   // resume any batch an earlier session left behind
+pollJobs();
+}
+}
+</script>

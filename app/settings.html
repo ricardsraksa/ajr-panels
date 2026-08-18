@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
+<link rel="modulepreload" href="./crm-core.js?v=20260818b">
+<link rel="modulepreload" href="./supabase-js.mjs?v=1">
+<style>html{background:#f0f0f3}</style>
+<script type="module" blocking="render">
+/* Chrome holds the OLD page's pixels until this resolves, then cross-fades to
+   the finished new page — the "every click opens a new browser" gap dies here.
+   Capped so a wedged script can only delay paint, never prevent it. */
+await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
+</script>
+<title>Settings · AJR</title>
+<style>
+.demo-banner{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);text-align:center;padding:6px 12px;border:1px solid var(--line);border-radius:8px;
+  background:var(--side);margin-bottom:14px}
+.colw{max-width:640px}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:16px}
+.card h2{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);
+  padding:14px 18px 0}
+.card .sub{color:var(--muted);font-size:12.5px;padding:5px 18px 0}
+.rows{list-style:none;padding:10px 0 4px}
+.rows li{display:flex;align-items:center;gap:11px;padding:9px 18px;border-top:1px solid var(--divider);font-size:13px}
+.rows li:first-child{border-top:none}
+.rows .k{color:var(--ink-2);flex:1}
+.rows .v{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+.st{width:8px;height:8px;border-radius:50%;flex:none}
+.st.ok{background:var(--go)}.st.warn{background:var(--amber)}.st.bad{background:var(--red)}.st.off{background:var(--off)}
+.rows li.stale{background:var(--amber-tint);box-shadow:inset 3px 0 0 var(--amber)}
+.rows li.stale .k{color:var(--amber)}
+.blk{padding:12px 18px 16px;border-top:1px solid var(--divider)}
+.blk:first-of-type{border-top:none}
+.blk .nm{font-size:13px;font-weight:600;margin-bottom:3px}
+.blk .hint{color:var(--muted);font-size:12px;margin-bottom:9px}
+.urlbox{display:flex;gap:8px;flex-wrap:wrap}
+.urlbox input{flex:1;min-width:180px;font-family:var(--mono);font-size:11.5px}
+.msg{font-size:12.5px;margin-top:9px;min-height:16px}
+.msg.ok{color:var(--go)}.msg.err{color:var(--red)}
+.team-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--divider)}
+.team-row:first-child{border-top:none}
+.team-row .em{flex:1;font-size:13px}
+.team-row select{width:auto;min-width:110px}
+.rule-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--divider)}
+.rule-row:first-child{border-top:none}
+.rule-row .k{flex:1;font-size:13px;color:var(--ink-2)}
+.rule-row input{width:74px;text-align:center;font-family:var(--mono)}
+</style>
+<!--baked:head-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style id="v2-theme">
+@view-transition{navigation:auto}
+:root{
+  --bg:#f0f0f3; --side:rgba(251,251,253,.78); --card:#fbfbfd; --rowsel:rgba(0,0,0,.022);
+  --line:rgba(0,0,0,.07); --line-2:rgba(0,0,0,.12); --divider:rgba(0,0,0,.05);
+  --ink:#1d1d1f; --ink-2:#3a3a3c; --ink-3:#6e6e73; --muted:#6e6e73; --muted-2:#98989d; --off:#b9b9bf;
+  /* accent = the action colour (buttons, active nav, links, cursor row).
+     --go stays green and means money/success/done only. Splitting them is the
+     whole point: a "Log" button and "cash collected" are not the same idea. */
+  --accent:#B0544A; --accent-hi:#8F4238; --accent-tint:rgba(176,84,74,.07); --accent-line:rgba(176,84,74,.35);
+  --go:#1F7A4D; --go-hi:#17603C; --go-tint:rgba(31,122,77,.08); --go-line:rgba(31,122,77,.3); --done:rgba(31,122,77,.04);
+  --red:#C7392E; --amber:#9A6A00; --amber-tint:rgba(154,106,0,.09);
+  --ai:#7c56c9; --ai-line:#e2d9f4; --ai-tint:#f6f2fb;
+  --font:-apple-system,'SF Pro Text','SF Pro Display',system-ui,'Instrument Sans',sans-serif;
+  --mono:ui-monospace,'SF Mono','IBM Plex Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:var(--accent);text-decoration:none}
+a:hover{color:var(--accent-hi)}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+input::placeholder,textarea::placeholder{color:var(--off)}
+
+/* layout */
+.v2-shell{display:flex;min-height:100vh}
+.v2-side{width:228px;flex:none;border-right:1px solid rgba(0,0,0,.06);background:var(--side);padding:22px 12px 16px;
+  backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);
+  display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:100vh;
+  align-self:flex-start} /* flex would stretch it and break position:sticky */
+.v2-side .wm{font-weight:700;font-size:15px;letter-spacing:-.01em;padding:0 10px 18px}
+.v2-side .grp{font:600 10.5px var(--font);letter-spacing:.1em;color:var(--muted-2);padding:4px 10px}
+.v2-side .grp.gap{padding-top:14px}
+.v2-side a.nav{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:var(--ink-2);font-size:13.5px}
+.v2-side a.nav:hover{background:rgba(0,0,0,.045);color:var(--ink)}
+.v2-side a.nav .ic{flex:none;opacity:.62}
+.v2-side a.nav.on .ic{opacity:1}
+.v2-side a.nav.on{background:rgba(176,84,74,.1);color:var(--accent);font-weight:600}
+.v2-side a.nav.on:hover{background:rgba(176,84,74,.14);color:var(--accent)}
+.v2-side .badge-n{margin-left:auto;font:600 11.5px var(--mono);font-variant-numeric:tabular-nums;border-radius:99px;padding:0}
+.v2-side a.nav:not(.on) .badge-n{color:var(--muted-2)}
+.v2-side .badge-red{margin-left:auto;font-size:11px;color:var(--red);font-weight:600}
+.v2-side .badge-dot{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
+.v2-side .sp{flex:1}
+.v2-side .krow{display:flex;align-items:center;gap:8px;padding:8px 10px;color:var(--muted-2);font-size:12px;cursor:pointer}
+.v2-side .krow kbd{margin-left:auto;font:600 11px var(--mono);border:1px solid var(--line-2);border-radius:5px;padding:1px 6px;background:#fff;color:var(--ink-3)}
+.v2-side .me{display:flex;align-items:center;gap:9px;padding:10px 10px 2px;border-top:1px solid var(--line);margin-top:6px}
+.v2-side .me{border-top:1px solid rgba(0,0,0,.06)}
+.v2-side .me .av{width:27px;height:27px;border-radius:50%;background:var(--ink);color:#fbfbfd;display:inline-flex;
+  align-items:center;justify-content:center;font:600 11px var(--font);flex:none}
+.v2-side .me .nm{display:block;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v2-side .me .rl{display:block;font-size:11px;color:var(--muted-2)}
+.v2-side .me .out{margin-left:auto;color:var(--muted-2);font-size:11px}
+/* No global width cap. A reading width suits a chat or a queue and starves a
+   13-column table — pages that want one set .colw themselves. */
+.v2-main{flex:1;min-width:0;padding:30px 36px 80px}
+.colw{width:100%}
+@media(max-width:900px) and (min-width:761px){.v2-side{width:66px;padding:18px 8px}.v2-side .wm,.v2-side .grp,.v2-side .krow,.v2-side .me .nm,.v2-side .me .rl{display:none}}
+/* phone: the sidebar becomes a scrolling top strip. As a 64px rail it ate a
+   third of the screen and wrapped every label onto three lines. */
+@media(max-width:760px){
+  .v2-shell{display:block}
+  .v2-side{flex-direction:row;width:auto;height:auto;align-items:center;gap:6px;padding:8px 10px;
+    border-right:none;border-bottom:1px solid rgba(0,0,0,.06);overflow-x:auto;-webkit-overflow-scrolling:touch;
+    position:sticky;top:0;z-index:20}
+  .v2-side::-webkit-scrollbar{display:none}
+  .v2-side .wm,.v2-side .grp,.v2-side .krow,.v2-side .sp,.v2-side .me .nm,.v2-side .me .rl{display:none}
+  .v2-side a.nav{white-space:nowrap;padding:9px 13px;min-height:40px;font-size:13px}
+  .v2-side .badge-n,.v2-side .badge-red{margin-left:6px}
+  .v2-side .me{border-top:none;margin:0 0 0 auto;padding:0 0 0 6px}
+  .v2-main{padding:18px 14px 70px}
+  .v2-h{flex-wrap:wrap;gap:8px}
+  .v2-h h1{font-size:21px}
+}
+
+/* headers */
+.v2-h{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.v2-h h1{font-size:23px;font-weight:700;letter-spacing:-.02em}
+.v2-h .sub{color:var(--muted);font-size:13px}
+.v2-h .sp{flex:1}
+.v2-lab{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2)}
+
+/* chips */
+.v2-chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.v2-chip{min-height:30px;padding:0 14px;border-radius:99px;border:1px solid var(--line-2);background:var(--card);
+  color:var(--ink-2);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;
+  transition:background-color .15s ease,border-color .15s ease,color .15s ease}
+.v2-chip:hover{border-color:var(--muted-2)}
+.v2-chip.on{background:var(--ink);color:#fbfbfd;border-color:var(--ink)}
+.v2-chip .n{font-family:var(--mono);font-size:11px;opacity:.65}
+.v2-chip.green{background:var(--go-tint);border-color:var(--go-line);color:var(--go)}
+.v2-chip.red{background:#fbf0ed;border-color:#e8cec6;color:var(--red)}
+
+/* buttons */
+.v2-btn{min-height:32px;padding:0 13px;border-radius:8px;border:1px solid var(--line-2);background:#fff;
+  color:var(--ink-2);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  transition:background-color .15s ease,border-color .15s ease,color .15s ease,transform .12s ease}
+.v2-btn:hover:not(:disabled){border-color:var(--muted-2);color:var(--ink)}
+.v2-btn:active:not(:disabled){transform:scale(.97)}
+.v2-btn:disabled{opacity:.45;cursor:not-allowed}
+.v2-btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
+.v2-btn.go:hover:not(:disabled){background:var(--accent-hi);border-color:var(--accent-hi);color:#fff}
+.v2-btn.goline{background:transparent;border-color:var(--accent-line);color:var(--accent)}
+.v2-btn.goline:hover:not(:disabled){background:var(--accent-tint);color:var(--accent);border-color:var(--accent-line)}
+/* completion, not action: "Sent", "Mark as cold", "logged" all read green */
+.v2-btn.doneline{background:#fff;border-color:var(--go-line);color:var(--go)}
+.v2-btn.doneline:hover:not(:disabled){background:var(--go-tint);color:var(--go);border-color:var(--go-line)}
+.v2-btn.dark{background:var(--ink);border-color:var(--ink);color:#fbfbfd}
+.v2-btn.dark:hover:not(:disabled){filter:brightness(1.35)}
+.v2-btn.dash{border-style:dashed;color:var(--muted);font-weight:500;background:transparent}
+.v2-btn.dash:hover{color:var(--ink-2)}
+.v2-btn.sm{min-height:27px;padding:0 11px;font-size:11.5px;border-radius:7px}
+
+/* inputs */
+.v2-in{min-height:34px;padding:7px 12px;background:#fff;border:1px solid var(--line-2);border-radius:8px;
+  color:var(--ink);font-size:13px;width:100%;
+  transition:border-color .16s ease, box-shadow .16s ease, background-color .16s ease}
+.v2-in:hover{border-color:var(--muted-2)}
+.v2-in:focus{border-color:var(--ink-3);box-shadow:0 0 0 3px rgba(33,31,27,.07)}
+/* native selects render differently on every OS — draw our own chevron so the
+   closed state matches the rest of the paper UI */
+select.v2-in{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:30px;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8375' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;background-size:14px}
+select.v2-in:hover{background-color:var(--rowsel)}
+/* the OPEN list of a native select is drawn by the OS (dark grey on macOS) and
+   cannot be styled — so on pointer devices we draw our own and keep the real
+   <select> underneath for state, change events and keyboard control */
+#v2-menu{position:fixed;z-index:200;background:var(--card);border:1px solid var(--line);border-radius:11px;
+  box-shadow:0 14px 38px -10px rgba(33,31,27,.32), 0 2px 6px rgba(33,31,27,.06);
+  padding:5px;max-height:min(58vh,340px);overflow-y:auto;min-width:150px;
+  animation:v2menu .13s ease-out}
+@keyframes v2menu{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+#v2-menu button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  padding:8px 10px 8px 8px;border-radius:8px;font:500 13px var(--font);color:var(--ink-2);
+  white-space:nowrap;cursor:pointer;transition:background-color .12s ease,color .12s ease}
+#v2-menu button:hover,#v2-menu button.cur{background:var(--divider);color:var(--ink)}
+#v2-menu button.on{color:var(--go-hi);font-weight:600}
+#v2-menu button.on:hover{background:var(--go-tint)}
+#v2-menu .tick{width:14px;height:14px;flex:none;opacity:0}
+#v2-menu button.on .tick{opacity:1}
+select.v2-in:disabled{opacity:.55;cursor:not-allowed}
+input[type=date].v2-in{cursor:pointer}
+textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
+
+/* cards + tables */
+.v2-card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  box-shadow:0 1px 2px rgba(0,0,0,.03);overflow:hidden}
+.v2-thead{display:grid;gap:10px;padding:9px 18px;font:600 10.5px var(--font);letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted-2);border-bottom:1px solid rgba(0,0,0,.055)}
+.v2-row{display:grid;gap:10px;padding:10px 18px;align-items:center;border-top:1px solid var(--divider);
+  transition:background-color .15s ease}
+.v2-row:first-of-type{border-top:none}
+.v2-row:hover{background:var(--rowsel)}
+.v2-scroll{overflow-x:auto}
+.v2-empty{padding:30px 18px;text-align:center;color:var(--muted)}
+
+/* semantic bits */
+.v2-age{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:11.5px;font-weight:600;
+  color:var(--ink-3);background:rgba(0,0,0,.05);border-radius:5px;padding:2px 6px}
+.v2-age.warn{color:var(--amber);background:var(--amber-tint)}
+.v2-age.late{color:var(--red);background:rgba(199,57,46,.09)}
+.v2-ai{display:inline-flex;align-items:center;gap:4px;font:600 10.5px var(--mono);color:var(--ai);
+  border:1px solid var(--ai-line);border-radius:99px;padding:1px 7px;white-space:nowrap}
+.v2-money{font-family:var(--mono);font-weight:600;color:var(--go)}
+
+/* toasts */
+.v2-toasts{position:fixed;z-index:80;bottom:26px;left:50%;transform:translateX(-50%);display:flex;
+  flex-direction:column;align-items:center;gap:9px;width:max-content;max-width:calc(100vw - 32px)}
+.v2-toast{display:flex;align-items:center;gap:14px;background:rgba(28,28,30,.88);color:#fbfbfd;
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:none;
+  border-radius:99px;padding:11px 12px 11px 18px;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.25);
+  animation:v2toast .34s cubic-bezier(.24,1.1,.32,1)}
+@keyframes v2toast{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+.v2-toast.err{background:rgba(146,44,35,.92);color:#fbfbfd}
+.v2-toast .sp{flex:1}
+.v2-toast button{background:rgba(255,255,255,.14);color:#F3C9C2;font-weight:600;font-size:12.5px;
+  padding:5px 12px;border-radius:99px}
+.v2-toast button:hover{background:rgba(255,255,255,.22)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<!--/baked:head-->
+</head>
+<body class="v2-shell">
+<!--baked:side--><nav class="v2-side"><div class="grp">TODAY</div><a class="nav" href="worklist.html" data-nav="worklist"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h11M3 12h11M3 18h7"/><path d="m17 15 2 2 4-4"/></svg>Today<span class="slot" data-slot="worklist"></span></a><a class="nav" href="assistant.html" data-nav="assistant"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H5l-2 2V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/></svg>Assistant<span class="slot" data-slot="assistant"></span></a><div class="grp gap">CLOSING</div><a class="nav" href="deals.html" data-nav="deals"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="3"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Deals<span class="slot" data-slot="deals"></span></a><div class="grp gap">LEAD BOOK</div><a class="nav" href="leads.html" data-nav="leads"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>All leads<span class="slot" data-slot="leads"></span></a><div class="grp gap">REVIEW</div><a class="nav" href="report.html" data-nav="report"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></svg>Dashboard<span class="slot" data-slot="report"></span></a><a class="nav" href="briefing.html" data-nav="briefing"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h13a2 2 0 0 1 2 2v13a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 8h7M8 12h7M8 16h4"/></svg>Briefing<span class="slot" data-slot="briefing"></span></a><div class="sp"></div><a class="nav on" href="settings.html"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H7a1.7 1.7 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V7a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
+<main class="v2-main colw">
+  <div class="demo-banner" id="demoBanner" hidden>DEMO — writes go nowhere</div>
+  <header class="v2-h">
+    <h1>Settings</h1>
+    <span class="sub" id="whoami"></span>
+  </header>
+
+  <div class="card">
+    <h2>Health</h2>
+    <ul class="rows" id="health"><li><span class="st off"></span><span class="k">Checking…</span></li></ul>
+  </div>
+
+  <div class="card">
+    <h2>Connections</h2>
+    <div class="blk">
+      <div class="nm">Call transcripts (Fireflies)</div>
+      <div class="hint" id="ff-sub">Calls are pulled every 45 minutes. For instant processing, save this webhook in Fireflies.</div>
+      <div class="urlbox">
+        <input class="v2-in" id="ff-url" readonly value="">
+        <button class="v2-btn" id="ff-copy">Copy</button>
+      </div>
+    </div>
+    <div class="blk">
+      <div class="nm">Team alerts (Slack)</div>
+      <div class="hint">Booked-lead pings + the morning call sheet.</div>
+      <div class="urlbox">
+        <input class="v2-in" id="slack-url" placeholder="https://hooks.slack.com/services/…" spellcheck="false">
+        <button class="v2-btn dark" id="slack-save">Save</button>
+        <button class="v2-btn" id="slack-test">Send test</button>
+      </div>
+      <div class="msg" id="slack-msg"></div>
+    </div>
+    <div class="blk">
+      <div class="nm">Calendly</div>
+      <div class="hint" id="cal-sub">Bookings are polled every 10 minutes and attached to deals automatically.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Team</h2>
+    <div class="sub">Sign-in sends each person to their own tool.</div>
+    <div class="blk" id="team"></div>
+    <div class="blk" style="padding-top:0">
+      <div class="urlbox">
+        <input class="v2-in" id="team-email" type="email" placeholder="add teammate email" spellcheck="false">
+        <select class="v2-in" id="team-role" style="width:auto"><option value="setter">Setter</option><option value="closer">Closer</option></select>
+        <button class="v2-btn" id="team-add">Add</button>
+      </div>
+      <div class="msg" id="team-msg"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Alert times</h2>
+    <div class="sub">When the two scheduled Slack messages land. Local time (Riga) — stays correct through daylight saving.</div>
+    <div class="blk" id="alerttimes"></div>
+    <div class="blk" style="padding-top:0">
+      <button class="v2-btn dark" id="times-save">Save times</button>
+      <span class="msg" id="times-msg" style="margin-left:10px"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Daily targets</h2>
+    <div class="sub">The Dashboard and the daily Slack report measure against these.</div>
+    <div class="blk" id="targets"></div>
+    <div class="blk"><div class="rule-row"><span class="k">Currency symbol<br>
+      <span style="color:var(--muted-2);font-size:11.5px">how deal values print on the Dashboard</span></span>
+      <input class="v2-in" id="currency" maxlength="4" style="max-width:90px"></div></div>
+    <div class="blk" style="padding-top:0">
+      <button class="v2-btn dark" id="targets-save">Save targets</button>
+      <span class="msg" id="targets-msg" style="margin-left:10px"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Worklist rules</h2>
+    <div class="sub">The queue reads these directly.</div>
+    <div class="blk" id="rules"></div>
+    <div class="blk" style="padding-top:0">
+      <button class="v2-btn dark" id="rules-save">Save rules</button>
+      <span class="msg" id="rules-msg" style="margin-left:10px"></span>
+    </div>
+  </div>
+
+  <div class="card" id="training">
+    <h2>AI training</h2>
+    <div class="sub">What the Assistant knows. The playbook is pre-loaded; add scripts, objection docs, anything — it reads every enabled doc on each reply.</div>
+    <ul class="rows" id="kn-list"><li><span class="k">Loading…</span></li></ul>
+    <div class="blk">
+      <div class="ff-row" style="margin-bottom:8px">
+        <input class="v2-in" id="kn-title" placeholder="doc title, e.g. Objection scripts v2" spellcheck="false">
+      </div>
+      <textarea class="v2-in" id="kn-content" rows="6" placeholder="paste the content…" style="width:100%;font-size:12.5px;font-family:var(--mono);resize:vertical"></textarea>
+      <div class="ff-row" style="margin-top:8px">
+        <button class="v2-btn dark" id="kn-save">Add doc</button>
+        <button class="v2-btn" id="kn-cancel" hidden>Cancel edit</button>
+        <span class="msg" id="kn-msg"></span>
+      </div>
+    </div>
+  </div>
+</main>
+
+
+<script type="module">
+import * as core from './crm-core.js?v=20260818b';
+const session = await core.requireAuth();
+if (session) {
+await core.installChrome({ active: 'settings' });
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+if (core.isDemo) $('demoBanner').hidden = false;
+
+
+/* ---------- health ---------- */
+function row(state, label, value, stale) {
+  return `<li class="${stale ? 'stale' : ''}"><span class="st ${state}"></span>` +
+    `<span class="k">${esc(label)}</span><span class="v">${esc(value)}</span></li>`;
+}
+(async () => {
+  const email = await core.userEmail();
+  $('whoami').textContent = email ? email + ' · ' + (await core.roleFor(email)) : '';
+})();
+async function health() {
+  const out = [];
+  if (core.isDemo) {
+    $('health').innerHTML = [
+      row('ok', 'Database', '13 leads · 42ms'),
+      row('ok', 'Deals', '6'),
+      row('ok', 'Fireflies poll', 'ok · 12 min ago'),
+      row('ok', 'Calendly poll', 'ok · 4 min ago'),
+      row('ok', 'Last write', 'demo · just now'),
+      row('off', 'Slack alerts', 'not set'),
+      row('ok', 'AI feedback collected', '3'),
+    ].join('');
+    return;
+  }
+  try {
+    const t0 = performance.now();
+    const { count: leads } = await core.supa.from('leads').select('id', { count: 'exact', head: true });
+    const ms = Math.round(performance.now() - t0);
+    out.push(row('ok', 'Database', `${leads} leads · ${ms}ms`));
+  } catch (e) { out.push(row('bad', 'Database', e.message)); }
+  try {
+    const { count: deals } = await core.supa.from('deals').select('id', { count: 'exact', head: true });
+    out.push(row('ok', 'Deals', String(deals)));
+  } catch (e) { out.push(row('bad', 'Deals', e.message)); }
+  // integration heartbeats: each poll upserts health_* with {at, ok, error} —
+  // a dead API key shows up here instead of failing silently forever
+  try {
+    const { data: hb } = await core.supa.from('settings').select('key,value')
+      .in('key', ['health_fireflies', 'health_calendly']);
+    const H = {};
+    for (const r of hb || []) { try { H[r.key] = JSON.parse(r.value); } catch (e) { /* raw */ } }
+    const beatRow = (label, b, staleMins) => {
+      if (!b || !b.at) return row('warn', label, 'no heartbeat yet', true);
+      const ageMin = (Date.now() - new Date(b.at).getTime()) / 6e4;
+      if (b.ok === false) return row('warn', label, 'failing — ' + (b.error || 'unknown error'), true);
+      if (ageMin > staleMins) return row('warn', label, 'STALE — last ran ' + core.relTime(b.at), true);
+      return row('ok', label, 'ok · ' + core.relTime(b.at));
+    };
+    out.push(beatRow('Fireflies poll', H.health_fireflies, 150));  // hourly job
+    out.push(beatRow('Calendly poll', H.health_calendly, 40));     // 10-min job
+  } catch (e) { out.push(row('bad', 'Integrations', e.message)); }
+  try {
+    const { data } = await core.supa.from('pending_calls').select('created_at').order('created_at', { ascending: false }).limit(1);
+    if (data && data.length) out.push(row('ok', 'Last matched call', core.relTime(data[0].created_at)));
+  } catch (e) { /* optional context row */ }
+  try {
+    const { data } = await core.supa.from('activity').select('created_at,actor').order('id', { ascending: false }).limit(1);
+    out.push(data && data.length
+      ? row('ok', 'Last write', `${(data[0].actor || '').split('@')[0]} · ${core.relTime(data[0].created_at)}`)
+      : row('warn', 'Activity', 'none yet'));
+  } catch (e) { out.push(row('bad', 'Activity', e.message)); }
+  try {
+    const { data } = await core.supa.from('settings').select('value').eq('key', 'slack_webhook').maybeSingle();
+    out.push(data && data.value ? row('ok', 'Slack alerts', 'configured') : row('off', 'Slack alerts', 'not set'));
+    if (data && data.value) $('slack-url').value = data.value;
+  } catch (e) { out.push(row('bad', 'Settings', e.message)); }
+  try {
+    const { count } = await core.supa.from('ai_feedback').select('id', { count: 'exact', head: true });
+    out.push(row('ok', 'AI feedback collected', String(count || 0)));
+  } catch (e) { /* table optional */ }
+  $('health').innerHTML = out.join('');
+}
+
+/* ---------- fireflies ----------
+   The webhook URL embeds a secret, so it must never live in this file (the
+   deployed repo is public). It's a settings row only signed-in users can read. */
+(async () => {
+  if (core.isDemo) { $('ff-url').value = 'https://…/functions/v1/ffwebhook?secret=demo'; return; }
+  try {
+    const { data } = await core.supa.from('settings').select('value').eq('key', 'ff_webhook_url').maybeSingle();
+    $('ff-url').value = (data && data.value) || 'unavailable — check settings.ff_webhook_url';
+  } catch (e) { $('ff-url').value = 'unavailable: ' + e.message; }
+})();
+$('ff-copy').onclick = async () => {
+  const v = $('ff-url').value;
+  try { await navigator.clipboard.writeText(v); $('ff-copy').textContent = 'Copied'; }
+  catch (e) { $('ff-url').select(); document.execCommand('copy'); $('ff-copy').textContent = 'Copied'; }
+  setTimeout(() => { $('ff-copy').textContent = 'Copy'; }, 1500);
+};
+
+/* ---------- slack ---------- */
+function msg(t, ok) { const m = $('slack-msg'); m.textContent = t; m.className = 'msg ' + (ok ? 'ok' : 'err'); }
+$('slack-save').onclick = async () => {
+  const v = $('slack-url').value.trim();
+  if (v && v.indexOf('https://hooks.slack.com/') !== 0) { msg('That doesn’t look like a Slack webhook URL.', false); return; }
+  try {
+    await core.supa.from('settings').upsert({ key: 'slack_webhook', value: v || null, updated_at: new Date().toISOString() });
+    msg(v ? 'Saved. Hit Test to confirm.' : 'Cleared — alerts off.', true);
+    health();
+  } catch (e) { msg('Save failed: ' + e.message, false); }
+};
+$('slack-test').onclick = async () => {
+  msg('Sending test…', true);
+  try {
+    const { data, error } = await core.supa.functions.invoke('alerts', { body: { type: 'test' } });
+    if (error) throw new Error(error.message);
+    if (data && data.ok) msg('Test sent — check the Slack channel.', true);
+    else msg((data && data.error) || 'Test failed.', false);
+  } catch (e) { msg('Test failed: ' + e.message, false); }
+};
+
+/* ---------- team roles ---------- */
+let teamRoles = {};
+function renderTeam() {
+  const emails = Object.keys(teamRoles).sort();
+  $('team').innerHTML = emails.length ? emails.map((em) =>
+    `<div class="team-row"><span class="em">${esc(em)}</span>` +
+    `<select class="v2-in" data-em="${esc(em)}">` +
+      `<option value="setter"${teamRoles[em] === 'setter' ? ' selected' : ''}>Setter</option>` +
+      `<option value="closer"${teamRoles[em] === 'closer' ? ' selected' : ''}>Closer</option>` +
+    `</select>` +
+    `<button class="v2-btn sm" data-rm="${esc(em)}">Remove</button></div>`).join('')
+    : '<div class="hint">No roles set — everyone lands on the Worklist.</div>';
+}
+async function saveTeam(msg) {
+  if (core.isDemo) { $('team-msg').className = 'msg err'; $('team-msg').textContent = 'Demo mode — nothing was saved.'; return; }
+  try {
+    await core.saveSetting('team_roles', teamRoles);
+    await core.loadSettings(true);
+    $('team-msg').className = 'msg ok'; $('team-msg').textContent = msg || 'Saved.';
+    renderTeam();
+  } catch (e) { $('team-msg').className = 'msg err'; $('team-msg').textContent = e.message; }
+}
+$('team').addEventListener('change', (e) => {
+  const sel = e.target.closest('[data-em]'); if (!sel) return;
+  teamRoles[sel.getAttribute('data-em')] = sel.value;
+  saveTeam('Role updated — takes effect at next sign-in.');
+});
+$('team').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-rm]'); if (!b) return;
+  delete teamRoles[b.getAttribute('data-rm')];
+  saveTeam('Removed.');
+});
+$('team-add').onclick = () => {
+  const em = $('team-email').value.trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) {
+    $('team-msg').className = 'msg err'; $('team-msg').textContent = 'That doesn’t look like an email.'; return;
+  }
+  teamRoles[em] = $('team-role').value;
+  $('team-email').value = '';
+  saveTeam('Added.');
+};
+
+/* ---------- worklist rules ---------- */
+const RULE_DEFS = [
+  ['overdueDays', 'Overdue after', 'days since last contact turns red'],
+  ['autoArchiveDays', 'Archive sweep after', 'days of silence flags a lead as dead'],
+  ['snoozeDays', 'Default snooze', 'days a snoozed lead stays hidden'],
+  ['noCloseResurfaceDays', 'No-close resurfaces after', 'days before it returns to the queue'],
+];
+let rules = {};
+function renderRules() {
+  $('rules').innerHTML = RULE_DEFS.map(([k, label, hint]) =>
+    `<div class="rule-row"><span class="k">${esc(label)}<br><span style="color:var(--muted-2);font-size:11.5px">${esc(hint)}</span></span>` +
+    `<input class="v2-in" type="number" min="1" max="365" data-r="${k}" value="${Number(rules[k]) || ''}"></div>`).join('');
+}
+$('rules-save').onclick = async () => {
+  if (core.isDemo) { $('rules-msg').className = 'msg err'; $('rules-msg').textContent = 'Demo mode — nothing was saved.'; return; }
+  const next = {};
+  let bad = '';
+  $('rules').querySelectorAll('[data-r]').forEach((i) => {
+    const n = parseInt(i.value, 10);
+    if (!Number.isFinite(n) || n < 1 || n > 365) bad = 'Values must be between 1 and 365.';
+    next[i.getAttribute('data-r')] = n;
+  });
+  if (bad) { $('rules-msg').className = 'msg err'; $('rules-msg').textContent = bad; return; }
+  try {
+    await core.saveSetting('worklist_rules', next);
+    await core.loadSettings(true);
+    rules = next;
+    $('rules-msg').className = 'msg ok'; $('rules-msg').textContent = 'Saved — the Worklist uses these now.';
+  } catch (e) { $('rules-msg').className = 'msg err'; $('rules-msg').textContent = e.message; }
+};
+
+/* ---------- alert times ---------- */
+const TIME_DEFS = [
+  ['morning', 'Morning call sheet', 'today’s calls + follow-ups due'],
+  ['report', 'Setter day report', 'yesterday’s numbers vs targets, the next morning'],
+];
+let alertTimes = {};
+function renderTimes() {
+  $('alerttimes').innerHTML = TIME_DEFS.map(([k, label, hint]) =>
+    `<div class="rule-row"><span class="k">${esc(label)}<br><span style="color:var(--muted-2);font-size:11.5px">${esc(hint)}</span></span>` +
+    `<input class="v2-in" type="time" step="900" data-time="${k}" value="${esc(alertTimes[k] || '')}" style="width:110px"></div>`).join('');
+}
+$('times-save').onclick = async () => {
+  if (core.isDemo) { $('times-msg').className = 'msg err'; $('times-msg').textContent = 'Demo mode — nothing was saved.'; return; }
+  const next = {}; let bad = '';
+  $('alerttimes').querySelectorAll('[data-time]').forEach((i) => {
+    const v = i.value;
+    if (!/^\d{2}:\d{2}$/.test(v)) { bad = 'Pick a time for both.'; return; }
+    // the scheduler ticks every 15 min, so a time it never lands on would never fire
+    const m = Number(v.slice(3));
+    if (m % 15 !== 0) { bad = 'Times must be on the quarter hour (:00, :15, :30, :45).'; return; }
+    next[i.getAttribute('data-time')] = v;
+  });
+  if (bad) { $('times-msg').className = 'msg err'; $('times-msg').textContent = bad; return; }
+  try {
+    await core.saveSetting('alert_times', next);
+    alertTimes = next;
+    $('times-msg').className = 'msg ok';
+    $('times-msg').textContent = 'Saved — call sheet ' + next.morning + ', day report ' + next.report + '.';
+  } catch (e) { $('times-msg').className = 'msg err'; $('times-msg').textContent = e.message; }
+};
+
+/* ---------- daily targets ---------- */
+const TARGET_DEFS = [
+  ['outreach', 'Cold DMs / day', 'outreach pool batch sends'],
+  ['followups', 'Follow-ups / day', 'logged contacts to existing leads'],
+  ['newLeads', 'New leads / day', 'profiles added — a week counts as 100 flat'],
+  ['booked', 'Meetings booked / day', 'leads handed to the closer — 0 = track only'],
+  ['closed', 'Closed deals / day', 'deals the closer won — 0 = track only'],
+];
+let targets = {};
+function renderTargets() {
+  $('targets').innerHTML = TARGET_DEFS.map(([k, label, hint]) =>
+    `<div class="rule-row"><span class="k">${esc(label)}<br><span style="color:var(--muted-2);font-size:11.5px">${esc(hint)}</span></span>` +
+    `<input class="v2-in" type="number" min="0" max="1000" data-t="${k}" value="${Number(targets[k]) || 0}"></div>`).join('');
+}
+$('targets-save').onclick = async () => {
+  if (core.isDemo) { $('targets-msg').className = 'msg err'; $('targets-msg').textContent = 'Demo mode — nothing was saved.'; return; }
+  const next = {}; let bad = '';
+  $('targets').querySelectorAll('[data-t]').forEach((i) => {
+    const n = parseInt(i.value, 10);
+    // 0 is legal: the metric still gets counted and charted, it just has no
+    // number to hit, so it stays out of the day's hit/miss verdict.
+    if (!Number.isFinite(n) || n < 0 || n > 1000) bad = 'Values must be between 0 and 1000.';
+    next[i.getAttribute('data-t')] = n;
+  });
+  if (bad) { $('targets-msg').className = 'msg err'; $('targets-msg').textContent = bad; return; }
+  const sym = $('currency').value.trim().slice(0, 4) || '\u20ac';
+  try {
+    await core.saveSetting('setter_targets', next);
+    await core.saveSetting('currency', sym);
+    await core.loadSettings(true);
+    targets = next;
+    $('targets-msg').className = 'msg ok'; $('targets-msg').textContent = 'Saved.';
+  } catch (e) { $('targets-msg').className = 'msg err'; $('targets-msg').textContent = e.message; }
+};
+
+(async () => {
+  const st = await core.loadSettings(true);
+  teamRoles = Object.assign({}, st.team_roles);
+  rules = Object.assign({}, st.worklist_rules);
+  targets = Object.assign({}, st.setter_targets);
+  $('currency').value = st.currency || '\u20ac';
+  // 'evening' is the old key for the report's time; read it so a stale row
+  // can't leave the field blank, but save under the new name
+  alertTimes = Object.assign({ morning: '08:00', report: '08:00' }, st.alert_times);
+  if (!st.alert_times || !st.alert_times.report) alertTimes.report = (st.alert_times && st.alert_times.evening) || '08:00';
+  renderTeam(); renderRules(); renderTargets(); renderTimes();
+})();
+
+/* ---------- AI training (the Assistant's knowledge) ---------- */
+let knEditing = null; // id being edited, or null = adding
+async function renderKn() {
+  const ul = $('kn-list');
+  try {
+    const docs = await core.knowledgeList();
+    ul.innerHTML = docs.length ? docs.map((d) =>
+      '<li><span class="k">' + esc(d.title) + '</span>' +
+      '<span class="v">' + Math.round(d.size / 1000) + 'k · ' + esc(String(d.updated_at || '').slice(0, 10)) + '</span>' +
+      '<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-3);cursor:pointer">' +
+        '<input type="checkbox" data-kn-on="' + d.id + '"' + (d.enabled ? ' checked' : '') + ' style="accent-color:var(--go)">on</label>' +
+      '<button class="v2-btn sm" data-kn-edit="' + d.id + '">Edit</button>' +
+      '<button class="v2-btn sm" data-kn-del="' + d.id + '" style="color:var(--red)">Delete</button></li>').join('')
+      : '<li><span class="k" style="color:var(--muted)">No docs yet — the assistant runs on the built-in playbook definitions only.</span></li>';
+  } catch (e) { ul.innerHTML = '<li><span class="k">Couldn’t load: ' + esc(e.message) + '</span></li>'; }
+}
+$('kn-list').addEventListener('click', async (e) => {
+  const ed = e.target.closest('[data-kn-edit]');
+  if (ed) {
+    try {
+      const doc = await core.knowledgeGet(+ed.getAttribute('data-kn-edit'));
+      knEditing = doc.id;
+      $('kn-title').value = doc.title; $('kn-content').value = doc.content;
+      $('kn-save').textContent = 'Save changes'; $('kn-cancel').hidden = false;
+      $('kn-title').scrollIntoView({ block: 'center' });
+    } catch (err) { $('kn-msg').textContent = err.message; }
+    return;
+  }
+  const del = e.target.closest('[data-kn-del]');
+  if (del) {
+    // deleting training is destructive and rare — one confirm is not clutter
+    if (!confirm('Delete this training doc? The assistant forgets it immediately.')) return;
+    try { await core.knowledgeDelete(+del.getAttribute('data-kn-del')); renderKn(); }
+    catch (err) { $('kn-msg').textContent = err.message; }
+  }
+});
+$('kn-list').addEventListener('change', async (e) => {
+  const cb = e.target.closest('[data-kn-on]'); if (!cb) return;
+  try { await core.knowledgeToggle(+cb.getAttribute('data-kn-on'), cb.checked); }
+  catch (err) { cb.checked = !cb.checked; $('kn-msg').textContent = err.message; }
+});
+$('kn-save').onclick = async () => {
+  const title = $('kn-title').value.trim(), content = $('kn-content').value.trim();
+  if (!title || !content) { $('kn-msg').textContent = 'Title and content required.'; return; }
+  $('kn-save').disabled = true; $('kn-msg').textContent = '';
+  try {
+    await core.knowledgeSave({ id: knEditing, title, content });
+    knEditing = null;
+    $('kn-title').value = ''; $('kn-content').value = '';
+    $('kn-save').textContent = 'Add doc'; $('kn-cancel').hidden = true;
+    $('kn-msg').textContent = 'Saved.';
+    renderKn();
+  } catch (err) { $('kn-msg').textContent = err.message; }
+  finally { $('kn-save').disabled = false; }
+};
+$('kn-cancel').onclick = () => {
+  knEditing = null;
+  $('kn-title').value = ''; $('kn-content').value = '';
+  $('kn-save').textContent = 'Add doc'; $('kn-cancel').hidden = true; $('kn-msg').textContent = '';
+};
+renderKn();
+
+health();
+}
+</script>
+</body>
+</html>

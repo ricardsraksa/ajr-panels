@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
+<link rel="modulepreload" href="./crm-core.js?v=20260818b">
+<link rel="modulepreload" href="./supabase-js.mjs?v=1">
+<link rel="preload" as="script" href="./parser.js">
+<style>html{background:#f0f0f3}</style>
+<script type="module" blocking="render">
+/* Chrome holds the OLD page's pixels until this resolves, then cross-fades to
+   the finished new page — the "every click opens a new browser" gap dies here.
+   Capped so a wedged script can only delay paint, never prevent it. */
+await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
+</script>
+<title>Log a lead · AJR</title>
+<style>
+.wrapc{max-width:720px}
+@media(max-width:760px){
+  /* the handle box was squeezed to ~170px between the mic and the scan button */
+  .srch{flex-wrap:wrap}
+  .srch #searchInput{flex:1 1 100%;order:-1;min-height:46px;font-size:16px} /* 16px stops iOS zooming on focus */
+  .srch .mic{order:1}
+  .srch #scanBtn{order:2;flex:1}
+  .ac{top:auto}
+}
+.srch{display:flex;gap:9px;align-items:center;margin-bottom:16px;position:relative}
+.srch input{flex:1}
+.ac{position:absolute;top:calc(100% + 5px);left:0;right:0;background:#fff;border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 12px 30px -14px rgba(33,31,27,.3);z-index:20;overflow:hidden;max-height:300px;overflow-y:auto}
+.ac div{padding:9px 13px;font-size:13px;cursor:pointer;display:flex;gap:9px;align-items:center}
+.ac div:hover,.ac div.on{background:var(--rowsel)}
+.ac .h{font-weight:600}
+.ac .m{color:var(--muted);font-size:12px;margin-left:auto}
+.lead-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+.lead-card .top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:5px}
+.lead-card .hh{font-size:15px;font-weight:700}
+.lead-card .meta{color:var(--ink-3);font-size:12.5px}
+.lead-card .note{color:var(--ink-2);font-size:12.5px;margin-top:2px}
+.sect{margin-bottom:15px}
+.sect > .v2-lab{display:block;margin-bottom:7px}
+.stg{display:flex;gap:7px;flex-wrap:wrap}
+.stg button{min-height:34px;padding:0 14px;border-radius:99px;border:1px solid var(--line-2);background:#fff;
+  font-size:12.5px;font-weight:500;color:var(--ink-2)}
+.stg button:hover{border-color:var(--muted);color:var(--ink)}
+.stg button.now{border:2px solid var(--ink);background:var(--side);color:var(--ink);font-weight:600}
+.stg button.booked{border-color:var(--go-line);color:var(--go)}
+.stg button.booked:hover{background:var(--go-tint)}
+.stg.sec button{color:var(--muted);font-size:12px}
+.chips-r{display:flex;gap:7px;flex-wrap:wrap}
+.chips-r button{min-height:30px;padding:0 12px;border-radius:99px;border:1px solid var(--line-2);background:#fff;
+  font-size:12px;color:var(--ink-2)}
+.chips-r button.on{background:var(--ink);border-color:var(--ink);color:var(--bg);font-weight:600}
+.chips-r button.hot.on{background:var(--amber-tint);border-color:var(--amber);color:var(--amber)}
+.conf{display:flex;align-items:center;gap:11px;flex-wrap:wrap;padding:13px 16px;border:1px solid var(--go-line);
+  border-radius:12px;background:var(--go-tint);margin-bottom:15px}
+.conf .sp{flex:1}
+.recent{margin-top:24px}
+.recent ul{list-style:none;margin-top:8px}
+.recent li{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--divider);font-size:12.5px;color:var(--ink-2)}
+.recent li:first-child{border-top:none}
+.recent .t{font-family:var(--mono);font-size:11.5px;color:var(--muted-2);flex:none}
+.recent .sp{flex:1}
+.mic{width:34px;height:34px;flex:none;border-radius:50%;background:var(--go);color:#fff;display:inline-flex;
+  align-items:center;justify-content:center;font-size:11px}
+.mic.on{background:var(--red);animation:pul 1.3s ease infinite}
+@keyframes pul{0%,100%{box-shadow:0 0 0 0 rgba(180,84,62,.4)}50%{box-shadow:0 0 0 9px rgba(180,84,62,0)}}
+.drop{position:fixed;inset:0;background:rgba(33,31,27,.45);z-index:75;display:flex;align-items:center;
+  justify-content:center;color:var(--bg);font-size:15px;font-weight:600}
+/* dead-token aliases still referenced by scripts */
+:root{--dim:var(--muted);--mono-font:var(--mono)}
+/* local scanner review cards (lc-*) */
+.lc-top{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.lc-h{flex:1;min-height:34px;padding:0 11px;background:#fff;border:1px solid var(--line-2);border-radius:8px;
+  color:var(--ink);font-weight:600;font-size:13.5px}
+.lc-x{width:30px;height:30px;border-radius:8px;color:var(--muted);display:inline-flex;align-items:center;
+  justify-content:center;cursor:pointer;background:none;border:none}
+.lc-x:hover{color:var(--red)}
+.lc-x svg{width:14px;height:14px}
+.lc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px}
+.lc-grid select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:28px;transition:border-color .16s ease, box-shadow .16s ease;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%238a8375%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27m6 9 6 6 6-6%27/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;background-size:13px}
+.lc-grid select:hover{border-color:var(--muted)}
+.lc-grid select:focus{border-color:var(--ink);outline:none;box-shadow:0 0 0 3px rgba(33,31,27,.07)}
+.lc-grid select{width:100%;min-height:32px;padding:4px 9px;background:#fff;border:1px solid var(--line-2);
+  border-radius:8px;color:var(--ink);font-size:12.5px}
+.lc-note{width:100%;min-height:32px;padding:5px 10px;background:#fff;border:1px solid var(--line-2);
+  border-radius:8px;color:var(--ink);font-size:12.5px}
+.sc-card .exists{font-size:11px;color:var(--amber);margin-top:6px}
+.thinking{padding:26px;text-align:center;color:var(--muted);font-size:13px}
+.recent-extra{color:var(--muted-2);font-size:11.5px}
+/* screenshot review modal */
+.modal{position:fixed;inset:0;background:rgba(33,31,27,.45);z-index:80;display:flex;align-items:flex-start;
+  justify-content:center;padding:40px 20px;overflow-y:auto}
+.modal .box{width:min(680px,100%);background:var(--bg);border:1px solid var(--line);border-radius:14px}
+.modal .mh{padding:18px 22px;border-bottom:1px solid var(--line)}
+.modal .mh h2{font-size:16px;font-weight:700}
+.modal .mh p{color:var(--muted);font-size:12.5px;margin-top:3px}
+.modal .mb{padding:16px 22px;display:flex;flex-direction:column;gap:11px}
+.modal .mf{padding:14px 22px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.modal .mf .sp{flex:1}
+.sc-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px}
+.sc-card.low{border-color:var(--amber)}
+.sc-card.dupe{opacity:.6}
+</style>
+<!--baked:head-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style id="v2-theme">
+@view-transition{navigation:auto}
+:root{
+  --bg:#f0f0f3; --side:rgba(251,251,253,.78); --card:#fbfbfd; --rowsel:rgba(0,0,0,.022);
+  --line:rgba(0,0,0,.07); --line-2:rgba(0,0,0,.12); --divider:rgba(0,0,0,.05);
+  --ink:#1d1d1f; --ink-2:#3a3a3c; --ink-3:#6e6e73; --muted:#6e6e73; --muted-2:#98989d; --off:#b9b9bf;
+  /* accent = the action colour (buttons, active nav, links, cursor row).
+     --go stays green and means money/success/done only. Splitting them is the
+     whole point: a "Log" button and "cash collected" are not the same idea. */
+  --accent:#B0544A; --accent-hi:#8F4238; --accent-tint:rgba(176,84,74,.07); --accent-line:rgba(176,84,74,.35);
+  --go:#1F7A4D; --go-hi:#17603C; --go-tint:rgba(31,122,77,.08); --go-line:rgba(31,122,77,.3); --done:rgba(31,122,77,.04);
+  --red:#C7392E; --amber:#9A6A00; --amber-tint:rgba(154,106,0,.09);
+  --ai:#7c56c9; --ai-line:#e2d9f4; --ai-tint:#f6f2fb;
+  --font:-apple-system,'SF Pro Text','SF Pro Display',system-ui,'Instrument Sans',sans-serif;
+  --mono:ui-monospace,'SF Mono','IBM Plex Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:var(--accent);text-decoration:none}
+a:hover{color:var(--accent-hi)}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+input::placeholder,textarea::placeholder{color:var(--off)}
+
+/* layout */
+.v2-shell{display:flex;min-height:100vh}
+.v2-side{width:228px;flex:none;border-right:1px solid rgba(0,0,0,.06);background:var(--side);padding:22px 12px 16px;
+  backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);
+  display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:100vh;
+  align-self:flex-start} /* flex would stretch it and break position:sticky */
+.v2-side .wm{font-weight:700;font-size:15px;letter-spacing:-.01em;padding:0 10px 18px}
+.v2-side .grp{font:600 10.5px var(--font);letter-spacing:.1em;color:var(--muted-2);padding:4px 10px}
+.v2-side .grp.gap{padding-top:14px}
+.v2-side a.nav{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;color:var(--ink-2);font-size:13.5px}
+.v2-side a.nav:hover{background:rgba(0,0,0,.045);color:var(--ink)}
+.v2-side a.nav .ic{flex:none;opacity:.62}
+.v2-side a.nav.on .ic{opacity:1}
+.v2-side a.nav.on{background:rgba(176,84,74,.1);color:var(--accent);font-weight:600}
+.v2-side a.nav.on:hover{background:rgba(176,84,74,.14);color:var(--accent)}
+.v2-side .badge-n{margin-left:auto;font:600 11.5px var(--mono);font-variant-numeric:tabular-nums;border-radius:99px;padding:0}
+.v2-side a.nav:not(.on) .badge-n{color:var(--muted-2)}
+.v2-side .badge-red{margin-left:auto;font-size:11px;color:var(--red);font-weight:600}
+.v2-side .badge-dot{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
+.v2-side .sp{flex:1}
+.v2-side .krow{display:flex;align-items:center;gap:8px;padding:8px 10px;color:var(--muted-2);font-size:12px;cursor:pointer}
+.v2-side .krow kbd{margin-left:auto;font:600 11px var(--mono);border:1px solid var(--line-2);border-radius:5px;padding:1px 6px;background:#fff;color:var(--ink-3)}
+.v2-side .me{display:flex;align-items:center;gap:9px;padding:10px 10px 2px;border-top:1px solid var(--line);margin-top:6px}
+.v2-side .me{border-top:1px solid rgba(0,0,0,.06)}
+.v2-side .me .av{width:27px;height:27px;border-radius:50%;background:var(--ink);color:#fbfbfd;display:inline-flex;
+  align-items:center;justify-content:center;font:600 11px var(--font);flex:none}
+.v2-side .me .nm{display:block;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v2-side .me .rl{display:block;font-size:11px;color:var(--muted-2)}
+.v2-side .me .out{margin-left:auto;color:var(--muted-2);font-size:11px}
+/* No global width cap. A reading width suits a chat or a queue and starves a
+   13-column table — pages that want one set .colw themselves. */
+.v2-main{flex:1;min-width:0;padding:30px 36px 80px}
+.colw{width:100%}
+@media(max-width:900px) and (min-width:761px){.v2-side{width:66px;padding:18px 8px}.v2-side .wm,.v2-side .grp,.v2-side .krow,.v2-side .me .nm,.v2-side .me .rl{display:none}}
+/* phone: the sidebar becomes a scrolling top strip. As a 64px rail it ate a
+   third of the screen and wrapped every label onto three lines. */
+@media(max-width:760px){
+  .v2-shell{display:block}
+  .v2-side{flex-direction:row;width:auto;height:auto;align-items:center;gap:6px;padding:8px 10px;
+    border-right:none;border-bottom:1px solid rgba(0,0,0,.06);overflow-x:auto;-webkit-overflow-scrolling:touch;
+    position:sticky;top:0;z-index:20}
+  .v2-side::-webkit-scrollbar{display:none}
+  .v2-side .wm,.v2-side .grp,.v2-side .krow,.v2-side .sp,.v2-side .me .nm,.v2-side .me .rl{display:none}
+  .v2-side a.nav{white-space:nowrap;padding:9px 13px;min-height:40px;font-size:13px}
+  .v2-side .badge-n,.v2-side .badge-red{margin-left:6px}
+  .v2-side .me{border-top:none;margin:0 0 0 auto;padding:0 0 0 6px}
+  .v2-main{padding:18px 14px 70px}
+  .v2-h{flex-wrap:wrap;gap:8px}
+  .v2-h h1{font-size:21px}
+}
+
+/* headers */
+.v2-h{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.v2-h h1{font-size:23px;font-weight:700;letter-spacing:-.02em}
+.v2-h .sub{color:var(--muted);font-size:13px}
+.v2-h .sp{flex:1}
+.v2-lab{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2)}
+
+/* chips */
+.v2-chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.v2-chip{min-height:30px;padding:0 14px;border-radius:99px;border:1px solid var(--line-2);background:var(--card);
+  color:var(--ink-2);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;
+  transition:background-color .15s ease,border-color .15s ease,color .15s ease}
+.v2-chip:hover{border-color:var(--muted-2)}
+.v2-chip.on{background:var(--ink);color:#fbfbfd;border-color:var(--ink)}
+.v2-chip .n{font-family:var(--mono);font-size:11px;opacity:.65}
+.v2-chip.green{background:var(--go-tint);border-color:var(--go-line);color:var(--go)}
+.v2-chip.red{background:#fbf0ed;border-color:#e8cec6;color:var(--red)}
+
+/* buttons */
+.v2-btn{min-height:32px;padding:0 13px;border-radius:8px;border:1px solid var(--line-2);background:#fff;
+  color:var(--ink-2);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  transition:background-color .15s ease,border-color .15s ease,color .15s ease,transform .12s ease}
+.v2-btn:hover:not(:disabled){border-color:var(--muted-2);color:var(--ink)}
+.v2-btn:active:not(:disabled){transform:scale(.97)}
+.v2-btn:disabled{opacity:.45;cursor:not-allowed}
+.v2-btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
+.v2-btn.go:hover:not(:disabled){background:var(--accent-hi);border-color:var(--accent-hi);color:#fff}
+.v2-btn.goline{background:transparent;border-color:var(--accent-line);color:var(--accent)}
+.v2-btn.goline:hover:not(:disabled){background:var(--accent-tint);color:var(--accent);border-color:var(--accent-line)}
+/* completion, not action: "Sent", "Mark as cold", "logged" all read green */
+.v2-btn.doneline{background:#fff;border-color:var(--go-line);color:var(--go)}
+.v2-btn.doneline:hover:not(:disabled){background:var(--go-tint);color:var(--go);border-color:var(--go-line)}
+.v2-btn.dark{background:var(--ink);border-color:var(--ink);color:#fbfbfd}
+.v2-btn.dark:hover:not(:disabled){filter:brightness(1.35)}
+.v2-btn.dash{border-style:dashed;color:var(--muted);font-weight:500;background:transparent}
+.v2-btn.dash:hover{color:var(--ink-2)}
+.v2-btn.sm{min-height:27px;padding:0 11px;font-size:11.5px;border-radius:7px}
+
+/* inputs */
+.v2-in{min-height:34px;padding:7px 12px;background:#fff;border:1px solid var(--line-2);border-radius:8px;
+  color:var(--ink);font-size:13px;width:100%;
+  transition:border-color .16s ease, box-shadow .16s ease, background-color .16s ease}
+.v2-in:hover{border-color:var(--muted-2)}
+.v2-in:focus{border-color:var(--ink-3);box-shadow:0 0 0 3px rgba(33,31,27,.07)}
+/* native selects render differently on every OS — draw our own chevron so the
+   closed state matches the rest of the paper UI */
+select.v2-in{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:30px;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8375' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;background-size:14px}
+select.v2-in:hover{background-color:var(--rowsel)}
+/* the OPEN list of a native select is drawn by the OS (dark grey on macOS) and
+   cannot be styled — so on pointer devices we draw our own and keep the real
+   <select> underneath for state, change events and keyboard control */
+#v2-menu{position:fixed;z-index:200;background:var(--card);border:1px solid var(--line);border-radius:11px;
+  box-shadow:0 14px 38px -10px rgba(33,31,27,.32), 0 2px 6px rgba(33,31,27,.06);
+  padding:5px;max-height:min(58vh,340px);overflow-y:auto;min-width:150px;
+  animation:v2menu .13s ease-out}
+@keyframes v2menu{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+#v2-menu button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  padding:8px 10px 8px 8px;border-radius:8px;font:500 13px var(--font);color:var(--ink-2);
+  white-space:nowrap;cursor:pointer;transition:background-color .12s ease,color .12s ease}
+#v2-menu button:hover,#v2-menu button.cur{background:var(--divider);color:var(--ink)}
+#v2-menu button.on{color:var(--go-hi);font-weight:600}
+#v2-menu button.on:hover{background:var(--go-tint)}
+#v2-menu .tick{width:14px;height:14px;flex:none;opacity:0}
+#v2-menu button.on .tick{opacity:1}
+select.v2-in:disabled{opacity:.55;cursor:not-allowed}
+input[type=date].v2-in{cursor:pointer}
+textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
+
+/* cards + tables */
+.v2-card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  box-shadow:0 1px 2px rgba(0,0,0,.03);overflow:hidden}
+.v2-thead{display:grid;gap:10px;padding:9px 18px;font:600 10.5px var(--font);letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted-2);border-bottom:1px solid rgba(0,0,0,.055)}
+.v2-row{display:grid;gap:10px;padding:10px 18px;align-items:center;border-top:1px solid var(--divider);
+  transition:background-color .15s ease}
+.v2-row:first-of-type{border-top:none}
+.v2-row:hover{background:var(--rowsel)}
+.v2-scroll{overflow-x:auto}
+.v2-empty{padding:30px 18px;text-align:center;color:var(--muted)}
+
+/* semantic bits */
+.v2-age{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:11.5px;font-weight:600;
+  color:var(--ink-3);background:rgba(0,0,0,.05);border-radius:5px;padding:2px 6px}
+.v2-age.warn{color:var(--amber);background:var(--amber-tint)}
+.v2-age.late{color:var(--red);background:rgba(199,57,46,.09)}
+.v2-ai{display:inline-flex;align-items:center;gap:4px;font:600 10.5px var(--mono);color:var(--ai);
+  border:1px solid var(--ai-line);border-radius:99px;padding:1px 7px;white-space:nowrap}
+.v2-money{font-family:var(--mono);font-weight:600;color:var(--go)}
+
+/* toasts */
+.v2-toasts{position:fixed;z-index:80;bottom:26px;left:50%;transform:translateX(-50%);display:flex;
+  flex-direction:column;align-items:center;gap:9px;width:max-content;max-width:calc(100vw - 32px)}
+.v2-toast{display:flex;align-items:center;gap:14px;background:rgba(28,28,30,.88);color:#fbfbfd;
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:none;
+  border-radius:99px;padding:11px 12px 11px 18px;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.25);
+  animation:v2toast .34s cubic-bezier(.24,1.1,.32,1)}
+@keyframes v2toast{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+.v2-toast.err{background:rgba(146,44,35,.92);color:#fbfbfd}
+.v2-toast .sp{flex:1}
+.v2-toast button{background:rgba(255,255,255,.14);color:#F3C9C2;font-weight:600;font-size:12.5px;
+  padding:5px 12px;border-radius:99px}
+.v2-toast button:hover{background:rgba(255,255,255,.22)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<!--/baked:head-->
+</head>
+<body class="v2-shell">
+<!--baked:side--><nav class="v2-side"><div class="grp">TODAY</div><a class="nav on" href="worklist.html" data-nav="worklist"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h11M3 12h11M3 18h7"/><path d="m17 15 2 2 4-4"/></svg>Today<span class="slot" data-slot="worklist"></span></a><a class="nav" href="assistant.html" data-nav="assistant"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H5l-2 2V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/></svg>Assistant<span class="slot" data-slot="assistant"></span></a><div class="grp gap">CLOSING</div><a class="nav" href="deals.html" data-nav="deals"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="3"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>Deals<span class="slot" data-slot="deals"></span></a><div class="grp gap">LEAD BOOK</div><a class="nav" href="leads.html" data-nav="leads"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>All leads<span class="slot" data-slot="leads"></span></a><div class="grp gap">REVIEW</div><a class="nav" href="report.html" data-nav="report"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></svg>Dashboard<span class="slot" data-slot="report"></span></a><a class="nav" href="briefing.html" data-nav="briefing"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h13a2 2 0 0 1 2 2v13a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 8h7M8 12h7M8 16h4"/></svg>Briefing<span class="slot" data-slot="briefing"></span></a><div class="sp"></div><a class="nav" href="settings.html"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H7a1.7 1.7 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V7a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Settings</a><div class="krow" id="v2-k">Search / say it<kbd>⌘K</kbd></div><div class="me"><span class="av" id="v2-av">·</span><span style="min-width:0"><span class="nm" id="v2-nm">…</span><span class="rl" id="v2-rl"></span></span><button class="out" id="v2-out" title="Sign out">↩</button></div></nav><!--/baked:side-->
+<main class="v2-main wrapc">
+
+  <header class="v2-h">
+    <h1>Log a lead</h1>
+    <span class="sub"><span id="metaCount">—</span> leads · <span id="metaDate">—</span></span>
+    <span class="sp"></span>
+    <button class="v2-btn sm" id="refreshBtn" disabled>Refresh</button>
+  </header>
+
+  <section id="skeleton" class="v2-card" style="padding:30px;text-align:center;color:var(--muted)" hidden>Loading…</section>
+  <section id="loadError" class="v2-card" style="padding:24px;text-align:center" hidden>
+    <p id="loadErrorMsg" style="margin-bottom:12px;color:var(--muted)">Couldn’t load.</p>
+    <button class="v2-btn" id="loadRetry">Retry</button>
+  </section>
+
+  <div id="app" hidden>
+    <div id="viewUpdate">
+      <div class="srch">
+        <input class="v2-in" id="searchInput" type="text" placeholder="Search a handle, or say what happened…"
+               autocomplete="off" spellcheck="false">
+        <button class="mic" id="micBtn" hidden aria-label="Speak">●</button>
+        <button class="v2-btn dash" id="scanBtn" type="button">Paste screenshot ⌘V</button>
+        <input id="scanFile" type="file" accept="image/*" hidden>
+        <div class="ac" id="acList" hidden></div>
+      </div>
+      <div class="v2-lab" id="voiceHint" hidden style="margin:-8px 0 12px">listening…</div>
+
+      <div class="lead-card" id="armChip" hidden></div>
+
+      <div class="conf" id="confirmBar" hidden>
+        <span class="v2-ai">AI</span>
+        <span id="confirmText"></span>
+        <span class="sp"></span>
+        <button class="v2-btn go sm" id="confirmBtn">Confirm</button>
+        <button class="v2-btn sm" id="cancelBtn">Edit</button>
+      </div>
+
+      <div class="sect">
+        <span class="v2-lab">Move stage</span>
+        <div class="stg" role="group" aria-label="Primary stages">
+          <button data-stage="Engaged 1">Engaged 1</button>
+          <button data-stage="Engaged 2">Engaged 2</button>
+          <button data-stage="Engaged 3">Engaged 3</button>
+          <button class="booked" data-stage="Booked">Booked</button>
+          <button data-stage="Archive">Archive</button>
+        </div>
+        <div class="stg sec" role="group" aria-label="Secondary stages" style="margin-top:7px">
+          <button data-stage="No Close">No Close</button>
+          <button data-stage="No Reply">No Reply</button>
+          <button data-stage="Closed">Closed</button>
+        </div>
+      </div>
+
+      <div class="sect">
+        <span class="v2-lab">Status</span>
+        <div class="chips-r" id="statusChips"></div>
+      </div>
+
+      <div class="sect">
+        <input class="v2-in" id="noteInput" type="text" placeholder="Quick note…" autocomplete="off">
+      </div>
+
+      <div style="display:flex;gap:9px;align-items:center">
+        <button class="v2-btn go" id="logBtn" disabled><span id="logBtnLabel">Log it</span></button>
+      </div>
+
+      <div class="recent">
+        <span class="v2-lab">Recent</span>
+        <ul id="recentList"></ul>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="drop" id="dropOver" hidden>Drop the screenshot to read it</div>
+
+<div class="modal" id="scanModal" hidden>
+  <div class="box">
+    <div class="mh" style="display:flex;align-items:flex-start;gap:10px">
+      <div style="flex:1"><h2 id="scanTitle">Screenshot → leads</h2>
+        <p id="scanSub">AI reads the handles — edit anything before adding.</p></div>
+      <button class="v2-btn sm" id="scanClose">×</button>
+    </div>
+    <div class="mb" id="scanBody"></div>
+    <div class="mf">
+      <span id="scanCount" style="color:var(--muted);font-size:12.5px"></span>
+      <span class="sp"></span>
+      <button class="v2-btn" id="scanCancel">Cancel</button>
+      <button class="v2-btn go" id="scanAdd">Add leads</button>
+    </div>
+  </div>
+</div>
+
+
+<script src="./parser.js"></script>
+<script type="module">
+import * as core from './crm-core.js?v=20260818b';
+const session = await core.requireAuth();
+if (session) {
+await core.installChrome({ active: 'log-lead' });
+
+var $ = function (id) { return document.getElementById(id); };
+
+var PRIMARY = ['Engaged 1', 'Engaged 2', 'Engaged 3', 'Booked', 'Archive'];
+var SECONDARY = ['No Close', 'No Reply', 'Closed'];
+var ALL_STAGES = PRIMARY.concat(SECONDARY);
+var LEVEL_COLORS = {
+  'Engaged 1': '#a9a9b1', 'Engaged 2': '#c9c9cf', 'Engaged 3': '#e9e9ec',
+  'Booked': '#8ee59a', 'No Close': '#d99a9a', 'Archive': '#6e6e78', 'No Reply': '#8a8a92', 'Closed': '#c9c9cf'
+};
+
+var state = {
+  demo: false,
+  leads: [],                 // raw bootstrap rows
+  byHandle: new Map(),       // handle -> bottom-most lead row (mirrors server duplicate rule)
+  unique: [],                // deduped leads in sheet order
+  statuses: [],
+  serverDate: '',
+  armed: null,               // {mode:'existing',lead} | {mode:'new',handle} | {mode:'hint'}
+  selectedStatus: '',
+  pending: null,             // parsed utterance awaiting confirm
+  busy: false,
+  acResults: [], acIndex: -1, acOpen: false,
+  listening: false
+};
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function squash(s) { return String(s || '').replace(/[\s._]/g, ''); }
+function newReqId() { return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function daysSince(dmy) {
+  var d = CRMParse.parseDMY(dmy);
+  var ref = CRMParse.parseDMY(state.serverDate) || new Date();
+  if (!d) return null;
+  return Math.round((ref - d) / 864e5);
+}
+function daysBadge(dmy) {
+  var n = daysSince(dmy);
+  if (n === null) return '<span class="v2-age late">never</span>';
+  return '<span class="v2-age ' + core.ageClass(n) + '">' + (n <= 0 ? 'today' : n + 'd') + '</span>';
+}
+function canonIn(list, v) {
+  if (!v) return null;
+  var t = String(v).trim().toLowerCase();
+  for (var i = 0; i < list.length; i++) if (list[i].toLowerCase() === t) return list[i];
+  return null;
+}
+
+/* ---------- toasts ---------- */
+var toast = core.toast;
+
+/* ---------- data layer: Supabase via crm-core ---------- */
+function api(action, payload) {
+  if (action === 'bootstrap') {
+    return core.bootstrap().then(function (d) {
+      setDot('ok');
+      return { ok: true, serverDate: d.serverDate, leads: d.leads,
+        stages: core.STAGES.slice(), statuses: core.STATUSES.slice() };
+    }).catch(function (e) { setDot('err'); throw e; });
+  }
+  if (action === 'setterUpdate') {
+    return core.setterUpdate(payload).then(function (r) { setDot('ok'); return r; })
+      .catch(function (e) { setDot('err'); throw e; });
+  }
+  if (action === 'interpret') {
+    return core.interpret(payload.text, payload.mode, payload.deal)
+      .then(function (r) { setDot('ok'); return r; })
+      .catch(function (e) { setDot('err'); throw e; });
+  }
+  throw new Error('unknown action ' + action);
+}
+function setDot() { /* v2 chrome has no status dot */ }
+
+/* ---------- bootstrap ---------- */
+function runBootstrap(firstLoad) {
+  var btn = $('refreshBtn');
+  btn.disabled = true; btn.classList.add('spinning');
+  if (firstLoad) { $('skeleton').hidden = false; $('loadError').hidden = true; $('app').hidden = true; }
+  api('bootstrap').then(function (data) {
+    state.serverDate = data.serverDate || '';
+    state.leads = data.leads || [];
+    state.statuses = data.statuses || [];
+    buildIndex();
+    $('metaDate').textContent = state.serverDate || '—';
+    $('metaCount').textContent = String(state.leads.length);
+    renderStatusChips();
+    updateLogBtn();
+    $('skeleton').hidden = true; $('loadError').hidden = true; $('app').hidden = false;
+    if (state.deepLead) { $('searchInput').value = state.deepLead; state.deepLead = ''; }
+    applyQuery($('searchInput').value);
+    if (state.deepSay) { var say = state.deepSay; state.deepSay = ''; $('searchInput').value = say; aiInterpret(say); }
+    if (firstLoad) $('searchInput').focus();
+  }).catch(function (err) {
+    if (firstLoad || $('app').hidden) {
+      $('skeleton').hidden = true;
+      $('loadError').hidden = false;
+      $('loadErrorMsg').textContent = 'Couldn’t load leads: ' + err.message;
+    } else {
+      toast({ type: 'err', html: 'Refresh failed: ' + esc(err.message), sticky: true,
+        action: { label: 'Retry', fn: function () { runBootstrap(false); } } });
+    }
+  }).finally(function () {
+    btn.disabled = false; btn.classList.remove('spinning');
+  });
+}
+
+function buildIndex() {
+  state.byHandle = new Map();
+  state.leads.forEach(function (l) { state.byHandle.set(l.h, l); }); // later rows win = bottom-most
+  state.unique = [];
+  var seen = new Set();
+  state.leads.forEach(function (l) {
+    if (!seen.has(l.h)) { seen.add(l.h); state.unique.push(state.byHandle.get(l.h)); }
+  });
+}
+
+/* ---------- status chips ---------- */
+function renderStatusChips() {
+  var box = $('statusChips');
+  box.innerHTML = '';
+  state.selectedStatus = '';
+  state.statuses.forEach(function (s) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = s;
+    b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', function () { selectStatus(state.selectedStatus === s ? '' : s); });
+    box.appendChild(b);
+  });
+  box.parentNode.hidden = state.statuses.length === 0;
+}
+function selectStatus(s) {
+  state.selectedStatus = s;
+  if ($('logBtnLabel')) updateLogBtn();
+  var chips = $('statusChips').children;
+  for (var i = 0; i < chips.length; i++) {
+    var on = chips[i].textContent === s;
+    chips[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+    chips[i].classList.toggle('on', on);
+  }
+}
+
+/* ---------- search / autocomplete / arming ---------- */
+function searchLeads(q) {
+  var qs = squash(q);
+  var out = [];
+  state.unique.forEach(function (l) {
+    var rank = -1;
+    if (l.h === q) rank = 0;
+    else if (l.h.indexOf(q) === 0) rank = 1;
+    else if (l.h.indexOf(q) !== -1) rank = 2;
+    else if (qs && squash(l.h).indexOf(qs) !== -1) rank = 3;
+    if (rank >= 0) out.push({ rank: rank, lead: l });
+  });
+  out.sort(function (a, b) { return a.rank - b.rank || a.lead.h.localeCompare(b.lead.h); });
+  return out.slice(0, 8).map(function (r) { return r.lead; });
+}
+
+function applyQuery(raw) {
+  var q = CRMParse.normalizeHandle(raw);
+  if (!q) {
+    state.armed = null;
+    renderChip(); closeAc();
+    return;
+  }
+  var exact = state.byHandle.get(q);
+  if (exact) state.armed = { mode: 'existing', lead: exact };
+  else if (/\s/.test(q)) state.armed = { mode: 'hint', handle: q };
+  else state.armed = { mode: 'new', handle: q };
+  renderChip();
+  renderAc(searchLeads(q));
+  updateLogBtn();
+}
+
+function renderChip() {
+  var chip = $('armChip');
+  var a = state.armed;
+  if (!a) { chip.hidden = true; chip.innerHTML = ''; return; }
+  chip.hidden = false;
+  chip.className = 'lead-card';
+  if (a.mode === 'existing') {
+    var l = a.lead;
+    var dups = state.leads.filter(function (x) { return x.h === l.h; }).length;
+    chip.innerHTML = '<div class="top">' +
+        '<span class="hh">@' + esc(l.h) + '</span>' +
+        (l.url ? '<a href="' + esc(l.url) + '" target="_blank" rel="noopener" style="font-size:12.5px">open profile ↗</a>' : '') +
+      '</div>' +
+      '<div class="meta">' + esc(l.level || 'no level') +
+        (l.status ? ' · ' + esc(l.status) : '') +
+        (l.lastContact ? ' · ' + daysBadge(l.lastContact) + ' since contact' : '') +
+        (l.qual ? ' · ' + esc(l.qual) : '') +
+        (dups > 1 ? ' · ' + dups + ' rows' : '') + '</div>' +
+      (l.notes ? '<div class="note">' + esc(l.notes) + '</div>' : '');
+  } else if (a.mode === 'new') {
+    chip.innerHTML = '<div class="top"><span class="hh">@' + esc(a.handle) + '</span>' +
+      '<span class="v2-ai" style="color:var(--go);border-color:var(--go-line)">new</span></div>' +
+      '<div class="meta">Not in the CRM yet — pick a stage to create it.</div>';
+  } else {
+    chip.innerHTML = '<div class="meta">Press Enter to run this command.</div>';
+  }
+}
+
+function renderAc(results) {
+  state.acResults = results;
+  state.acIndex = -1;
+  var list = $('acList');
+  if (!results.length) { closeAc(); return; }
+  list.innerHTML = results.map(function (l, i) {
+    return '<div class="ac-item" id="ac-opt-' + i + '" role="option" aria-selected="false" data-i="' + i + '">' +
+      '<span class="h">@' + esc(l.h) + '</span>' +
+      '<span style="color:var(--ink-3);font-size:12px">' + esc(l.level || '—') + '</span>' +
+      '<span class="m">' + esc(l.status || '') + (l.lastContact ? ' · ' + esc(l.lastContact) : '') + '</span>' +
+      '</div>';
+  }).join('');
+  list.hidden = false;
+  state.acOpen = true;
+  $('searchInput').setAttribute('aria-expanded', 'true');
+}
+
+function closeAc() {
+  $('acList').hidden = true;
+  $('acList').innerHTML = '';
+  state.acOpen = false;
+  state.acIndex = -1;
+  $('searchInput').setAttribute('aria-expanded', 'false');
+  $('searchInput').removeAttribute('aria-activedescendant');
+}
+
+function moveAc(delta) {
+  if (!state.acOpen) { applyQuery($('searchInput').value); if (!state.acOpen) return; }
+  var n = state.acResults.length;
+  state.acIndex = (state.acIndex + delta + n) % n;
+  var items = $('acList').children;
+  for (var i = 0; i < items.length; i++) {
+    items[i].classList.toggle('active', i === state.acIndex);
+    items[i].setAttribute('aria-selected', i === state.acIndex ? 'true' : 'false');
+  }
+  items[state.acIndex].scrollIntoView({ block: 'nearest' });
+  $('searchInput').setAttribute('aria-activedescendant', 'ac-opt-' + state.acIndex);
+}
+
+function pickLead(lead) {
+  $('searchInput').value = lead.h;
+  state.armed = { mode: 'existing', lead: lead };
+  renderChip();
+  closeAc();
+  updateLogBtn();
+}
+
+/* ---------- AI: natural sentences -> interpret (mode:'setter') ---------- */
+function aiBadge() {
+  return '<span style="display:inline-flex;align-items:center;gap:4px;color:var(--dim);font:600 10.5px var(--mono-font);letter-spacing:.06em;text-transform:uppercase;margin-right:6px">' +
+    '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.8 15.9 9 18.75l-.8-2.85a4.5 4.5 0 0 0-3.1-3.1L2.25 12l2.85-.8a4.5 4.5 0 0 0 3.1-3.1L9 5.25l.8 2.85a4.5 4.5 0 0 0 3.1 3.1L15.75 12l-2.85.8a4.5 4.5 0 0 0-3.1 3.1Z"/></svg>Claude</span>';
+}
+var aiBusy = false;
+function aiInterpret(text) {
+  if (aiBusy) return;
+  aiBusy = true;
+  var chip = $('armChip');
+  chip.hidden = false; chip.className = 'lead-card';
+  chip.innerHTML = aiBadge() + ' <span>Reading…</span>';
+  var armed = state.armed && state.armed.mode === 'existing' ? state.armed.lead.h : '';
+  api('interpret', { text: text, mode: 'setter', deal: armed || undefined })
+    .then(function (res) {
+      var cmd = CRMParse.intentToCommand(res.intent, {
+        now: new Date(), leads: state.unique, closing: [], statuses: state.statuses
+      });
+      if (cmd.route !== 'setter' || !cmd.setter.handle) {
+        renderChip();
+        toast({ html: aiBadge() + (cmd.route === 'closer'
+          ? 'That sounds like a sales-call update — that’s Reinis’s Log-the-call tool.'
+          : esc((cmd.hint || 'Couldn’t tell what to update — name the lead and what changed.'))), ttl: 6000 });
+        return;
+      }
+      var st = cmd.setter;
+      if (!st.stage && !st.status && !st.notes) {
+        renderChip();
+        toast({ html: aiBadge() + 'Heard the lead but no change — say a stage, status or note.', ttl: 5000 });
+        return;
+      }
+      var isNew = !state.byHandle.get(st.handle);
+      if (isNew && !st.stage) {
+        renderChip();
+        toast({ html: aiBadge() + '<span class="mono">@' + esc(st.handle) + '</span> isn’t a lead yet — include a stage (e.g. “engaged 1”) to create it.', ttl: 6000 });
+        return;
+      }
+      $('searchInput').value = st.handle;
+      applyQuery(st.handle);
+      if (st.status) selectStatus(canonIn(state.statuses, st.status) || '');
+      if (st.notes) $('noteInput').value = st.notes;
+      state.pending = { handle: st.handle, stage: st.stage, status: st.status, isNew: isNew, ai: true,
+        note: st.notes, why: st.stage === 'Booked' ? ' · pings Reinis on WhatsApp' : '' };
+      showConfirmBar();
+    })
+    .catch(function (err) {
+      renderChip();
+      if (/not configured/i.test(err.message)) {
+        toast({ html: 'AI isn’t configured — use “handle stage”, e.g. “oscarwxng engaged 2”.', ttl: 6000 });
+      } else {
+        toast({ type: 'err', html: 'Couldn’t read that: ' + esc(err.message), ttl: 6000 });
+      }
+    })
+    .finally(function () { aiBusy = false; });
+}
+
+/* ---------- utterance parse (typed Enter or voice final) ---------- */
+function tryUtterance(text) {
+  var r = CRMParse.parseSetterUtterance(text, { leads: state.unique });
+  if (!r || !r.handle) return false;
+  var stage = canonIn(ALL_STAGES, r.stage);
+  var match = (r.matches && r.matches.length) ? r.matches[0] : null;
+  if (r.matches && r.matches.length > 1) {
+    toast({ html: r.matches.length + ' leads match — using <span class="mono">@' + esc(match.h) + '</span>. Check before confirming.', ttl: 5000 });
+  }
+  // keep dots/underscores for genuinely new handles; squash only joins spoken spaces
+  var handle = match ? match.h : (r.handle.indexOf(' ') === -1 ? r.handle : squash(r.handle));
+  if (!stage) {
+    if (r.stage) {
+      toast({ type: 'err', html: 'Didn’t recognize stage “' + esc(r.stage) + '” — say e.g. “engaged 2” or “booked”.' });
+      return true;
+    }
+    if (match) { pickLead(match); return true; } // plain handle utterance: just arm it
+    return false;
+  }
+  var status = canonIn(state.statuses, r.status) || r.status || '';
+  if (canonIn(state.statuses, r.status)) selectStatus(canonIn(state.statuses, r.status));
+  $('searchInput').value = handle;
+  applyQuery(handle);
+  state.pending = { handle: handle, stage: stage, status: status, isNew: !state.byHandle.get(handle) };
+  showConfirmBar();
+  return true;
+}
+
+function showConfirmBar() {
+  var p = state.pending;
+  markStage(p.stage);
+  var effStatus = p.status || state.selectedStatus;
+  $('confirmText').innerHTML =
+    (p.ai ? aiBadge() : '') +
+    (p.isNew ? '<span class="tag-new" style="color:#0b1f10;background:#8ee59a;padding:1px 8px;border-radius:999px;font-size:.72rem;font-weight:700">NEW</span> ' : '') +
+    '<span class="mono">@' + esc(p.handle) + '</span> → <span class="mono">' + esc(p.stage) + '</span>' +
+    (effStatus ? ' · ' + esc(effStatus) : '') +
+    (p.note ? ' · <span class="opt">“' + esc(p.note.length > 40 ? p.note.slice(0, 40) + '…' : p.note) + '”</span>' : '') +
+    (p.why ? '<span class="opt">' + esc(p.why) + '</span>' : '');
+  $('confirmBar').hidden = false;
+  $('confirmBtn').focus();
+}
+
+function hideConfirmBar() {
+  state.pending = null;
+  $('confirmBar').hidden = true;
+  markStage(null);
+}
+
+function markStage(stage) {
+  document.querySelectorAll('.stg button').forEach(function (b) {
+    b.classList.toggle('now', !!stage && b.dataset.stage === stage);
+  });
+}
+
+/* ---------- the ONE action: write ---------- */
+function setBusy(v) {
+  state.busy = v;
+  document.querySelectorAll('.stg button, #confirmBtn').forEach(function (b) { b.disabled = v; });
+}
+
+function doWrite(args) {
+  if (state.busy) return;
+  setBusy(true);
+  var payload = { handle: args.handle };
+  if (args.stage) payload.stage = args.stage;
+  if (args.status) payload.status = args.status;
+  if (args.note) payload.note = args.note;
+  api('setterUpdate', payload).then(function (res) {
+    var extras = [];
+    if (args.status) extras.push(args.status);
+    if (args.note) extras.push('note saved');
+    var html = (res.mode === 'created' ? 'Created ' : '') +
+      '<span class="mono">@' + esc(res.handle) + '</span>' +
+      (args.stage ? ' → <span class="mono">' + esc(args.stage) + '</span>' : ' logged') +
+      (extras.length ? ' (' + esc(extras.join(', ')) + ')' : '') +
+      (args.stage ? '' : ' — stage unchanged') + ', contact date stamped.';
+    // the booked ping now fires centrally in core (ensureDealForLead), so every
+    // path that books a lead alerts the channel — nothing to do here.
+    var undoAction = (res.mode === 'updated' && res.prev)
+      ? { label: 'Undo', fn: function () { undoWrite(res); } } : null;
+    toast({ type: 'ok', html: html, ttl: 8000, action: undoAction });
+    addRecent(res, args);
+    applyWriteLocally(res, args);
+    resetAction();
+  }).catch(function (err) {
+    toast({ type: 'err', html: 'Write failed: ' + esc(err.message), sticky: true,
+      action: { label: 'Retry', fn: function () { doWrite(args); } } });
+  }).finally(function () { setBusy(false); });
+}
+
+function undoWrite(res) {
+  core.undoWrite(res.undo)
+    .then(function () {
+      var l = state.byHandle.get(res.handle);
+      if (l) {
+        l.level = res.prev.level; l.status = res.prev.last_status;
+        l.lastContact = core.isoToDmy(res.prev.last_contact);
+      }
+      toast({ type: 'ok', html: 'Undone — <span class="mono">@' + esc(res.handle) + '</span> restored to ' + esc(res.prev.level || 'no level') + '.' });
+    })
+    .catch(function (err) {
+      toast({ type: 'err', html: 'Undo failed: ' + esc(err.message), sticky: true });
+    });
+}
+
+function applyWriteLocally(res, args) {
+  if (res.mode === 'updated') {
+    var l = state.byHandle.get(res.handle);
+    if (!l) return;
+    if (args.stage) l.level = args.stage;
+    if (args.status) l.status = args.status;
+    l.lastContact = state.serverDate;
+    return;
+  }
+  {
+    var nl = {
+      h: res.handle, url: 'https://www.instagram.com/' + res.handle + '/',
+      level: args.stage || '', status: args.status || '',
+      qual: '', notes: args.note || '', lastContact: state.serverDate
+    };
+    state.leads.push(nl);
+    state.byHandle.set(nl.h, nl);
+    state.unique.push(nl);
+    $('metaCount').textContent = String(state.leads.length);
+  }
+}
+
+function resetAction() {
+  $('searchInput').value = '';
+  state.armed = null;
+  renderChip(); closeAc(); hideConfirmBar();
+  // the status chip stays STICKY for batch logging; the note is per-lead
+  $('noteInput').value = '';
+  updateLogBtn();
+  $('searchInput').focus();
+}
+
+/* ---------- recent actions ---------- */
+var recent = [];
+function addRecent(res, args) {
+  recent.unshift({
+    row: res.row, handle: res.handle, mode: res.mode, stage: args.stage,
+    status: args.status || '',
+    time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  });
+  var list = $('recentList');
+  list.innerHTML = recent.map(function (r) {
+    var extras = [r.status].filter(Boolean).join(', ');
+    return '<li class="recent-item">' +
+      '<span class="recent-row-num">row ' + esc(r.row) + '</span>' +
+      '<span class="recent-handle">@' + esc(r.handle) + '</span>' +
+      '<span>→ ' + esc(r.stage || (r.status ? 'logged' : 'updated')) + '</span>' +
+      (extras ? '<span class="recent-extra">' + esc(extras) + '</span>' : '') +
+      '<span class="recent-mode ' + esc(r.mode) + '">' + esc(r.mode) + '</span>' +
+      '<span class="recent-time">' + esc(r.time) + '</span>' +
+      '</li>';
+  }).join('');
+}
+
+/* ---------- voice ---------- */
+var SRCls = window.SpeechRecognition || window.webkitSpeechRecognition;
+var recog = null;
+
+function initVoice() {
+  if (!SRCls) {
+    $('voiceHint').textContent = 'Use your keyboard’s dictation key to talk.';
+    return;
+  }
+  $('micBtn').hidden = false;
+  $('voiceHint').textContent = '“moved oscar to engaged 2, story reply, asked about pricing”';
+  $('micBtn').addEventListener('click', function () {
+    if (state.listening) { recog.stop(); return; }
+    recog = new SRCls();
+    recog.lang = 'en-US';
+    recog.interimResults = true;
+    recog.continuous = false;
+    recog.maxAlternatives = 1;
+    var finalText = '';
+    recog.onstart = function () {
+      state.listening = true;
+      $('micBtn').classList.add('listening');
+      $('micBtn').setAttribute('aria-pressed', 'true');
+    };
+    recog.onresult = function (e) {
+      var text = '';
+      for (var i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
+      text = text.trim();
+      $('searchInput').value = text;
+      applyQuery(text);
+      if (e.results[e.results.length - 1].isFinal) finalText = text;
+    };
+    recog.onerror = function (e) { toast({ type: 'err', html: esc(voiceErrorHint(e.error)), ttl: 7000 }); };
+    recog.onend = function () {
+      state.listening = false;
+      $('micBtn').classList.remove('listening');
+      $('micBtn').setAttribute('aria-pressed', 'false');
+      if (finalText && !tryUtterance(finalText)) aiInterpret(finalText);
+    };
+    try { recog.start(); } catch (err) { toast({ type: 'err', html: 'Mic couldn’t start — try again.' }); }
+  });
+}
+
+function voiceErrorHint(code) {
+  var safari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  switch (code) {
+    case 'not-allowed':
+    case 'service-not-allowed':
+      return safari
+        ? 'Mic blocked. On Safari enable Siri & Dictation in system settings, or use your keyboard’s mic key.'
+        : 'Mic access blocked — allow the microphone for this site, or use your keyboard’s mic key.';
+    case 'no-speech': return 'Didn’t hear anything — tap the mic and speak.';
+    case 'audio-capture': return 'No microphone found on this device.';
+    case 'network': return 'Speech service unreachable — use your keyboard’s mic key instead.';
+    default: return 'Voice error (' + code + ') — use your keyboard’s mic key instead.';
+  }
+}
+
+/* ---------- stage / log actions (guards live here) ---------- */
+function stageAction(stage) {
+  var a = state.armed;
+  if (!a || a.mode === 'hint') {
+    if (a && a.mode === 'hint' && tryUtterance($('searchInput').value)) return;
+    toast({ html: 'Couldn’t tell which lead — pick one from the list first.', ttl: 3000 });
+    $('searchInput').focus();
+    return;
+  }
+  var needsConfirm = false;
+  var why = '';
+  if (a.mode === 'new') {
+    needsConfirm = true; // creating a row deserves one deliberate confirm
+    var similar = searchLeads(a.handle).slice(0, 2).map(function (l) { return '@' + l.h; });
+    why = similar.length ? ' · similar: ' + similar.join(', ') : '';
+  } else if (stage === 'Booked') {
+    needsConfirm = true; why = ' · creates the deal handoff';
+  } else if (a.lead.level === 'Closed' && stage !== 'Closed') {
+    needsConfirm = true; why = ' · this lead is CLOSED';
+  }
+  var args = {
+    handle: a.mode === 'existing' ? a.lead.h : a.handle,
+    stage: stage,
+    status: state.selectedStatus,
+    note: $('noteInput').value.trim()
+  };
+  if (needsConfirm) {
+    state.pending = { handle: args.handle, stage: stage, status: args.status, isNew: a.mode === 'new', why: why, note: args.note };
+    showConfirmBar();
+    return;
+  }
+  hideConfirmBar();
+  doWrite(args);
+}
+
+function logAction() {
+  var a = state.armed;
+  if (!a || a.mode !== 'existing') {
+    toast({ html: 'Pick a lead first.', ttl: 3000 });
+    return;
+  }
+  doWrite({
+    handle: a.lead.h,
+    status: state.selectedStatus || 'Follow up Sent',
+    note: $('noteInput').value.trim()
+  });
+}
+
+function updateLogBtn() {
+  var a = state.armed;
+  var st = state.selectedStatus || 'Follow up Sent';
+  $('logBtnLabel').textContent = 'Log “' + st + '” · keep stage';
+  $('logBtn').disabled = !(a && a.mode === 'existing') || state.busy;
+}
+
+/* ---------- events ---------- */
+function bindEvents() {
+  var input = $('searchInput');
+
+  input.addEventListener('input', function () {
+    if (state.pending) hideConfirmBar(); // editing invalidates a parsed command
+    var v = input.value;
+    if (v.indexOf('instagram.com') !== -1) {
+      var h = CRMParse.normalizeHandle(v);
+      if (h) { input.value = h; v = h; }
+    }
+    applyQuery(v);
+  });
+
+  input.addEventListener('keydown', function (e) {
+    if (!$('confirmBar').hidden) return; // document-level handler owns Enter/Esc then
+    if (e.key === 'ArrowDown') { e.preventDefault(); moveAc(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); moveAc(-1); }
+    else if (e.key === 'Escape') { closeAc(); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      // don't let this same keystroke bubble to the document handler and
+      // auto-confirm the bar it just opened — confirming takes its own Enter
+      e.stopPropagation();
+      if (state.acOpen && state.acIndex >= 0) pickLead(state.acResults[state.acIndex]);
+      else if (!tryUtterance(input.value) && input.value.trim().indexOf(' ') !== -1) aiInterpret(input.value.trim());
+    }
+  });
+
+  input.addEventListener('blur', function () {
+    setTimeout(closeAc, 150); // let option mousedown land first
+  });
+
+  $('acList').addEventListener('mousedown', function (e) {
+    var li = e.target.closest('.ac-item');
+    if (!li) return;
+    e.preventDefault();
+    pickLead(state.acResults[Number(li.dataset.i)]);
+  });
+
+  document.querySelectorAll('.stg button').forEach(function (btn) {
+    btn.addEventListener('click', function () { stageAction(btn.dataset.stage); });
+  });
+
+  $('confirmBtn').addEventListener('click', function () {
+    var p = state.pending;
+    if (!p) return;
+    if (!p.stage && p.isNew) { toast({ type: 'err', html: 'New lead needs a stage first.' }); return; }
+    hideConfirmBar();
+    doWrite({ handle: p.handle, stage: p.stage, status: p.status || state.selectedStatus, note: p.note || $('noteInput').value.trim() });
+  });
+  $('cancelBtn').addEventListener('click', function () {
+    hideConfirmBar();
+    $('searchInput').focus();
+  });
+
+  core.pageListen(document, 'keydown', function (e) {
+    if ($('confirmBar').hidden) return;
+    if (e.key === 'Enter' && e.target !== $('confirmBtn') && e.target !== $('cancelBtn')) {
+      e.preventDefault();
+      $('confirmBtn').click();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      $('cancelBtn').click();
+    }
+  });
+
+  $('refreshBtn').addEventListener('click', function () { runBootstrap(false); });
+  $('loadRetry').addEventListener('click', function () { runBootstrap(true); });
+
+  $('logBtn').addEventListener('click', logAction);
+
+  // keyboard shortcuts when not typing: 1/2/3 stages, B/A/N/C, F = log, Esc = clear
+  core.pageListen(document, 'keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) {
+      if (e.key === 'Escape') { resetAction(); }
+      return;
+    }
+    if (!$('confirmBar').hidden) return; // bar owns Enter/Esc
+    var map = { '1': 'Engaged 1', '2': 'Engaged 2', '3': 'Engaged 3', 'b': 'Booked', 'a': 'Archive', 'n': 'No Reply', 'c': 'Closed' };
+    var k = e.key.toLowerCase();
+    if (map[k] && state.armed) { e.preventDefault(); stageAction(map[k]); }
+    else if (k === 'f' && state.armed) { e.preventDefault(); logAction(); }
+    else if (e.key === 'Escape') { resetAction(); }
+  });
+
+  var hiddenAt = null;
+  core.pageListen(document, 'visibilitychange', function () {
+    if (document.hidden) { hiddenAt = Date.now(); return; }
+    if (hiddenAt && Date.now() - hiddenAt > 5 * 60 * 1000 && !$('app').hidden) runBootstrap(true);
+    hiddenAt = null;
+  });
+
+}
+
+/* ---------- init ---------- */
+function start() {
+  var qp = new URLSearchParams(location.search);
+  state.deepLead = qp.get('lead') || '';
+  state.deepSay = qp.get('say') || '';
+  runBootstrap(true);
+}
+/* ---------- screenshot -> leads (vision) ---------- */
+var scanLeads = [];
+function fileToB64(file) {
+  return new Promise(function (resolve, reject) {
+    var r = new FileReader();
+    r.onload = function () { var s = String(r.result); resolve({ b64: s.slice(s.indexOf(',') + 1), type: file.type || 'image/jpeg' }); };
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+function openScanModal() { $('scanModal').classList.add('on'); }
+function closeScanModal() { $('scanModal').classList.remove('on'); scanLeads = []; }
+function scanThinking() {
+  openScanModal();
+  $('scanTitle').textContent = 'Reading screenshot…';
+  $('scanAdd').disabled = true;
+  $('scanBody').innerHTML = '<div class="thinking">Claude is reading the image…</div>';
+}
+async function handleImage(file) {
+  if (!file || file.type.indexOf('image/') !== 0) return;
+  if (file.size > 7 * 1024 * 1024) { toast({ type: 'err', html: 'Image too big (max 7 MB).' }); return; }
+  scanThinking();
+  try {
+    var img = await fileToB64(file);
+    var res = await core.visionScan(img.b64, img.type);
+    var leads = (res.leads || []).filter(function (l) { return (l.handle || l.name || '').trim(); });
+    if (!leads.length) { $('scanBody').innerHTML = '<div class="thinking">No leads found in that image.</div>'; $('scanTitle').textContent = 'Leads from screenshot'; return; }
+    renderScan(leads);
+  } catch (e) {
+    $('scanBody').innerHTML = '<div class="thinking">Couldn\'t read that: ' + esc(e.message) + '</div>';
+    $('scanTitle').textContent = 'Leads from screenshot';
+  }
+}
+function opts(list, sel, blank) {
+  return (blank ? '<option value="">' + blank + '</option>' : '') +
+    list.map(function (o) { return '<option' + (o === sel ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('');
+}
+function renderScan(leads) {
+  scanLeads = leads;
+  $('scanTitle').textContent = leads.length + ' lead' + (leads.length === 1 ? '' : 's') + ' found';
+  $('scanAdd').disabled = false;
+  $('scanBody').innerHTML = leads.map(function (l, i) {
+    // never let a display name become a handle; try to match it instead
+    var handle = CRMParse.normalizeHandle(l.handle) || '';
+    var shownName = (l.name || '').trim();
+    var matched = (!handle && shownName) ? core.makeNameResolver(state.leads)(shownName) : '';
+    if (matched) handle = matched;
+    l._suggested = { handle: handle, stage: l.stage || 'Engaged 1', status: canonIn(state.statuses, l.status) || l.status || '', notes: l.notes || '' };
+    var exists = state.byHandle.get(CRMParse.normalizeHandle(handle));
+    return '<div class="sc-card" data-i="' + i + '">' +
+      '<div class="lc-top"><input class="lc-h" data-f="handle" value="' + esc(handle) + '" placeholder="' + (shownName ? esc(shownName) + ' — type their @handle' : 'handle') + '">' +
+        '<button class="lc-x" data-rm="' + i + '" aria-label="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18 18 6M6 6l12 12"/></svg></button></div>' +
+      '<div class="lc-grid">' +
+        '<select data-f="stage">' + opts(['Engaged 1','Engaged 2','Engaged 3','Booked','No Reply'], l.stage || 'Engaged 1') + '</select>' +
+        '<select data-f="status">' + opts(state.statuses, canonIn(state.statuses, l.status) || l.status, 'Status —') + '</select>' +
+        '</div>' +
+      '<input class="lc-note" data-f="notes" value="' + esc(l.notes || '') + '" placeholder="note">' +
+      (matched ? '<div class="exists">matched “' + esc(shownName) + '” to @' + esc(matched) + '</div>' : '') +
+      (!handle ? '<div class="exists">only a display name was visible — add the @handle or this one is skipped</div>' : '') +
+      (l.confidence && l.confidence !== 'high' ? '<div class="exists">low confidence — double-check this one</div>' : '') +
+      (exists ? '<div class="exists">already a lead — this updates @' + esc(exists.h) + '</div>' : '') +
+      '</div>';
+  }).join('');
+  Array.prototype.forEach.call($('scanBody').querySelectorAll('[data-rm]'), function (b) {
+    b.onclick = function () {
+      var card = b.closest('.sc-card'); card.remove();
+      if (!$('scanBody').querySelector('.sc-card')) closeScanModal();
+    };
+  });
+}
+async function addScanned() {
+  var cards = [].slice.call($('scanBody').querySelectorAll('.sc-card'));
+  if (!cards.length) return;
+  $('scanAdd').disabled = true; $('scanAdd').textContent = 'Adding…';
+  var added = 0, updated = 0, failed = 0;
+  for (var i = 0; i < cards.length; i++) {
+    var card = cards[i];
+    var g = function (f) { var el = card.querySelector('[data-f="' + f + '"]'); return el ? el.value.trim() : ''; };
+    var handle = CRMParse.normalizeHandle(g('handle'));
+    if (!handle) { failed++; continue; }
+    try {
+      var orig = scanLeads[+card.getAttribute('data-i')];
+      var res = await api('setterUpdate', { handle: handle, stage: g('stage'), status: g('status'), note: g('notes'),
+        name: (orig && orig.name || '').trim() });
+      if (res.mode === 'created') added++; else updated++;
+      if (orig && orig._suggested) {
+        core.logAiFeedback('vision', handle, orig._suggested,
+          { handle: handle, stage: g('stage'), status: g('status'), notes: g('notes') });
+      }
+      applyWriteLocally(res, { handle: handle, stage: g('stage'), status: g('status'), note: g('notes') });
+      pushRecentFromScan(res, handle, g('stage'));
+    } catch (e) { failed++; }
+  }
+  $('scanAdd').disabled = false; $('scanAdd').textContent = 'Add leads';
+  closeScanModal();
+  var parts = [];
+  if (added) parts.push(added + ' added');
+  if (updated) parts.push(updated + ' updated');
+  if (failed) parts.push(failed + ' failed');
+  toast({ type: failed && !added && !updated ? 'err' : 'ok', html: 'Screenshot: ' + parts.join(', ') + '.', ttl: 7000 });
+}
+function pushRecentFromScan(res, handle, stage) {
+  if (typeof addRecent === 'function') addRecent(res, { handle: handle, stage: stage });
+}
+function bindScan() {
+  // 'Paste ⌘V' is meaningless on a phone; the same button opens the camera roll
+  if (matchMedia('(max-width: 760px)').matches) $('scanBtn').textContent = 'Add screenshot';
+  $('scanBtn').addEventListener('click', function () { $('scanFile').click(); });
+  $('scanFile').addEventListener('change', function (e) { if (e.target.files[0]) handleImage(e.target.files[0]); e.target.value = ''; });
+  $('scanClose').addEventListener('click', closeScanModal);
+  $('scanCancel').addEventListener('click', closeScanModal);
+  $('scanAdd').addEventListener('click', addScanned);
+  $('scanModal').addEventListener('mousedown', function (e) { if (e.target === $('scanModal')) closeScanModal(); });
+  // paste an image
+  core.pageListen(window, 'paste', function (e) {
+    var items = (e.clipboardData && e.clipboardData.items) || [];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].type && items[i].type.indexOf('image/') === 0) { e.preventDefault(); handleImage(items[i].getAsFile()); return; }
+    }
+  });
+  // drag & drop
+  var over = $('dropOver'), depth = 0;
+  core.pageListen(window, 'dragenter', function (e) { if (e.dataTransfer && [].indexOf.call(e.dataTransfer.types, 'Files') !== -1) { depth++; over.classList.add('on'); } });
+  core.pageListen(window, 'dragover', function (e) { if (over.classList.contains('on')) e.preventDefault(); });
+  core.pageListen(window, 'dragleave', function () { depth = Math.max(0, depth - 1); if (!depth) over.classList.remove('on'); });
+  core.pageListen(window, 'drop', function (e) {
+    if (!over.classList.contains('on')) return;
+    e.preventDefault(); depth = 0; over.classList.remove('on');
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) handleImage(f);
+  });
+}
+
+function boot() {
+  if (typeof window.CRMParse === 'undefined') {
+    document.querySelector('.v2-main').insertAdjacentHTML('beforeend',
+      '<section class="v2-card" style="padding:20px;color:var(--red)">parser.js failed to load — ' +
+      'the page can’t run without it.</section>');
+    return;
+  }
+  initVoice();
+  bindEvents();
+  bindScan();
+  core.installPalette({ leads: function () { return state.unique; }, onLead: function (l) { pickLead(l); } });
+  start();
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+}
+</script>
+</body>
+</html>
