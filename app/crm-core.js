@@ -225,7 +225,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260820b';
+const BUILD = '20260820c';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -2236,11 +2236,22 @@ export function stripHedges(v) {
     .filter((x) => !NOTE_JUNK.some((re) => re.test(x)));
   return parts.join('. ').replace(/\.\.+/g, '.').trim().replace(/\s*\.\s*$/, '');
 }
+/** Notes are read cold weeks later; a wall of lowercase fragments reads like
+ *  machine output. Every sentence opens with a capital — except a first word
+ *  that is deliberately lowercase: an @handle, a url, or an IG-style name
+ *  ('kayla.growth wants pricing' must not become 'Kayla.growth'). */
+export function capSentences(v) {
+  return String(v || '').replace(/(^|[.!?]\s+)(\S+)/g, (m, lead, word) => {
+    if (/^(@|https?:)/i.test(word) || /[._]/.test(word)) return m;
+    return lead + word.charAt(0).toUpperCase() + word.slice(1);
+  });
+}
 export function cleanNote(v) {
   const out = stripHedges(v);
-  // a note with no digit, no capitalised name and under ~4 words is filler
+  // a note with no digit, no capitalised name and under ~4 words is filler.
+  // Runs BEFORE capSentences — on capitalised text this check never fires.
   if (out && out.length < 22 && !/\d/.test(out) && !/[A-Z][a-z]{2,}/.test(out)) return '';
-  return out.replace(/\s*\.\s*$/, '');
+  return capSentences(out.replace(/\s*\.\s*$/, ''));
 }
 
 /* Notes exist from Engaged 2 up — before business talk starts there is

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260820b">
+<link rel="modulepreload" href="./crm-core.js?v=20260820c">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f0f0f3}</style>
 <script type="module" blocking="render">
@@ -330,7 +330,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260820b';
+import * as core from './crm-core.js?v=20260820c';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'assistant' });
@@ -530,7 +530,7 @@ function dropKnown(u, l) {
   // the full treatment including the E2+ stage gate.
   u.note = core.noteAllowed(u.level || (l && l.level) || '') ? core.cleanNote(u.note || '') : '';
   u.deal_note = core.cleanNote(u.deal_note || '');
-  u.pains = core.stripHedges(u.pains || '');
+  u.pains = core.capSentences(core.stripHedges(u.pains || ''));
   // deal proposals only exist for leads that HAVE an open deal
   const deal = l ? core.dealForLead(book.deals, l) : null;
   if (!deal || ['Closed', 'No Close'].includes(deal.status)) {
