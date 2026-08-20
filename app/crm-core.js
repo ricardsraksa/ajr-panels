@@ -225,7 +225,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260820d';
+const BUILD = '20260820e';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -258,7 +258,7 @@ export async function loadLeads() {
   const hit = _ttlGet(BOOK_KEY);
   if (hit) return hit;
   const out = await pagedSelect('leads',
-    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,followed_ts,ig_status,ig_last_post,ig_name,outreach_hidden,prospected_at,pain_points,email,phone,linkedin,lp,lp_quality,lp_used,story_seen_at,snoozed_until');
+    'id,handle,ig_url,level,last_status,qualification,notes,last_contact,date_added,followed_at,followed_ts,ig_status,ig_last_post,ig_name,outreach_hidden,prospected_at,pain_points,email,phone,linkedin,lp,lp_quality,lp_used,story_seen_at,snoozed_until,convo_log');
   const mapped = out.map((l) => ({
     id: l.id, h: l.handle, url: l.ig_url || '',
     level: l.level || '', status: l.last_status || '',
@@ -273,6 +273,7 @@ export async function loadLeads() {
     lp: !!l.lp, lpQuality: l.lp_quality || '', lpUsed: !!l.lp_used,
     storySeenAt: l.story_seen_at || '',
     snoozedUntil: l.snoozed_until || '',   // device-independent snooze (was localStorage)
+    convoLog: l.convo_log || '',   // the assistant's own memory of the DM thread
   }));
   _ttlSet(BOOK_KEY, mapped);
   return mapped;
@@ -1708,6 +1709,10 @@ export async function leadContextBlock(lead, deals) {
     lead.lastContact ? 'Last contact: ' + lead.lastContact : '',
     lead.pains ? 'Pain points: ' + lead.pains : '',
     lead.notes ? 'Notes:\n' + lead.notes : '',
+    // the tail of the running DM digest — enough to reference, capped so a
+    // long-lived lead can't crowd out the playbook
+    lead.convoLog ? 'CONVERSATION LOG (your own memory of this DM thread, oldest first):\n'
+      + lead.convoLog.split('\n').slice(-40).join('\n').slice(-4000) : '',
   ].filter(Boolean);
   const deal = dealForLead(deals || [], lead);
   if (deal) {
@@ -1732,6 +1737,28 @@ export async function leadContextBlock(lead, deals) {
   return bits.join('\n');
 }
 
+/** Append one dated entry to a lead's conversation log — the assistant's own
+ *  memory of the DM thread, built from the screenshots it reads. Mechanical
+ *  record-keeping, not lead data: no confirm chip, silent, append-only.
+ *  Capped at ~200 lines so a year-old lead doesn't carry megabytes. */
+export async function appendConvo(lead, entry) {
+  const text = String(entry || '').trim();
+  if (!text || !lead) return { ok: false };
+  const stamp = '[' + todayDmy().slice(0, 5) + '] ';
+  const joined = ((lead.convoLog ? lead.convoLog + '\n' : '') + stamp + text)
+    .split('\n').slice(-200).join('\n');
+  if (DEMO) {
+    const hit = _demo.leads.find((x) => x.id === lead.id);
+    if (hit) hit.convoLog = joined;
+    lead.convoLog = joined;
+    return { ok: true };
+  }
+  const { error } = await supa.from('leads').update({ convo_log: joined }).eq('id', lead.id);
+  if (error) throw new Error(error.message);
+  lead.convoLog = joined;
+  return { ok: true };
+}
+
 /** One assistant turn. messages: Anthropic-shaped [{role, content:[...]}]. */
 export async function assistChat(messages, leadContext) {
   if (DEMO) {
@@ -1742,7 +1769,8 @@ export async function assistChat(messages, leadContext) {
       updates: { qual: 'Qualified 2', level: 'Engaged 3', status: 'Mid convo',
         pains: 'Email barely converts, under 10% of revenue. No time to manage flows himself.',
         note: 'launching second store (mentioned April)', angle: 'weak flows, ~10%/mo from email',
-        deal_status: 'Followup', deal_followup: '', deal_note: 'partner signs off on retainers, call agreed after their launch' } };
+        deal_status: 'Followup', deal_followup: '', deal_note: 'partner signs off on retainers, call agreed after their launch' },
+      convo: 'He anchored on price before seeing value. Richard pulled it toward a free audit call.' };
   }
   const { data, error } = await supa.functions.invoke('assist',
     { body: { messages, leadContext: leadContext || '' } });

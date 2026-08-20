@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260820d">
+<link rel="modulepreload" href="./crm-core.js?v=20260820e">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f0f0f3}</style>
 <script type="module" blocking="render">
@@ -330,7 +330,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260820d';
+import * as core from './crm-core.js?v=20260820e';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'assistant' });
@@ -609,10 +609,18 @@ async function send() {
       const lvl = u.level || (leadFor(detected || chat) || {}).level || '';
       u.note = core.noteAllowed(lvl) ? core.cleanNote(u.note) : '';
     }
+    // The convo entry is the assistant's own memory of the DM thread — silent,
+    // append-only record-keeping, not a proposal: it never touches stage,
+    // status or notes, so it doesn't need (or get) a confirm chip.
+    const convoLead = leadFor(detected || chat);
+    const convoEntry = core.capSentences(String(res.convo || '').trim());
+    if (convoLead && convoEntry && !saysNothingNew(convoEntry, convoLead.convoLog)) {
+      core.appendConvo(convoLead, convoEntry).catch(() => { /* memory, not critical */ });
+    }
     // A proposal earns its card by CHANGING something. The model restates the
     // CRM constantly — same qual it was told in the context, pains reworded —
     // and every restatement costs a human decision that changes nothing.
-    dropKnown(u, leadFor(detected || chat));
+    dropKnown(u, convoLead);
     const hasU = Object.values(u).some((v) => String(v || '').trim());
     if (hasU && reply) { t.handle = detected || chat; t.updates = u; }
     if (!t.handle) delete t.updates;
