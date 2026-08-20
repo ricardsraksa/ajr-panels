@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260820e">
+<link rel="modulepreload" href="./crm-core.js?v=20260820f">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f0f0f3}</style>
 <script type="module" blocking="render">
@@ -330,7 +330,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260820e';
+import * as core from './crm-core.js?v=20260820f';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'assistant' });
@@ -442,6 +442,7 @@ async function openChat(h, fresh) {
     turns = rows.map((r) => ({
       role: r.role, text: r.content, at: r.created_at, dbId: r.id,
       nimgs: (r.meta && r.meta.imgs) || 0,
+      seen: (r.meta && r.meta.seen) || '',
       updates: (r.meta && r.meta.updates) || null,
       handle: (r.meta && r.meta.handle) || chat,
       fb: (r.meta && r.meta.fb) || null,
@@ -554,13 +555,19 @@ async function contextBlock() {
   try { return await core.leadContextBlock(l, book.deals); } catch (e) { return ''; }
 }
 function apiMessages() {
-  // the model sees the last stretch of the thread; images ride only on
-  // this session's turns (history keeps a count, not the pixels)
-  return turns.filter((t) => !t.think).slice(-14).map((t) => ({
-    role: t.role,
-    content: (t.b64s || []).map((im) => ({ type: 'image', source: { type: 'base64', media_type: im.mediaType, data: im.b64 } }))
-      .concat(t.text ? [{ type: 'text', text: t.text }] : []),
-  })).filter((m) => m.content.length);
+  // the model sees the last stretch of the thread. Images ride only on this
+  // session's turns — but every screenshot turn carries `seen`, the model's
+  // own text rendering of what the screenshot contained, persisted in meta.
+  // So a reload or thread-switch no longer amnesias the conversation: history
+  // replays as text instead of the literal word '(screenshots)'.
+  return turns.filter((t) => !t.think).slice(-30).map((t) => {
+    const imgs = (t.b64s || []).map((im) => ({ type: 'image', source: { type: 'base64', media_type: im.mediaType, data: im.b64 } }));
+    let text = t.text || '';
+    if (!imgs.length && t.seen) {
+      text = '[Screenshot showed:]\n' + t.seen + (text && text !== '(screenshots)' ? '\n\n' + text : '');
+    }
+    return { role: t.role, content: imgs.concat(text ? [{ type: 'text', text }] : []) };
+  }).filter((m) => m.content.length);
 }
 
 async function send() {
@@ -592,7 +599,8 @@ async function send() {
       chat = detected;
       const prior = await core.chatLoad(chat).catch(() => []);
       turns = prior.map((r) => ({ role: r.role, text: r.content, at: r.created_at, dbId: r.id,
-        nimgs: (r.meta && r.meta.imgs) || 0, updates: (r.meta && r.meta.updates) || null,
+        nimgs: (r.meta && r.meta.imgs) || 0, seen: (r.meta && r.meta.seen) || '',
+        updates: (r.meta && r.meta.updates) || null,
         handle: (r.meta && r.meta.handle) || chat, fb: (r.meta && r.meta.fb) || null })).concat([userTurn]);
       toast({ type: 'ok', ttl: 6000, html: 'Moved to <b>@' + esc(chat) + '</b>’s thread.' });
     }
@@ -612,6 +620,7 @@ async function send() {
     // The convo entry is the assistant's own memory of the DM thread — silent,
     // append-only record-keeping, not a proposal: it never touches stage,
     // status or notes, so it doesn't need (or get) a confirm chip.
+    if ((userTurn.b64s || []).length) userTurn.seen = String(res.seen || '').trim();
     const convoLead = leadFor(detected || chat);
     const convoEntry = core.capSentences(String(res.convo || '').trim());
     if (convoLead && convoEntry && !saysNothingNew(convoEntry, convoLead.convoLog)) {
@@ -635,7 +644,8 @@ async function send() {
     if (t.updates) { maybeAutoApply(t, turns.length - 1).catch(() => {}); }
     // persist both sides now that we know which thread they belong to
     try {
-      const su = await core.chatSave(chat, 'user', text || '(screenshots)', userTurn.nimgs ? { imgs: userTurn.nimgs } : null);
+      const su = await core.chatSave(chat, 'user', text || '(screenshots)',
+        userTurn.nimgs ? { imgs: userTurn.nimgs, seen: userTurn.seen || '' } : null);
       userTurn.dbId = su.id;
       const sa = await core.chatSave(chat, 'assistant', t.text,
         t.updates ? { updates: t.updates, handle: t.handle } : null);

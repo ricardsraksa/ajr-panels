@@ -225,7 +225,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260820e';
+const BUILD = '20260820f';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -1770,7 +1770,8 @@ export async function assistChat(messages, leadContext) {
         pains: 'Email barely converts, under 10% of revenue. No time to manage flows himself.',
         note: 'launching second store (mentioned April)', angle: 'weak flows, ~10%/mo from email',
         deal_status: 'Followup', deal_followup: '', deal_note: 'partner signs off on retainers, call agreed after their launch' },
-      convo: 'He anchored on price before seeing value. Richard pulled it toward a free audit call.' };
+      convo: 'He anchored on price before seeing value. Richard pulled it toward a free audit call.',
+      seen: 'Lead: whats the damage, whats this cost\nSetter: depends on the store honestly\nLead: ballpark?' };
   }
   const { data, error } = await supa.functions.invoke('assist',
     { body: { messages, leadContext: leadContext || '' } });
