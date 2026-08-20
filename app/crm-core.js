@@ -225,7 +225,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260820a';
+const BUILD = '20260820b';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -2221,14 +2221,23 @@ const NOTE_JUNK = [
   /\balready (running|doing) (email|flows|sms)\b/i,
   // meta framing: write the fact, not that somebody said the fact
   /^\s*says?\b/i,
+  // absence is not knowledge: what was NOT named/mentioned/seen is never a
+  // fact about the lead ('no retention channel named, likely no email')
+  /\bno \w+( \w+)? (named|mentioned|stated|visible|shown|listed|specified)\b/i,
+  /\b(nothing|none) (named|mentioned|stated|visible|shown)\b/i,
+  /\bnot (named|mentioned|stated|specified|known|clear|visible)\b/i,
+  /\bunclear\b|\bunknown\b|\bhard to (tell|say)\b|\bcan['\u2019]?t tell\b/i,
   // bare category labels are filler ('Subscription/MRR product.')
   /^\s*(subscription|mrr|saas|dtc|ecom(merce)?)([\/\s-]*(subscription|mrr|saas))*\s*(product|brand|business|store)?\.?\s*$/i,
 ];
-export function cleanNote(v) {
+export function stripHedges(v) {
   const parts = String(v || '').split(/(?<=[.!?])\s+|\s*·\s*|\s*;\s*/)
     .map((x) => x.trim()).filter(Boolean)
     .filter((x) => !NOTE_JUNK.some((re) => re.test(x)));
-  const out = parts.join('. ').replace(/\.\.+/g, '.').trim();
+  return parts.join('. ').replace(/\.\.+/g, '.').trim().replace(/\s*\.\s*$/, '');
+}
+export function cleanNote(v) {
+  const out = stripHedges(v);
   // a note with no digit, no capitalised name and under ~4 words is filler
   if (out && out.length < 22 && !/\d/.test(out) && !/[A-Z][a-z]{2,}/.test(out)) return '';
   return out.replace(/\s*\.\s*$/, '');
