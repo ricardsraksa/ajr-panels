@@ -225,7 +225,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260818b';
+const BUILD = '20260820a';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -2211,6 +2211,18 @@ const NOTE_JUNK = [
   /^\s*(keep|wait|hit|send|ask|use|come back|circle)\b/i,
   /\b(asked about|talking about|discussing|chatting about)\b/i,
   /\binterested in\b/i,
+  // pitch analysis: what WE could sell them is the angle, never a note —
+  // 'room to grow email's share of retention' tells the setter nothing in 3 weeks
+  /\broom (to|for) (grow|improve|scale|improvement|growth|expansion)/i,
+  /\b(opportunity|untapped|potential) (to|for|in)\b/i,
+  /\bcould (grow|improve|double|triple|add|be doing)\b/i,
+  /\b(email|sms)(['\u2019]s)? share of\b/i,
+  /\b(email|flows|klaviyo|sms) (is )?already (running|set ?up|going|in place)\b/i,
+  /\balready (running|doing) (email|flows|sms)\b/i,
+  // meta framing: write the fact, not that somebody said the fact
+  /^\s*says?\b/i,
+  // bare category labels are filler ('Subscription/MRR product.')
+  /^\s*(subscription|mrr|saas|dtc|ecom(merce)?)([\/\s-]*(subscription|mrr|saas))*\s*(product|brand|business|store)?\.?\s*$/i,
 ];
 export function cleanNote(v) {
   const parts = String(v || '').split(/(?<=[.!?])\s+|\s*·\s*|\s*;\s*/)

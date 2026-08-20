@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260818b">
+<link rel="modulepreload" href="./crm-core.js?v=20260820a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f0f0f3}</style>
 <script type="module" blocking="render">
@@ -330,7 +330,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260818b';
+import * as core from './crm-core.js?v=20260820a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'assistant' });
@@ -363,7 +363,6 @@ const FIELD_DEFS = [
   ['qual', 'Qual', 'select', QUAL_OPTS],
   ['status', 'Status', 'select', STATUS_OPTS],
   ['pains', 'Pains', 'text'],
-  ['angle', 'Angle', 'text'],
   ['note', 'Note', 'text'],
   // the closer's side: a post-call convo updates the DEAL, not just the lead
   ['deal_status', 'Deal status', 'select', DEAL_OPTS],
@@ -539,10 +538,8 @@ function dropKnown(u, l) {
   if (u.qual && u.qual === (l.qual || '')) u.qual = '';
   if (u.status && u.status === (l.status || '')) u.status = '';
   if (u.pains && saysNothingNew(u.pains, l.pains)) u.pains = '';
-  // notes append, so "new" means: not already somewhere in the notes — and the
-  // angle usually restates the pains, which is the same information twice
+  // notes append, so "new" means: not already somewhere in the notes
   if (u.note && (saysNothingNew(u.note, l.notes) || saysNothingNew(u.note, l.pains))) u.note = '';
-  if (u.angle && (saysNothingNew(u.angle, l.notes) || saysNothingNew(u.angle, l.pains))) u.angle = '';
 }
 async function contextBlock() {
   const l = leadFor(chat);
@@ -716,7 +713,12 @@ $('thread').addEventListener('click', async (e) => {
 async function applyProposal(t, final) {
     const hit = leadFor(t.handle);
     const day = core.todayDmy().slice(0, 5);
-    const noteBits = [final.note, final.angle ? '[angle] ' + final.angle : ''].filter(Boolean);
+    // the note passes the shared junk filter, and the angle stays OUT of the
+    // notes entirely — 'room to grow email retention' is our pitch analysis,
+    // not a fact about the lead, and it was burying the real facts
+    const stageForNote = final.level || (hit && hit.level) || '';
+    const cleanedNote = core.noteAllowed(stageForNote) ? core.cleanNote(final.note || '') : '';
+    const noteBits = [cleanedNote].filter(Boolean);
     if (hit) {
       const fields = {};
       if (final.level) fields.level = final.level;
