@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260820f">
+<link rel="modulepreload" href="./crm-core.js?v=20260824a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f0f0f3}</style>
 <script type="module" blocking="render">
@@ -330,7 +330,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 </main>
 
 <script type="module">
-import * as core from './crm-core.js?v=20260820f';
+import * as core from './crm-core.js?v=20260824a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'assistant' });
@@ -560,8 +560,17 @@ function apiMessages() {
   // own text rendering of what the screenshot contained, persisted in meta.
   // So a reload or thread-switch no longer amnesias the conversation: history
   // replays as text instead of the literal word '(screenshots)'.
-  return turns.filter((t) => !t.think).slice(-30).map((t) => {
-    const imgs = (t.b64s || []).map((im) => ({ type: 'image', source: { type: 'base64', media_type: im.mediaType, data: im.b64 } }));
+  const live = turns.filter((t) => !t.think).slice(-30);
+  return live.map((t, i) => {
+    // pixels ride ONCE — on the turn being answered. Every earlier screenshot
+    // turn replays as its seen transcript instead: re-uploading the session's
+    // images on every send was a large multiplier on the API bill, and the
+    // transcript is what the model keeps referencing anyway. Pre-seen turns
+    // (older threads) still fall back to their text.
+    const isLast = i === live.length - 1;
+    const imgs = isLast
+      ? (t.b64s || []).map((im) => ({ type: 'image', source: { type: 'base64', media_type: im.mediaType, data: im.b64 } }))
+      : [];
     let text = t.text || '';
     if (!imgs.length && t.seen) {
       text = '[Screenshot showed:]\n' + t.seen + (text && text !== '(screenshots)' ? '\n\n' + text : '');
