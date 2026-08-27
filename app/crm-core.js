@@ -225,7 +225,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260824a';
+const BUILD = '20260827a';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -744,9 +744,14 @@ export async function bookedWithoutDeal() {
 export async function createDeal(f = {}) {
   const rawName = String(f.name || '').trim();
   if (!rawName) throw new Error('name required');
-  // "@handle" (or a bare handle-looking name) also gives us the IG link
-  const asHandle = /^@?[a-z0-9._]{2,30}$/i.test(rawName) && !/\s/.test(rawName)
-    ? rawName.toLowerCase().replace(/^@/, '') : '';
+  // "@handle", a bare handle-looking name, OR a pasted instagram.com URL all
+  // give us the handle — and the handle is the name. Pasting a profile link
+  // used to name the deal after the whole URL, because only the bare forms
+  // were recognised. normHandle already strips www/_u/trailing path.
+  const asHandle = /instagram\.com/i.test(rawName)
+    ? normHandle(rawName)
+    : (/^@?[a-z0-9._]{2,30}$/i.test(rawName) && !/\s/.test(rawName)
+      ? rawName.toLowerCase().replace(/^@/, '') : '');
   const name = asHandle ? '@' + asHandle : rawName;
   if (DEMO) {
     const id = Date.now();
@@ -1062,11 +1067,17 @@ export async function linkBooking(bookingId, dealRow) {
    logs them normally and setterUpdate moves them up the ladder. */
 
 const HANDLE_RE = /^[a-z0-9._]{1,30}$/;
+const IG_RESERVED = /^(p|reel|reels|tv|explore|direct|accounts|stories|s|share)$/i;
 function normHandle(s) {
   let h = String(s || '').trim().toLowerCase();
-  h = h.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '');
+  // the protocol is optional: a pasted 'instagram.com/x' used to survive the
+  // strip, then split to the literal 'instagram.com' — which passes HANDLE_RE
+  h = h.replace(/^@/, '').replace(/^(https?:\/\/)?(www\.)?instagram\.com\//, '');
   h = h.replace(/^_u\//, ''); // app deep-link form: instagram.com/_u/<handle>
   h = h.split(/[/?#]/)[0].trim();
+  // instagram.com/p/ABC, /reel/…, /explore/… are CONTENT urls, not profiles —
+  // without this a pasted post link becomes a lead or a deal called '@p'
+  if (IG_RESERVED.test(h)) return '';
   return HANDLE_RE.test(h) ? h : '';
 }
 
