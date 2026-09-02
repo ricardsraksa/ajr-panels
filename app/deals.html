@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260827a">
+<link rel="modulepreload" href="./crm-core.js?v=20260902a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -564,7 +564,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260827a';
+import * as core from './crm-core.js?v=20260902a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'deals' });
@@ -763,10 +763,10 @@ function render() {
   const head = '<div class="v2-thead d-thead d-min"><span>Name</span><span>Status</span><span>Meeting</span>' +
     '<span>Follow-up</span><span style="text-align:right">Cash</span><span>Notes</span></div>';
   if (!rows.length) { t.innerHTML = '<div class="v2-scroll">' + head + '</div><div class="v2-empty">No deals here.</div>'; return; }
-  t.innerHTML = '<div class="v2-scroll"><div class="d-min">' + head + rows.map((d) => `
+  t.innerHTML = '<div class="v2-scroll"><div class="d-min">' + head + rows.map((d) => { const link = core.safeUrl(d.link); return `
     <div class="v2-row d-row${d.status === 'Closed' ? ' row-won' : ''}" data-id="${d.row}">
-      <span class="dname">${d.link
-        ? `<a class="ig" href="${esc(d.link)}" target="_blank" rel="noopener" title="Open Instagram">${esc(displayName(d))}</a>`
+      <span class="dname">${link
+        ? `<a class="ig" href="${esc(link)}" target="_blank" rel="noopener" title="Open Instagram">${esc(displayName(d))}</a>`
         : esc(displayName(d))}${d.hasFF ? '<span title="Call transcript attached" style="color:var(--go)">◆</span>' : ''}</span>
       <span>${statusBadge(d.status)}</span>
       ${dateCell(d.meeting, false, d.meetingTime)}
@@ -776,7 +776,7 @@ function render() {
       ${isDone(d) ? '' : `<span class="rowacts"><button class="fu-quick" data-fu="${d.row}" title="Log a follow-up today, next one in a week">+ FU</button>` +
         `<button class="fu-quick" data-won="${d.row}" title="Closed — you'll confirm the amount">Won</button>` +
         `<button class="fu-quick" data-lost="${d.row}" title="No close — add the reason">Lost</button></span>`}
-    </div>`).join('') + '</div></div>';
+    </div>`; }).join('') + '</div></div>';
   Array.prototype.forEach.call(t.querySelectorAll('.d-row'), (r) => {
     r.onclick = () => openDrawer(+r.getAttribute('data-id'));
     // one-click follow-up straight from the list — never opens the drawer
@@ -866,9 +866,9 @@ function openDrawer(id) {
     if (!calls.length) { $('f-nocalls').hidden = false; return; }
     $('f-calls').innerHTML = calls.map((c) => {
       const day = c.at ? esc(String(c.at).slice(8, 10) + '/' + String(c.at).slice(5, 7)) : '';
-      return '<a href="' + esc(c.url) + '" target="_blank" rel="noopener">' +
-        (day ? '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11.5px;color:var(--muted)">' + day + '</span> · ' : '') +
-        esc(c.title) + ' ↗</a>';
+      const url = core.safeUrl(c.url); // the call row comes from a webhook, not a person
+      const body = (day ? '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11.5px;color:var(--muted)">' + day + '</span> · ' : '') + esc(c.title);
+      return url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + body + ' ↗</a>' : '<span>' + body + '</span>';
     }).join('');
   }).catch(() => { /* the drawer works without the log */ });
   $('scrim').classList.add('on'); $('drawer').classList.add('on');

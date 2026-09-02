@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260827a">
+<link rel="modulepreload" href="./crm-core.js?v=20260902a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -393,7 +393,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260827a';
+import * as core from './crm-core.js?v=20260902a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'log-lead' });
@@ -583,9 +583,10 @@ function renderChip() {
   if (a.mode === 'existing') {
     var l = a.lead;
     var dups = state.leads.filter(function (x) { return x.h === l.h; }).length;
+    var pu = core.safeUrl(l.url);
     chip.innerHTML = '<div class="top">' +
         '<span class="hh">@' + esc(l.h) + '</span>' +
-        (l.url ? '<a href="' + esc(l.url) + '" target="_blank" rel="noopener" style="font-size:12.5px">open profile ↗</a>' : '') +
+        (pu ? '<a href="' + esc(pu) + '" target="_blank" rel="noopener" style="font-size:12.5px">open profile ↗</a>' : '') +
       '</div>' +
       '<div class="meta">' + esc(l.level || 'no level') +
         (l.status ? ' · ' + esc(l.status) : '') +

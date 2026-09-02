@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260827a">
+<link rel="modulepreload" href="./crm-core.js?v=20260902a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -362,7 +362,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260827a';
+import * as core from './crm-core.js?v=20260902a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'worklist' });
@@ -611,7 +611,7 @@ function rowHtml(l, i, sweep) {
     acts = '<button class="v2-btn goline sm" data-log="' + esc(l.h) + '">Log</button>';
   }
   return '<div class="v2-row q-row' + (done ? ' done' : '') + (focused ? ' cursor' : '') + '" data-h="' + esc(l.h) + '">' +
-    '<a class="q-handle" href="' + esc(l.url || ('https://instagram.com/' + l.h)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
+    '<a class="q-handle" href="' + esc(core.safeUrl(l.url) || ('https://instagram.com/' + l.h)) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
     '<span class="q-stage">' + esc(core.shortStage(l.level) || '—') + '</span>' +
     daysBadge(l.lastContact) +
     '<span class="q-note" title="' + esc(note) + '">' +
@@ -772,8 +772,8 @@ function bindEvents() {
       if (ls && !state.done[ls.h]) { e.preventDefault(); snoozeLead(ls.h, 7); }
     }
     else if (k.toLowerCase() === 'o') {
-      var l2 = cursorLead();
-      if (l2 && l2.url) { e.preventDefault(); window.open(l2.url, '_blank', 'noopener'); }
+      var l2 = cursorLead(), u2 = l2 ? core.safeUrl(l2.url) : '';
+      if (u2) { e.preventDefault(); window.open(u2, '_blank', 'noopener'); }
     }
     else if (k === 'Enter') {
       var l3 = cursorLead();
@@ -876,7 +876,7 @@ function render() {
     '</div>' +
     q.map((l) => '<div class="dm-row" data-id="' + l.id + '">' +
       '<input type="checkbox" class="dm-tick" data-id="' + l.id + '"' + (state.sel.has(l.id) ? ' checked' : '') + '>' +
-      '<a class="dm-h" href="' + esc(l.url || 'https://instagram.com/' + l.h) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
+      '<a class="dm-h" href="' + esc(core.safeUrl(l.url) || 'https://instagram.com/' + l.h) + '" target="_blank" rel="noopener">@' + esc(l.h) + '</a>' +
       (storyLive(l) ? '<span class="dm-story" title="Had an active story when added — story-reply them first">◉ story</span>' : '') +
       (l.igStatus === 'private' ? '<span class="dm-priv" title="Private account — your DM lands in their requests">🔒</span>' : '') +
       '<span class="sp" style="flex:1"></span>' +

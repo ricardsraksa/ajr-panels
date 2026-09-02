@@ -65,14 +65,14 @@ input:focus{border-color:var(--muted)}
   <div class="foot"><a href="#" id="forgot">Forgot password?</a></div>
 </div>
 <script type="module">
-import { supa, signIn, isDemo, roleFor } from './crm-core.js?v=20260827a';
+import { supa, signIn, isDemo, safeDest, landingFor } from './crm-core.js?v=20260902a';
 
 const qs = new URLSearchParams(location.search);
-// Role-based landing. Roles live in the settings table (Settings -> Team), so
-// adding a teammate is an edit, not a deploy.
+// Role-based landing. Roles live in team_members (admin -> Worklist, member ->
+// Deals). ?to= is only honoured when it names one of our own pages — a link
+// can't bounce a fresh sign-in anywhere else.
 async function destFor(email) {
-  if (qs.get('to')) return qs.get('to');
-  return (await roleFor(email)) === 'closer' ? 'deals.html' : 'worklist.html';
+  return safeDest(qs.get('to')) || landingFor(email);
 }
 
 // already signed in? straight through. (skip the network check in demo)

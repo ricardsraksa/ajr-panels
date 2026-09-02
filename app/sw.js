@@ -8,10 +8,15 @@
  *  - Everything else (Supabase API, anything cross-origin): untouched — data
  *    freshness is the app's job, not this file's.
  */
-const CACHE = 'ajr-static-v1';
+const CACHE = 'ajr-static-v2';
 
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+// a new CACHE name would otherwise leave every old generation on disk forever
+self.addEventListener('activate', (e) => e.waitUntil((async () => {
+  const names = await caches.keys();
+  await Promise.all(names.filter((n) => n !== CACHE).map((n) => caches.delete(n)));
+  await self.clients.claim();
+})()));
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
@@ -33,14 +38,17 @@ self.addEventListener('fetch', (e) => {
       return r;
     })());
   } else if (isHtml) {
+    // keyed by path only: ?lead=x / ?to=y / ?demo=1 are one page, not a copy
+    // each — and a query string never ends up written to disk
+    const key = new Request(u.pathname);
     e.respondWith((async () => {
       const c = await caches.open(CACHE);
       try {
         const r = await fetch(e.request);
-        if (r.ok) c.put(e.request, r.clone());
+        if (r.ok) c.put(key, r.clone());
         return r;
       } catch (err) {
-        const hit = await c.match(e.request);
+        const hit = await c.match(key);
         if (hit) return hit;
         throw err;
       }

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260827a">
+<link rel="modulepreload" href="./crm-core.js?v=20260902a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <link rel="preload" as="script" href="./parser.js">
 <style>html{background:#f0f0f3}</style>
@@ -455,7 +455,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 <script src="./parser.js"></script>
 <script type="module">
-import * as core from './crm-core.js?v=20260827a';
+import * as core from './crm-core.js?v=20260902a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'leads' });
@@ -589,7 +589,7 @@ function visible() {
 const onPhone = matchMedia('(max-width: 760px)').matches || /iPhone|Android/i.test(navigator.userAgent);
 function profileHref(l) {
   return onPhone ? 'https://www.instagram.com/_u/' + encodeURIComponent(l.h) + '/'
-                 : (l.url || 'https://instagram.com/' + l.h);
+                 : (core.safeUrl(l.url) || 'https://instagram.com/' + l.h);
 }
 
 function batchList() {
@@ -927,7 +927,8 @@ async function openDrawer(id) {
   state.editing = id;
   $('d-name').textContent = '@' + l.h;
   const ig = $('d-ig');
-  if (l.url) { ig.hidden = false; ig.href = l.url; } else ig.hidden = true;
+  const igUrl = core.safeUrl(l.url);
+  if (igUrl) { ig.hidden = false; ig.href = igUrl; } else ig.hidden = true;
   $('d-meta').textContent = (l.dateAdded ? 'added ' + l.dateAdded + ' · ' : '') + (l.lastContact ? 'last contact ' + l.lastContact : 'never contacted');
   $('q-log').href = 'log-lead.html?lead=' + encodeURIComponent(l.h);
   $('f-level').value = l.level || '';
@@ -947,8 +948,9 @@ async function openDrawer(id) {
       if (!list.length || state.editing !== id) return;
       $('d-calls').innerHTML = list.map((c) => {
         const day = c.at ? esc(String(c.at).slice(8, 10) + '/' + String(c.at).slice(5, 7)) : '';
-        return '<a href="' + esc(c.url) + '" target="_blank" rel="noopener">' +
-          (day ? '<span class="l-mono" style="font-size:11.5px">' + day + '</span> · ' : '') + esc(c.title) + ' ↗</a>';
+        const url = core.safeUrl(c.url);
+        const body = (day ? '<span class="l-mono" style="font-size:11.5px">' + day + '</span> · ' : '') + esc(c.title);
+        return url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">' + body + ' ↗</a>' : '<span>' + body + '</span>';
       }).join('');
       $('d-calls-wrap').hidden = false;
     } catch (e) { /* the drawer works without the log */ }

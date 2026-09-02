@@ -27,11 +27,18 @@ export const isPool = (lvl) => lvl === 'Following' || lvl === 'Outreach';
    and split one state four ways in every filter and count. */
 export const STATUSES = ['Follow up Sent', "Haven't read", 'Left on read',
   'Mid convo', 'Call Pitched', 'End of convo'];
+export const QUALS = ['Qualified 1', 'Qualified 2', 'Qualified 3', 'Unqualified'];
+export const DEAL_STATUSES = ['Discovery Call', 'Closing call', 'Followup', 'Closed', 'No Close'];
+/* AI output is a suggestion, not a value. Every write that a model can drive
+   runs its enum fields through this first: a stage/status/qual the vocab
+   doesn't know is dropped, never stored — one hallucinated 'Engaged 4' would
+   otherwise sit in the book and break every filter that assumes the list. */
+const vocab = (list, v) => { const s = String(v == null ? '' : v).trim(); return list.includes(s) ? s : ''; };
 
 /* ---------- demo mode (self-contained; no backend, for design/preview) ----------
    Add ?demo=1 to any page. It sticks for the session (so cross-page links stay
    in demo) and every read/write runs against in-memory fake data. Nothing
-   touches Supabase. Sign in with any email — use reinis@agencyjr.com to land on
+   touches Supabase. Sign in with any email — use closer@demo.ajr to land on
    the closer, anything else for the setter. */
 const DEMO = (() => {
   try {
@@ -161,10 +168,50 @@ export async function signIn(email, password) {
   return data.session;
 }
 
+/* Everything this app parks in the browser is prefixed ajr_ — book cache,
+   settings, role, seen-markers. A shared laptop must not hand the next person
+   the last one's book, so sign-out clears the lot, not just the session. */
+function dropLocalState() {
+  dropBookCache();
+  try {
+    for (const store of [sessionStorage, localStorage]) {
+      Object.keys(store).filter((k) => k.indexOf('ajr_') === 0).forEach((k) => store.removeItem(k));
+    }
+  } catch (e) { /* private mode */ }
+}
 export async function signOut() {
-  if (DEMO) { location.replace('index.html'); return; }
+  dropLocalState();
+  // the demo flag was just wiped too — re-arm it so a demo sign-out stays in demo
+  if (DEMO) { location.replace('index.html?demo=1'); return; }
   await supa.auth.signOut();
   location.replace('index.html');
+}
+
+/* ---------- URL hygiene ----------
+   Two things arrive from outside and end up in navigation: the ?to= a gated
+   page hands the login form, and profile/call links stored in rows the AI
+   writes. Both are validated here, once, so no page has to remember to. */
+const PAGES = ['worklist.html', 'deals.html', 'assistant.html', 'leads.html', 'briefing.html',
+  'report.html', 'settings.html', 'handover.html', 'log-lead.html', 'index.html'];
+/** The post-login destination: one of our own pages, optionally with a query
+ *  or hash that cannot smuggle a scheme or host. Anything else → ''. */
+export function safeDest(to) {
+  const s = String(to || '');
+  const m = s.match(/^([a-z-]+\.html)([?#].*)?$/);
+  if (!m || !PAGES.includes(m[1])) return '';
+  const tail = m[2] || '';
+  if (tail.includes(':') || tail.includes('//')) return '';
+  return s;
+}
+/** A link fit for href/src/window.open: http(s), mailto or tel only. A
+ *  javascript:/data: URL saved into a row by a scan renders as plain text. */
+export function safeUrl(u) {
+  const s = String(u == null ? '' : u).trim();
+  if (!s) return '';
+  try {
+    const p = new URL(s, location.origin).protocol;
+    return ['https:', 'http:', 'mailto:', 'tel:'].includes(p) ? s : '';
+  } catch (e) { return ''; }
 }
 
 export async function userEmail() {
@@ -225,7 +272,7 @@ async function pagedSelect(table, cols, order = 'id') {
    The token the page ASKED for is visible in import.meta.url; BUILD below is
    whatever shipped. If they disagree the HTML is stale, so reload it once,
    guarded by sessionStorage so a mismatch can never loop. */
-const BUILD = '20260827a';
+const BUILD = '20260902a';
 (function selfHeal() {
   try {
     const asked = (import.meta.url.match(/[?&]v=([^&]+)/) || [])[1];
@@ -398,6 +445,10 @@ async function logActivity(table, rowId, action, prev, next, atIso) {
 export async function setterUpdate(args) {
   const handle = String(args.handle || '').trim().toLowerCase();
   if (!handle) throw new Error('bad handle');
+  // scan/assistant output — unknown vocab is dropped, not stored
+  args.stage = vocab(STAGES, args.stage);
+  args.status = vocab(STATUSES, args.status);
+  args.qual = vocab(QUALS, args.qual);
   // AI-sourced notes obey the stage gate; a note the setter typed himself
   // is his call and passes through untouched
   if (args.note && args.fromScan) args.note = noteAllowed(args.stage) ? cleanNote(args.note) : '';
@@ -474,7 +525,9 @@ export async function setterUpdate(args) {
  *  Mirrors closerUpdate: cash requires explicit confirmation; notes append
  *  (draft notes get replaced); dates arrive dd/MM/yyyy. */
 export async function closerUpdate(args) {
-  const f = args.fields || {};
+  const f = { ...(args.fields || {}) };
+  // the capture bar parses free text — a status outside the vocab is dropped
+  if (f.status && !DEAL_STATUSES.includes(f.status)) delete f.status;
   if (DEMO) {
     if (f.cash != null && f.cash !== '' && args.cashConfirmed !== true) throw new Error('cash requires confirmation');
     const d = _demo.deals.find((x) => x.row === args.row);
@@ -1474,6 +1527,11 @@ export async function setLead(id, fields, opts) {
     lp: 'lp', lpQuality: 'lp_quality', lpUsed: 'lp_used', snoozedUntil: 'snoozed_until',
     igName: 'ig_name' };
   const touch = !!(opts && opts.touch) && ('level' in fields || 'status' in fields);
+  // '' is a deliberate clear and passes; a value the vocab doesn't know is dropped
+  fields = { ...fields };
+  [['level', STAGES], ['status', STATUSES], ['qual', QUALS]].forEach(([k, list]) => {
+    if (fields[k] && !vocab(list, fields[k])) delete fields[k];
+  });
   if (DEMO) {
     const l = _demo.leads.find((x) => x.id === id);
     if (!l) throw new Error('lead not found');
@@ -1994,9 +2052,13 @@ const AUTO_STREAK = 10;
 export async function autoApplyFields() {
   if (DEMO) return [];
   try {
+    // the streak is personal: Reinis accepting ten in a row says nothing
+    // about whether Richard wants to stop being asked
+    const email = await userEmail();
+    if (!email) return [];
     const { data } = await supa.from('ai_feedback')
       .select('suggested,final')
-      .eq('source', 'assist')
+      .eq('source', 'assist').eq('actor', email)
       .order('id', { ascending: false }).limit(200);
     const rows = data || [];
     if (rows.length < AUTO_STREAK) return [];
@@ -2028,10 +2090,10 @@ export async function bookedAlert(payload) {
 }
 
 
-/* ---------- app settings (team roles + worklist rules) ----------
-   Small JSON blobs in the `settings` table so roles and thresholds are data,
-   not constants — adding a teammate or changing the overdue window is a
-   Settings edit, not a deploy. Cached per page load. */
+/* ---------- app settings (worklist rules, targets, alert times) ----------
+   Small JSON blobs in the `settings` table so thresholds are data, not
+   constants — changing the overdue window is a Settings edit, not a deploy.
+   Cached per page load. Roles are NOT here: they live in team_members, below. */
 
 const DEFAULT_RULES = { overdueDays: 14, autoArchiveDays: 60, snoozeDays: 7, noCloseResurfaceDays: 30 };
 // 0 means "track it, but don't hold me to a number" — the metric still shows a
@@ -2059,7 +2121,6 @@ export function targetsHit(stat, targets, days = 1) {
 const DEFAULT_TIMES = { morning: '08:00', report: '08:00' };
 // deals.cash is a bare number; the symbol is the team's to choose
 const DEFAULT_CURRENCY = '\u20ac';
-const DEMO_ROLES = { 'reinis@agencyjr.com': 'closer' };
 let _settingsCache = null;
 
 export async function loadSettings(force) {
@@ -2069,17 +2130,16 @@ export async function loadSettings(force) {
     if (hit) { _settingsCache = hit; return hit; }
   }
   if (DEMO) {
-    _settingsCache = { team_roles: DEMO_ROLES, worklist_rules: DEFAULT_RULES, setter_targets: DEFAULT_TARGETS, alert_times: DEFAULT_TIMES, currency: DEFAULT_CURRENCY };
+    _settingsCache = { worklist_rules: DEFAULT_RULES, setter_targets: DEFAULT_TARGETS, alert_times: DEFAULT_TIMES, currency: DEFAULT_CURRENCY };
     return _settingsCache;
   }
-  const out = { team_roles: {}, worklist_rules: { ...DEFAULT_RULES }, setter_targets: { ...DEFAULT_TARGETS }, alert_times: { ...DEFAULT_TIMES }, currency: DEFAULT_CURRENCY };
+  const out = { worklist_rules: { ...DEFAULT_RULES }, setter_targets: { ...DEFAULT_TARGETS }, alert_times: { ...DEFAULT_TIMES }, currency: DEFAULT_CURRENCY };
   try {
-    const { data } = await supa.from('settings').select('key,value').in('key', ['team_roles', 'worklist_rules', 'setter_targets', 'alert_times', 'currency']);
+    const { data } = await supa.from('settings').select('key,value').in('key', ['worklist_rules', 'setter_targets', 'alert_times', 'currency']);
     for (const r of data || []) {
       let v = r.value;
       if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) { v = null; } }
       if (!v) continue;
-      if (r.key === 'team_roles') out.team_roles = v;
       if (r.key === 'worklist_rules') out.worklist_rules = { ...DEFAULT_RULES, ...v };
       if (r.key === 'setter_targets') out.setter_targets = { ...DEFAULT_TARGETS, ...v };
       if (r.key === 'alert_times') {
@@ -2102,11 +2162,45 @@ export async function saveSetting(key, value) {
   _settingsCache = null;
   return { ok: true };
 }
-/** 'closer' | 'setter' for an email — data-driven, falls back to setter. */
-export async function roleFor(email) {
-  const s = await loadSettings();
+/* ---------- team (who is on it, who may write what) ----------
+   `team_members` is the one list: an email is either on it or it isn't, as
+   'admin' (Richard — may edit knowledge and the team itself) or 'member'
+   (Reinis). It used to be a JSON blob in settings that anyone signed in could
+   rewrite — i.e. anyone could make themselves admin. Cached a minute. */
+const DEMO_ROLES = { 'demo@ajr.crm': 'admin', 'closer@demo.ajr': 'member' };
+const LANDING = { admin: 'worklist.html', member: 'deals.html' };
+const TEAM_KEY = 'ajr_team_v1';
+/** [{ email, role }] — the whole team, for the read-only list in Settings. */
+export async function teamList() {
+  if (DEMO) return Object.keys(DEMO_ROLES).map((email) => ({ email, role: DEMO_ROLES[email] }));
+  const hit = _ttlGet(TEAM_KEY);
+  if (hit) return hit;
+  const { data, error } = await supa.from('team_members').select('email,role').order('added_at');
+  if (error) throw new Error(error.message);
+  const rows = (data || []).map((r) => ({ email: String(r.email || '').toLowerCase(), role: r.role }));
+  _ttlSet(TEAM_KEY, rows);
+  return rows;
+}
+/** 'admin' | 'member' | '' (not on the team). */
+export async function teamRole(email) {
   const key = String(email || '').toLowerCase();
-  return (s.team_roles && s.team_roles[key]) === 'closer' ? 'closer' : 'setter';
+  if (!key) return '';
+  try {
+    const hit = (await teamList()).find((r) => r.email === key);
+    return hit ? hit.role : '';
+  } catch (e) { return ''; }
+}
+export async function isAdmin(email) {
+  return (await teamRole(email || await userEmail())) === 'admin';
+}
+/** Where sign-in lands: the closer on Deals, everyone else on the Worklist. */
+export async function landingFor(email) {
+  return LANDING[await teamRole(email)] || 'worklist.html';
+}
+/** 'closer' | 'setter' — the working role the chrome shows. A member is the
+ *  closer; the admin (and anyone unknown) is the setter. */
+export async function roleFor(email) {
+  return (await teamRole(email)) === 'member' ? 'closer' : 'setter';
 }
 export async function worklistRules() { return (await loadSettings()).worklist_rules; }
 export async function setterTargets() { return (await loadSettings()).setter_targets; }
@@ -2303,12 +2397,12 @@ export function noteAllowed(stage) {
 export async function addProspects(cards) {
   const list = (cards || []).map((c) => ({
     h: String(c.handle || '').trim().toLowerCase().replace(/^@/, ''),
-    stage: String(c.stage || '').trim(),   // empty = no stage until they reply
+    stage: vocab(STAGES, c.stage),   // empty = no stage until they reply
     // Profile-scan notes are the only context that exists BEFORE a DM, so the
     // stage gate doesn't apply here — it exists to stop the mid-conversation
     // scanner inventing notes for leads that haven't talked business yet.
     notes: cleanNote(c.notes),
-    qual: String(c.qual || '').trim(), pains: String(c.pains || '').trim(),
+    qual: vocab(QUALS, c.qual), pains: String(c.pains || '').trim(),
     name: String(c.name || '').trim(),
     story: c.story === 'yes', priv: c.priv === 'yes',
   })).filter((c) => c.h);

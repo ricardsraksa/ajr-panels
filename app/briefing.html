@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260827a">
+<link rel="modulepreload" href="./crm-core.js?v=20260902a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f0f0f3}</style>
 <script type="module" blocking="render">
@@ -251,7 +251,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
   </div>
 </main>
 <script type="module">
-import * as core from './crm-core.js?v=20260827a';
+import * as core from './crm-core.js?v=20260902a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'briefing' });
@@ -259,17 +259,19 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 if (core.isDemo) $('demoBanner').hidden = false;
 
-const item = (it) => `<div class="it"><b>${esc(it.t)}</b>${it.d ? ' — ' + esc(it.d) : ''} ${
-  it.url ? `<a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.src)} ↗</a>`
-         : `<span class="nolink">${esc(it.src)}</span>`}</div>`;
+// the briefing is written by an automation, so its links are data — safeUrl or plain text
+const item = (it) => { const u = core.safeUrl(it.url); return `<div class="it"><b>${esc(it.t)}</b>${it.d ? ' — ' + esc(it.d) : ''} ${
+  u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(it.src)} ↗</a>`
+    : `<span class="nolink">${esc(it.src)}</span>`}</div>`; };
 const group = (g) => `<section class="grp"><div class="grp-h">${esc(g.tag)}</div>${(g.items || []).map(item).join('')}</section>`;
 
 function show(b, isToday) {
   $('bDate').textContent = b.date || '';
   $('bCounts').hidden = !b.counts;
   if (b.counts) $('bCounts').textContent = b.counts;
-  $('kdLink').hidden = !(b.keydev_url && b.keydev_url !== '#');
-  if (b.keydev_url && b.keydev_url !== '#') $('kdLink').href = b.keydev_url;
+  const kd = b.keydev_url && b.keydev_url !== '#' ? core.safeUrl(b.keydev_url) : '';
+  $('kdLink').hidden = !kd;
+  if (kd) $('kdLink').href = kd;
   // the stale warning is about TODAY's automation, not about browsing history
   $('staleNote').hidden = true;
   if (isToday && b.iso) {

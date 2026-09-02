@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://cukjynfatkyiuzvstgcp.supabase.co" crossorigin>
-<link rel="modulepreload" href="./crm-core.js?v=20260827a">
+<link rel="modulepreload" href="./crm-core.js?v=20260902a">
 <link rel="modulepreload" href="./supabase-js.mjs?v=1">
 <style>html{background:#f0f0f3}</style>
 <script type="module" blocking="render">
@@ -44,7 +44,6 @@ await new Promise((r) => { window.__reveal = r; setTimeout(r, 1200); });
 .team-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--divider)}
 .team-row:first-child{border-top:none}
 .team-row .em{flex:1;font-size:13px}
-.team-row select{width:auto;min-width:110px}
 .rule-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-top:1px solid var(--divider)}
 .rule-row:first-child{border-top:none}
 .rule-row .k{flex:1;font-size:13px;color:var(--ink-2)}
@@ -258,21 +257,9 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
   <div class="card">
     <h2>Connections</h2>
     <div class="blk">
-      <div class="nm">Call transcripts (Fireflies)</div>
-      <div class="hint" id="ff-sub">Calls are pulled every 45 minutes. For instant processing, save this webhook in Fireflies.</div>
-      <div class="urlbox">
-        <input class="v2-in" id="ff-url" readonly value="">
-        <button class="v2-btn" id="ff-copy">Copy</button>
-      </div>
-    </div>
-    <div class="blk">
-      <div class="nm">Team alerts (Slack)</div>
-      <div class="hint">Booked-lead pings + the morning call sheet.</div>
-      <div class="urlbox">
-        <input class="v2-in" id="slack-url" placeholder="https://hooks.slack.com/services/…" spellcheck="false">
-        <button class="v2-btn dark" id="slack-save">Save</button>
-        <button class="v2-btn" id="slack-test">Send test</button>
-      </div>
+      <div class="nm">Slack &amp; Fireflies</div>
+      <div class="hint">Slack alerts and Fireflies are configured as server secrets.</div>
+      <div class="urlbox"><button class="v2-btn" id="slack-test">Send test alert</button></div>
       <div class="msg" id="slack-msg"></div>
     </div>
     <div class="blk">
@@ -283,16 +270,8 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
   <div class="card">
     <h2>Team</h2>
-    <div class="sub">Sign-in sends each person to their own tool.</div>
+    <div class="sub">Sign-in sends each person to their own tool. Membership lives in the database (team_members) — ask Richard to add or change someone.</div>
     <div class="blk" id="team"></div>
-    <div class="blk" style="padding-top:0">
-      <div class="urlbox">
-        <input class="v2-in" id="team-email" type="email" placeholder="add teammate email" spellcheck="false">
-        <select class="v2-in" id="team-role" style="width:auto"><option value="setter">Setter</option><option value="closer">Closer</option></select>
-        <button class="v2-btn" id="team-add">Add</button>
-      </div>
-      <div class="msg" id="team-msg"></div>
-    </div>
   </div>
 
   <div class="card">
@@ -348,7 +327,7 @@ textarea.v2-in{min-height:76px;resize:vertical;line-height:1.55}
 
 
 <script type="module">
-import * as core from './crm-core.js?v=20260827a';
+import * as core from './crm-core.js?v=20260902a';
 const session = await core.requireAuth();
 if (session) {
 await core.installChrome({ active: 'settings' });
@@ -418,46 +397,18 @@ async function health() {
       : row('warn', 'Activity', 'none yet'));
   } catch (e) { out.push(row('bad', 'Activity', e.message)); }
   try {
-    const { data } = await core.supa.from('settings').select('value').eq('key', 'slack_webhook').maybeSingle();
-    out.push(data && data.value ? row('ok', 'Slack alerts', 'configured') : row('off', 'Slack alerts', 'not set'));
-    if (data && data.value) $('slack-url').value = data.value;
-  } catch (e) { out.push(row('bad', 'Settings', e.message)); }
-  try {
     const { count } = await core.supa.from('ai_feedback').select('id', { count: 'exact', head: true });
     out.push(row('ok', 'AI feedback collected', String(count || 0)));
   } catch (e) { /* table optional */ }
   $('health').innerHTML = out.join('');
 }
 
-/* ---------- fireflies ----------
-   The webhook URL embeds a secret, so it must never live in this file (the
-   deployed repo is public). It's a settings row only signed-in users can read. */
-(async () => {
-  if (core.isDemo) { $('ff-url').value = 'https://…/functions/v1/ffwebhook?secret=demo'; return; }
-  try {
-    const { data } = await core.supa.from('settings').select('value').eq('key', 'ff_webhook_url').maybeSingle();
-    $('ff-url').value = (data && data.value) || 'unavailable — check settings.ff_webhook_url';
-  } catch (e) { $('ff-url').value = 'unavailable: ' + e.message; }
-})();
-$('ff-copy').onclick = async () => {
-  const v = $('ff-url').value;
-  try { await navigator.clipboard.writeText(v); $('ff-copy').textContent = 'Copied'; }
-  catch (e) { $('ff-url').select(); document.execCommand('copy'); $('ff-copy').textContent = 'Copied'; }
-  setTimeout(() => { $('ff-copy').textContent = 'Copy'; }, 1500);
-};
-
-/* ---------- slack ---------- */
+/* ---------- slack ----------
+   The webhook and the Fireflies URL are function secrets now — the browser
+   never sees either. All the page can do is ask the function to fire a test. */
 function msg(t, ok) { const m = $('slack-msg'); m.textContent = t; m.className = 'msg ' + (ok ? 'ok' : 'err'); }
-$('slack-save').onclick = async () => {
-  const v = $('slack-url').value.trim();
-  if (v && v.indexOf('https://hooks.slack.com/') !== 0) { msg('That doesn’t look like a Slack webhook URL.', false); return; }
-  try {
-    await core.supa.from('settings').upsert({ key: 'slack_webhook', value: v || null, updated_at: new Date().toISOString() });
-    msg(v ? 'Saved. Hit Test to confirm.' : 'Cleared — alerts off.', true);
-    health();
-  } catch (e) { msg('Save failed: ' + e.message, false); }
-};
 $('slack-test').onclick = async () => {
+  if (core.isDemo) { msg('Demo mode — nothing was sent.', false); return; }
   msg('Sending test…', true);
   try {
     const { data, error } = await core.supa.functions.invoke('alerts', { body: { type: 'test' } });
@@ -467,47 +418,20 @@ $('slack-test').onclick = async () => {
   } catch (e) { msg('Test failed: ' + e.message, false); }
 };
 
-/* ---------- team roles ---------- */
-let teamRoles = {};
-function renderTeam() {
-  const emails = Object.keys(teamRoles).sort();
-  $('team').innerHTML = emails.length ? emails.map((em) =>
-    `<div class="team-row"><span class="em">${esc(em)}</span>` +
-    `<select class="v2-in" data-em="${esc(em)}">` +
-      `<option value="setter"${teamRoles[em] === 'setter' ? ' selected' : ''}>Setter</option>` +
-      `<option value="closer"${teamRoles[em] === 'closer' ? ' selected' : ''}>Closer</option>` +
-    `</select>` +
-    `<button class="v2-btn sm" data-rm="${esc(em)}">Remove</button></div>`).join('')
-    : '<div class="hint">No roles set — everyone lands on the Worklist.</div>';
-}
-async function saveTeam(msg) {
-  if (core.isDemo) { $('team-msg').className = 'msg err'; $('team-msg').textContent = 'Demo mode — nothing was saved.'; return; }
+/* ---------- team (read-only) ----------
+   Roles come from team_members, which only an admin can write — and only from
+   the database, never from this page. The old editor let anyone signed in
+   promote themselves. */
+const ROLE_LABEL = { admin: 'admin · setter · lands on Worklist', member: 'member · closer · lands on Deals' };
+async function renderTeam() {
   try {
-    await core.saveSetting('team_roles', teamRoles);
-    await core.loadSettings(true);
-    $('team-msg').className = 'msg ok'; $('team-msg').textContent = msg || 'Saved.';
-    renderTeam();
-  } catch (e) { $('team-msg').className = 'msg err'; $('team-msg').textContent = e.message; }
+    const rows = await core.teamList();
+    $('team').innerHTML = rows.length ? rows.map((r) =>
+      `<div class="team-row"><span class="em">${esc(r.email)}</span>` +
+      `<span class="hint">${esc(ROLE_LABEL[r.role] || r.role)}</span></div>`).join('')
+      : '<div class="hint">No one on the team yet — everyone lands on the Worklist.</div>';
+  } catch (e) { $('team').innerHTML = '<div class="hint">Couldn’t load: ' + esc(e.message) + '</div>'; }
 }
-$('team').addEventListener('change', (e) => {
-  const sel = e.target.closest('[data-em]'); if (!sel) return;
-  teamRoles[sel.getAttribute('data-em')] = sel.value;
-  saveTeam('Role updated — takes effect at next sign-in.');
-});
-$('team').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-rm]'); if (!b) return;
-  delete teamRoles[b.getAttribute('data-rm')];
-  saveTeam('Removed.');
-});
-$('team-add').onclick = () => {
-  const em = $('team-email').value.trim().toLowerCase();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) {
-    $('team-msg').className = 'msg err'; $('team-msg').textContent = 'That doesn’t look like an email.'; return;
-  }
-  teamRoles[em] = $('team-role').value;
-  $('team-email').value = '';
-  saveTeam('Added.');
-};
 
 /* ---------- worklist rules ---------- */
 const RULE_DEFS = [
@@ -608,7 +532,6 @@ $('targets-save').onclick = async () => {
 
 (async () => {
   const st = await core.loadSettings(true);
-  teamRoles = Object.assign({}, st.team_roles);
   rules = Object.assign({}, st.worklist_rules);
   targets = Object.assign({}, st.setter_targets);
   $('currency').value = st.currency || '\u20ac';
@@ -623,15 +546,23 @@ $('targets-save').onclick = async () => {
 let knEditing = null; // id being edited, or null = adding
 async function renderKn() {
   const ul = $('kn-list');
+  // the knowledge table IS the assistant's system prompt, so only the admin
+  // edits it (policy enforces this server-side; the UI just stops offering
+  // buttons that would be refused)
+  const admin = await core.isAdmin().catch(() => false);
+  const form = $('kn-title') && $('kn-title').closest('div');
+  if (form) form.hidden = !admin;
   try {
     const docs = await core.knowledgeList();
     ul.innerHTML = docs.length ? docs.map((d) =>
       '<li><span class="k">' + esc(d.title) + '</span>' +
-      '<span class="v">' + Math.round(d.size / 1000) + 'k · ' + esc(String(d.updated_at || '').slice(0, 10)) + '</span>' +
-      '<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-3);cursor:pointer">' +
-        '<input type="checkbox" data-kn-on="' + d.id + '"' + (d.enabled ? ' checked' : '') + ' style="accent-color:var(--go)">on</label>' +
-      '<button class="v2-btn sm" data-kn-edit="' + d.id + '">Edit</button>' +
-      '<button class="v2-btn sm" data-kn-del="' + d.id + '" style="color:var(--red)">Delete</button></li>').join('')
+      '<span class="v">' + Math.round(d.size / 1000) + 'k · ' + esc(String(d.updated_at || '').slice(0, 10)) + (d.enabled ? '' : ' · off') + '</span>' +
+      (admin
+        ? '<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-3);cursor:pointer">' +
+            '<input type="checkbox" data-kn-on="' + esc(String(d.id)) + '"' + (d.enabled ? ' checked' : '') + ' style="accent-color:var(--go)">on</label>' +
+          '<button class="v2-btn sm" data-kn-edit="' + esc(String(d.id)) + '">Edit</button>' +
+          '<button class="v2-btn sm" data-kn-del="' + esc(String(d.id)) + '" style="color:var(--red)">Delete</button>'
+        : '') + '</li>').join('')
       : '<li><span class="k" style="color:var(--muted)">No docs yet — the assistant runs on the built-in playbook definitions only.</span></li>';
   } catch (e) { ul.innerHTML = '<li><span class="k">Couldn’t load: ' + esc(e.message) + '</span></li>'; }
 }
